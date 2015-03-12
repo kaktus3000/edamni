@@ -1,0 +1,51 @@
+<!-- dtd for 1D speaker box simulation. doubly linked graph -->
+
+<!ELEMENT horn (conical|expo|wall|mouth|speaker|fork)*>
+<!ATTLIST horn dx CDATA #REQUIRED>
+
+<!-- definitions for graph links -->
+
+<!ELEMENT neighbor1 EMPTY>
+<!ATTLIST neighbor1 ref IDREF #REQUIRED>
+<!ELEMENT neighbor2 EMPTY>
+<!ATTLIST neighbor2 ref IDREF #REQUIRED>
+<!ELEMENT neighbor3 EMPTY>
+<!ATTLIST neighbor3 ref IDREF #REQUIRED>
+
+<!-- geometry definitions for sections -->
+
+<!ELEMENT length (#PCDATA)>
+<!ELEMENT A1 (#PCDATA)>
+<!ELEMENT A2 (#PCDATA)>
+<!ELEMENT A3 (#PCDATA)>
+<!ELEMENT damping_constant (#PCDATA)>
+
+<!-- actual geometry elements (have actual length and two connection points) -->
+
+<!ELEMENT conical (length, A1, A2, damping_constant, neighbor1, neighbor2)>
+<!ATTLIST conical id ID #REQUIRED>
+
+<!ELEMENT expo (length, A1, A2, damping_constant, neighbor1, neighbor2)>
+<!ATTLIST expo id ID #REQUIRED>
+<!ELEMENT base (#PCDATA)>
+
+<!-- special geometry elements (just one connection) -->
+
+<!ELEMENT wall (A2, damping_thickness, damping_constant, neighbor2)>
+<!ATTLIST wall id ID #REQUIRED>
+<!ELEMENT damping_thickness (#PCDATA)>
+
+<!ELEMENT mouth (A1, space, free_length, neighbor1)>
+<!ATTLIST mouth id ID #REQUIRED>
+<!ELEMENT space (#PCDATA)>
+<!ELEMENT free_length (#PCDATA)>
+
+<!-- non-geometry elements (have no spacial extent) -->
+<!--definition, -->
+<!ELEMENT speaker (A1, A2, neighbor1, neighbor2)>
+<!ATTLIST speaker id ID #REQUIRED>
+<!--<!ELEMENT definition (#PCDATA)>-->
+
+<!ELEMENT fork (A1, A2, A3, neighbor1, neighbor2, neighbor3)>
+<!ATTLIST fork id ID #REQUIRED>
+
