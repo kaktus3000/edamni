@@ -1,61 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!DOCTYPE horn SYSTEM "horn.dtd">
+<!DOCTYPE horn SYSTEM "../horn.dtd">
 
-<horn dx="0.01">
-	<wall id="back_wall">
-		<A2>.03</A2>
-		<damping_thickness>0.1</damping_thickness>
+<horn dx="0.005">
+	<wall id="rear_wall">
+		<A2>.137</A2>
+		<damping_thickness>0.14</damping_thickness>
 		<damping_constant>17100</damping_constant>
-		<neighbor2 ref="back_chamber" />
+		<neighbor2 ref="rear_chamber" />
 	</wall>
-
-	<conical id="back_chamber">
-		<length>.2</length>
-		<A1>.03</A1>
-		<A2>.03</A2>
+	<conical id="rear_chamber">
+		<length>.21</length>
+		<A1>.137</A1>
+		<A2>.137</A2>
 		<damping_constant>0.0</damping_constant>
-		<neighbor1 ref="back_wall" />
+		<neighbor1 ref="rear_wall" />
 		<neighbor2 ref="speaker" />
 	</conical>
-
 	<speaker id="speaker">
-		<!--<definition>speaker.txt</definition> -->
-		<A1>0.03</A1>
-		<A2>0.04</A2>
-		<neighbor1 ref="back_chamber" />
+		<A1>0.35</A1>
+		<A2>0.0855</A2>
+		<neighbor1 ref="rear_chamber" />
 		<neighbor2 ref="pressure_chamber" />
 	</speaker>
 
 	<conical id="pressure_chamber">
-		<length>.2</length>
-		<A1>.04</A1>
-		<A2>.04</A2>
+		<length>.025</length>
+		<A1>.0855</A1>
+		<A2>.0855</A2>
 		<damping_constant>0.0</damping_constant>
 		<neighbor1 ref="speaker" />
 		<neighbor2 ref="nozzle" />
 	</conical>
 	
 	<conical id="nozzle">
-		<length>.1</length>
-		<A1>.04</A1>
-		<A2>.01</A2>
+		<length>.01</length>
+		<A1>.0855</A1>
+		<A2>.04</A2>
 		<damping_constant>0.0</damping_constant>
 		<neighbor1 ref="pressure_chamber" />
 		<neighbor2 ref="horn" />
 	</conical>
 
-	<expo id="horn">
+	<conical id="horn">
 		<length>2.2</length>
-		<A1>.01</A1>
-		<A2>.6</A2>
+		<A1>.04</A1>
+		<A2>.4</A2>
 		<damping_constant>0.0</damping_constant>
 		<neighbor1 ref="nozzle" />
 		<neighbor2 ref="throat" />
-	</expo>
+	</conical>
 	
 	<mouth id="throat">
-		<A1>.6</A1>
+		<A1>.4</A1>
 		<space>0.25</space>
 		<free_length>1.0</free_length>
 		<neighbor1 ref="horn" />

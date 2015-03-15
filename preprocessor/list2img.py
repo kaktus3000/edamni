@@ -36,6 +36,9 @@ aLines = f.readlines()
 
 f.close()
 
+#delta X of the elements (length)
+g_dx = 0.01
+
 iLine = 0
 
 def scanAttribs(aLines, iLine):
@@ -101,8 +104,12 @@ while iLine < len(aLines):
 	elif linetype == "m":
 		micID = int(currLine[2:])
 #		print("mic ID", micID)
+	elif linetype == "d":
+		#HACK: this is the 'dx' element
+		g_dx = float(currLine[3:])
+		print("element length is", g_dx)
 	else:
-		print("type of line not recognized!")
+		print("type of line not recognized!", currLine)
 	iLine += 1
 
 #for elem in elems:
@@ -163,7 +170,7 @@ print("max area is", maxArea, "diam", maxDia)
 
 nGraphElems = len(graph)
 
-imgWidth = int(maxDia*100.0+2)
+imgWidth = int(maxDia/g_dx+2)
 
 image = Image.new("RGB", (imgWidth, nGraphElems), "black")
 
@@ -187,7 +194,7 @@ for pixel in range(nGraphElems):
 		neighbors = elems[elem].negativeNeighbors
 	(elemID, area) = neighbors[0]
 	x = toDiam(area)
-	drawX = int(x*100)
+	drawX = int(x/g_dx)
 #	print(elem, elemID, area, x)
 	pixMap[drawX, pixel] = (255,255,255)
 	#mark infinite element
