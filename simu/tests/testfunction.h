@@ -10,12 +10,23 @@
 
 #include "../kernel/simtyps.h"
 
-// (only dt is needed) returns 1 if dt==0 else 0 is returned
-float deltaimpuls (float dt,fSpeakerDiscriptor* desc,float v_old, float p_minus, float p_plus, float airmass); 
-
-float tsin (float dt,fSpeakerDiscriptor* desc,float v_old, float p_minus, float p_plus, float airmass);
 
 
-float tsin2 (float dt,fSpeakerDiscriptor* desc,float v_old, float p_minus, float p_plus, float airmass);
 
+//schematic names
+// h= hard function which will use fixed velocitys and do not regard speaker dgl
+// c= contionious loop;
+// s= single wave
+
+float deltaimpuls (float dt,f1DSpeaker & speaker,int param=0,bool reset=false);//param = impulse duration in timesteps+1, reset will reset the function to t=0;
+
+
+float hdeltaimpuls (float dt,f1DSpeaker & speaker,int param,bool reset=false);  //param is not needed, reset will reset the function to t=0;
+
+float hcsin (float dt,f1DSpeaker & speaker,int param,bool reset=false); //continous sin wave ,param = frequence
+
+
+float hcsin2 (float dt,f1DSpeaker & speaker,int param,bool reset=false); //continous sin² wave ,param = frequence
+
+float hssin2 (float dt,f1DSpeaker & speaker,int param,bool reset=false); //single sin² wave ,param = frequence
 #endif

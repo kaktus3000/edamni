@@ -75,23 +75,19 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="core1d.h" />
-    <ClInclude Include="errorcodes.h" />
-    <ClInclude Include="kernelaux.h" />
-    <ClInclude Include="simtyps.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
-    <ClInclude Include="testfunction.h" />
+    <ClCompile Include="kernel\core1d.cpp" />
+    <ClCompile Include="kernel\kernelaux.cpp" />
+    <ClCompile Include="kernel\speaker.cpp" />
+    <ClCompile Include="leapfrogsimu.cpp" />
+    <ClCompile Include="tests\testfunction.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="core1d.cpp" />
-    <ClCompile Include="leapfrogsimu.cpp" />
-    <ClCompile Include="kernelaux.cpp" />
-    <ClCompile Include="stdafx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="testfunction.cpp" />
+    <ClInclude Include="kernel\core1d.h" />
+    <ClInclude Include="kernel\errorcodes.h" />
+    <ClInclude Include="kernel\kernelaux.h" />
+    <ClInclude Include="kernel\simtyps.h" />
+    <ClInclude Include="kernel\speaker.h" />
+    <ClInclude Include="tests\testfunction.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -62,8 +62,14 @@
 //const char* const cSpeakerFileEnding ="spk"; 
 
 
-struct fSpeakerDiscriptor{ //Description of a Speaker, TSP parameter
-	float fillneeded;
+struct fSpeakerDescriptor{ //Description of a Speaker, TSP parameter
+	float inductance;
+	float bl;
+	float DCResistance;
+	float damping;
+	float resitanceMass;
+	float springForce;
+	float mass;
 };
 
 
@@ -104,14 +110,19 @@ struct f1DConnector{ //Fully Description of an element of the raw-file
 	float damping;
 };
 
-typedef float (*pVelocityFunction) (float,fSpeakerDiscriptor*,float, float, float,float); 
+
+struct f1DSpeaker;
+
+typedef float (*pVelocityFunction) (float ,f1DSpeaker & ,int ,bool ); // ( (dt, timestepsize, speaker, param for giving a value to the function eg frequence, reset (function will be reseted if true)
 
 struct f1DSpeaker{ //Fully Description of an element of the raw-file	
 	int ID;
-	fSpeakerDiscriptor* speakerDiscriptor;	//TSP parameter of the speaker
+	fSpeakerDescriptor speakerDescriptor;	//TSP parameter of the speaker
 	f1DConnector* position;
 	float airmass;
 	float v;
+	float x;
+	float i;
 	pVelocityFunction f;
 };
 

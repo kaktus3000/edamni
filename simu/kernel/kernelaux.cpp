@@ -19,7 +19,7 @@ int useDefaultDescriptor(f1DCalculationDescriptor* desc){
 
 int fullfillDescriptor(f1DCalculationContainer* container){ //calculate dt and damping from dx
 	if (container->dx<=0.0f) return FATAL_ERROR;
-	container->info->dt=0.999f*container->dx/(float)sqrt(container->info->gasconstant*container->info->temperature);
+	container->info->dt=0.499f*container->dx/(float)sqrt(container->info->gasconstant*container->info->temperature);
 	container->info->OpenEndLength=container->dx*container->info->OpenEndElements;
 	container->info->OpenElementsDamping=static_cast<float>(OPEN_ELEMENT_DAMPING); //To do : has to be calculated from timestep
 	return NO_ERR;
@@ -179,7 +179,7 @@ int storeFileToBuffers(f1DCalculationContainer* container,
 					std::cout<<"Error: Element-ID: "<<bufferElement.ID<<" is already used! @Line: "<<LineInFile<<std::endl;
 					return CORRUPTED_FILE;
 				}
-				bufferElement.damping=1.0;//initalize a new buffer element
+				bufferElement.damping=0.0f;//initalize a new buffer element
 				bufferElement.pFactor=0;
 				bufferElement.pressure=0;
 				bufferElement.negativeNeighbours.clear();
@@ -454,7 +454,7 @@ int storeFileToBuffers(f1DCalculationContainer* container,
 					std::cout<<"Corrupted File-Format; Damping constant must be >=0, in element: "<<container->elements[container->elements.size()-1].ID<<" @Line: "<<LineInFile<<std::endl;
 					return CORRUPTED_DAMPING_CONSTANT;
 				}
-				container->elements[container->elements.size()-1].damping=1.0f/(1.0f+damping); //store the damping constant for the current element
+				container->elements[container->elements.size()-1].damping=damping*container->info->dt/container->info->density; //store the damping constant for the current element
 				break;
 
 			default:{ //something unkown was found
@@ -708,7 +708,7 @@ int parseVRawData(f1DCalculationContainer* container,std::vector<connectionParse
 				openElement.direction=-1; // mark the direction, -1= is connected as an negative neighbour
 				container->openElements.push_back(openElement); //create an openelement
 				container->openElements[container->openElements.size()-1].element.ID=openEndStartID+container->openElements.size(); //give it an ID which is not used by normal p-elements
-				container->openElements[container->openElements.size()-1].element.damping=1;//initialize values
+				container->openElements[container->openElements.size()-1].element.damping=0.0f;//initialize values
 				container->openElements[container->openElements.size()-1].element.pressure=0.0f;
 				container->openElements[container->openElements.size()-1].connector=nullptr; //dont let it point to nirvana ;)
 				unparsedConnections[i].negconnectionBuffer[k].negref=container->openElements[container->openElements.size()-1].element.ID;//give it an ID which is not used by normal p-elements
@@ -728,7 +728,7 @@ int parseVRawData(f1DCalculationContainer* container,std::vector<connectionParse
 				openElement.direction=+1;// mark the direction, += is connected as an positive neighbour
 				container->openElements.push_back(openElement);//create an openelement
 				container->openElements[container->openElements.size()-1].element.ID=openEndStartID+container->openElements.size();//give it an ID which is not used by normal p-elements
-				container->openElements[container->openElements.size()-1].element.damping=1;//initialize values
+				container->openElements[container->openElements.size()-1].element.damping=0.0f;//initialize values
 				container->openElements[container->openElements.size()-1].element.pressure=0.0f;
 				container->openElements[container->openElements.size()-1].connector=nullptr; //dont let it point to nirvana ;)
 				unparsedConnections[i].negconnectionBuffer[k].posref=container->openElements[container->openElements.size()-1].element.ID;//give it an ID which is not used by normal p-elements
@@ -761,7 +761,7 @@ int parseVRawData(f1DCalculationContainer* container,std::vector<connectionParse
 				openElement.direction=-1;
 				container->openElements.push_back(openElement);
 				container->openElements[container->openElements.size()-1].element.ID=openEndStartID+container->openElements.size();
-				container->openElements[container->openElements.size()-1].element.damping=1;//initialize values
+				container->openElements[container->openElements.size()-1].element.damping=0.0f;//initialize values
 				container->openElements[container->openElements.size()-1].element.pressure=0.0f;
 				container->openElements[container->openElements.size()-1].connector=nullptr; //dont let it point to nirvana ;)
 				unparsedConnections[i].posconnectionBuffer[k].negref=container->openElements[container->openElements.size()-1].element.ID;
@@ -783,7 +783,7 @@ int parseVRawData(f1DCalculationContainer* container,std::vector<connectionParse
 				openElement.direction=1;
 				container->openElements.push_back(openElement);
 				container->openElements[container->openElements.size()-1].element.ID=openEndStartID+container->openElements.size();
-				container->openElements[container->openElements.size()-1].element.damping=1;//initialize values
+				container->openElements[container->openElements.size()-1].element.damping=0.0f;//initialize values
 				container->openElements[container->openElements.size()-1].element.pressure=0.0f;
 				container->openElements[container->openElements.size()-1].connector=nullptr; //dont let it point to nirvana ;)
 				unparsedConnections[i].posconnectionBuffer[k].posref=container->openElements[container->openElements.size()-1].element.ID;
@@ -914,11 +914,10 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 	for (unsigned int i=0; i<unparsedSpeakers.size();i++){
 		dummySpeaker.ID=unparsedSpeakers[i].ID;
 		dummySpeaker.f=nullptr;
-		dummySpeaker.speakerDiscriptor=nullptr;
 		//create connection
 		dummyConnector.crossSectionArea=(unparsedSpeakers[i].area1+unparsedSpeakers[i].area2)*0.5f;
 		dummyConnector.ID=IDOffset+container->speakers.size();
-		dummyConnector.damping=1.0f;
+		dummyConnector.damping=0.0f;
 		dummyConnector.negativeNeighbour=getNeighbourPointer(unparsedSpeakers[i].ref1,container->elements); //parse the p-pointers 
 		if(!dummyConnector.negativeNeighbour){
 			std::cout<<"Element with ID: "<<unparsedSpeakers[i].ref1<<" could not be found for speaker ID: "<<dummySpeaker.ID<<" @line: "<<(unparsedSpeakers[i].line+1)<<std::endl;
@@ -963,6 +962,8 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 
 
 		dummySpeaker.position=&container->connectors[container->connectors.size()-1];
+		dummySpeaker.airmass= container->connectors[container->connectors.size()-1].crossSectionArea*container->dx*container->info->density;
+
 		if (dummySpeaker.position==nullptr){
 			std::cout<<"Lost speaker pointer to Connector!"<<std::endl;
 			std::cout<<"ref1: "<<unparsedSpeakers[i].ref1<<std::endl;

@@ -3,8 +3,18 @@
 #include <iostream> //for putting v, can be removed
 
 
+
+
+
+
+
+
+
+
 int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int parameter)
 {
+	static bool start=true;
+
 	float VolumeFlow=0; //needed in elements p-calculation loop
 
 	float high1=10;
@@ -22,20 +32,17 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 	{
 		for (unsigned int j=0;j <field->connectors.size();j++) // calculate new velocitys
 		{
-			field->connectors[j].velocity =field->connectors[j].damping*(field->connectors[j].velocity+
-				field->connectors[j].vfactor*(field->connectors[j].negativeNeighbour->pressure-field->connectors[j].positiveNeighbour->pressure));
+			field->connectors[j].velocity =field->connectors[j].velocity*(1-field->connectors[j].damping)+
+				field->connectors[j].vfactor*(field->connectors[j].negativeNeighbour->pressure-field->connectors[j].positiveNeighbour->pressure);
 			
 		}// calculate new velocitys
 
 		for (unsigned int j=0;j <field[0].speakers.size();j++) // calculate new velocitys for speakers
 		{
-			field->speakers[j].v=field->speakers[j].f(field->info->dt*i, //timestep
-																field->speakers[j].speakerDiscriptor, //speakerinfo
-																field->speakers[j].v,  //old velocity
-																field->speakers[j].position->negativeNeighbour->pressure, //negativeside Pressure
-																field->speakers[j].position->positiveNeighbour->pressure,
-																field->speakers[j].airmass);
-			field->speakers[j].position->velocity=field->speakers[j].v; //overwrite connectors v with forced speakers v
+			field->speakers[j].position->velocity=field->speakers[j].f(field->info->dt, //timestep
+																field->speakers[j], //speakerinfo
+																100,  //old velocity
+																start);
 			
 		}// calculate new velocitys for speakers
 
@@ -63,7 +70,7 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 				VolumeFlow-=field->elements[j].positiveNeighbours[k]->crossSectionArea*field->elements[j].positiveDirections[k]*field->elements[j].positiveNeighbours[k]->velocity;
 			}
 
-			field->elements[j].pressure= field->elements[j].damping*(field->elements[j].pressure+field->elements[j].pFactor*VolumeFlow);//calculate new p
+			field->elements[j].pressure= (field->elements[j].pressure+field->elements[j].pFactor*VolumeFlow);//calculate new p
 
 			
 		} // calculate new pressure for elements
@@ -120,7 +127,7 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 			std::cout<<std::endl;
 		}
 	}
-
+	start=false;
 	}//calculation timeintegration main loop
 
 

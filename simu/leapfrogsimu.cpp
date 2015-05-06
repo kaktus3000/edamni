@@ -13,6 +13,7 @@
 #include "kernel/kernelaux.h"
 #include "tests/testfunction.h"
 #include "kernel/core1d.h"
+#include <limits> 
 
 int
 main(int argc, char* argv[])
@@ -22,15 +23,36 @@ main(int argc, char* argv[])
 	testCalculation->info= new f1DCalculationDescriptor;
 
 	useDefaultDescriptor(testCalculation->info);
-	load1DKernelInput("horn.elems.txt",testCalculation);
+
+	char* input= new char[100];
+
+	std::cout<<"please enter the filename of an element list..."<<std::endl;	
+	std::cin>>input;
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+	if (load1DKernelInput(input,testCalculation)!=NO_ERR) 
+	{
+		std::cout<<"Press any key to quit calculation..."<<std::endl;
+		std::cin.get();
+		return 0;
+	}
 
 	//assigned speaker functions and init speakers
 	for(unsigned int i=0; i<testCalculation->speakers.size();i++)
 	{
-		testCalculation->speakers[i].f=&tsin2;
+		testCalculation->speakers[i].f=&deltaimpuls;
 		testCalculation->speakers[i].airmass=0.0f;
-		testCalculation->speakers[i].speakerDiscriptor=nullptr;
+		testCalculation->speakers[i].speakerDescriptor.bl=20.0f;
+		testCalculation->speakers[i].speakerDescriptor.damping=1.0f;
+		testCalculation->speakers[i].speakerDescriptor.DCResistance=5.4f;
+		testCalculation->speakers[i].speakerDescriptor.inductance=1.4f;
+		testCalculation->speakers[i].speakerDescriptor.mass=0.143f;
+		testCalculation->speakers[i].speakerDescriptor.resitanceMass=0.1f;
+		testCalculation->speakers[i].speakerDescriptor.springForce=1.0f;
 		testCalculation->speakers[i].v=0.0f;
+		testCalculation->speakers[i].x=0.0f;
+		testCalculation->speakers[i].i=0.0f;
 	}
 
 	//reserve memory for storing results

@@ -13,48 +13,57 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Headerdateien\kernel">
+      <UniqueIdentifier>{e793c3c2-fcb5-46b4-8960-93401e402158}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headerdateien\tests">
+      <UniqueIdentifier>{8810ad94-650c-4415-b01c-788e8a3c0d30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Quelldateien\kernel">
+      <UniqueIdentifier>{efe2e339-61c9-4e33-9d7f-482c04b6edec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Quelldateien\tests">
+      <UniqueIdentifier>{f5b10c57-37f7-40df-88ca-77f2f1c6b5ae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="simtyps.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="core1d.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="errorcodes.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="kernelaux.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="testfunction.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Quelldateien</Filter>
+    <ClCompile Include="kernel\core1d.cpp">
+      <Filter>Quelldateien\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="kernel\kernelaux.cpp">
+      <Filter>Quelldateien\kernel</Filter>
     </ClCompile>
     <ClCompile Include="leapfrogsimu.cpp">
-      <Filter>Quelldateien</Filter>
+      <Filter>Quelldateien\kernel</Filter>
     </ClCompile>
-    <ClCompile Include="core1d.cpp">
-      <Filter>Quelldateien</Filter>
+    <ClCompile Include="kernel\speaker.cpp">
+      <Filter>Quelldateien\kernel</Filter>
     </ClCompile>
-    <ClCompile Include="kernelaux.cpp">
-      <Filter>Quelldateien</Filter>
+    <ClCompile Include="tests\testfunction.cpp">
+      <Filter>Quelldateien\tests</Filter>
     </ClCompile>
-    <ClCompile Include="testfunction.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="kernel\core1d.h">
+      <Filter>Headerdateien\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\errorcodes.h">
+      <Filter>Headerdateien\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\kernelaux.h">
+      <Filter>Headerdateien\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\speaker.h">
+      <Filter>Headerdateien\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\simtyps.h">
+      <Filter>Headerdateien\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\testfunction.h">
+      <Filter>Headerdateien\tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
