@@ -20,6 +20,7 @@
 
 float deltaimpuls (float dt,f1DSpeaker & speaker,int param=0,bool reset=false);//param = impulse duration in timesteps+1, reset will reset the function to t=0;
 
+float csin (float dt,f1DSpeaker & speaker,int param,bool reset);
 
 float hdeltaimpuls (float dt,f1DSpeaker & speaker,int param,bool reset=false);  //param is not needed, reset will reset the function to t=0;
 

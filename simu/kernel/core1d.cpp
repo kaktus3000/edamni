@@ -32,16 +32,18 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 	{
 		for (unsigned int j=0;j <field->connectors.size();j++) // calculate new velocitys
 		{
-			field->connectors[j].velocity =field->connectors[j].velocity*(1-field->connectors[j].damping)+
+			field->connectors[j].velocity =field->connectors[j].velocity*(1-field->connectors[j].damping*field->info->dt)+
 				field->connectors[j].vfactor*(field->connectors[j].negativeNeighbour->pressure-field->connectors[j].positiveNeighbour->pressure);
 			
+
+
 		}// calculate new velocitys
 
 		for (unsigned int j=0;j <field[0].speakers.size();j++) // calculate new velocitys for speakers
 		{
 			field->speakers[j].position->velocity=field->speakers[j].f(field->info->dt, //timestep
 																field->speakers[j], //speakerinfo
-																100,  //old velocity
+																500,  //old velocity
 																start);
 			
 		}// calculate new velocitys for speakers

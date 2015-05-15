@@ -86,6 +86,6 @@ float hssin2 (float dt,f1DSpeaker & speaker,int param,bool reset)
 	dummy=sin(w*elapsedTime);
 	dummy*=dummy;
 	elapsedTime+=dt;
-	if ((elapsedTime/dt)>param) return 0.0f;
+	if (elapsedTime>(0.5f/param)) return 0.0f;
 	return dummy;
 }

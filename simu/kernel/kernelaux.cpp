@@ -454,7 +454,7 @@ int storeFileToBuffers(f1DCalculationContainer* container,
 					std::cout<<"Corrupted File-Format; Damping constant must be >=0, in element: "<<container->elements[container->elements.size()-1].ID<<" @Line: "<<LineInFile<<std::endl;
 					return CORRUPTED_DAMPING_CONSTANT;
 				}
-				container->elements[container->elements.size()-1].damping=damping*container->info->dt/container->info->density; //store the damping constant for the current element
+				container->elements[container->elements.size()-1].damping=damping/container->info->density; //store the damping constant for the current element
 				break;
 
 			default:{ //something unkown was found
