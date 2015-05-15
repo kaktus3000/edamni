@@ -1,5 +1,5 @@
 #include "speaker.h"
-
+//this is a speaker model.
 
 
 int speakerdgl (float u,float dt,fSpeakerDescriptor const & desc,float & v,float & x,float & i,float p_left, float p_right, float airmass) // ( input to follow (e.g. voltage) ,dt, fspeakerdesc., v ,x, i amplifier current, pressureforce left, presscureforce right,airmass

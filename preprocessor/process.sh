@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+
 #argument: xml list
 echo $1
 python3 xml2list.py $1.xml $1.elems.txt
