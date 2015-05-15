@@ -170,9 +170,9 @@ print("max area is", maxArea, "diam", maxDia)
 
 nGraphElems = len(graph)
 
-imgWidth = int(maxDia/g_dx+2)
+imgWidth = (int(maxDia/g_dx+2)//2)*2 + 2
 
-image = Image.new("RGB", (imgWidth, nGraphElems), "black")
+image = Image.new("RGB", (imgWidth, (int(nGraphElems)//2)*2 + 2), "black")
 
 hMappingFile=open(outfile + ".txt", "wt")
 
