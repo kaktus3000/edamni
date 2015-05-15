@@ -5,8 +5,8 @@
 <horn dx="0.01">
 	<wall id="back_wall">
 		<A2>.03</A2>
-		<damping_thickness>0.02</damping_thickness>
-		<damping_constant>0.0</damping_constant>
+		<damping_thickness>0.5</damping_thickness>
+		<damping_constant>17100</damping_constant>
 		<neighbor2 ref="back_chamber" />
 	</wall>
 
