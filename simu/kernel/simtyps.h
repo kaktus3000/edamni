@@ -37,7 +37,7 @@
 // Referencepressure to calculate sound pressure in db
 #define PRESSUREREFERENCE 0.00002 // This means a sound pressure of p 0.00002 equal zero db
 #define MAX_ELEMENTS_FOR_INFINITE 1000
-#define OPEN_ELEMENT_DAMPING 0.90
+#define OPEN_ELEMENT_DAMPING 1.0000f
 #define DEFAULT_NUM_OPEN_ELEMENTS 500
 #define DEFAULT_TIME_STEPS 2000
 

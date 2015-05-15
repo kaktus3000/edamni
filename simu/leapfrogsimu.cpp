@@ -39,19 +39,19 @@ main(int argc, char* argv[])
 
 		return 0;
 	}
-
+  // http://www.visaton.de/bilder/forum/tsp-daten-alt.htm für tsp
 	//assigned speaker functions and init speakers
 	for(unsigned int i=0; i<testCalculation->speakers.size();i++)
 	{
-		testCalculation->speakers[i].f=&hdeltaimpuls;
+		testCalculation->speakers[i].f=&deltaimpuls;
 		testCalculation->speakers[i].airmass=0.0f;
 		testCalculation->speakers[i].speakerDescriptor.bl=20.0f;
 		testCalculation->speakers[i].speakerDescriptor.damping=1.0f;
-		testCalculation->speakers[i].speakerDescriptor.DCResistance=5.4f;
-		testCalculation->speakers[i].speakerDescriptor.inductance=1.4f;
-		testCalculation->speakers[i].speakerDescriptor.mass=0.143f;
-		testCalculation->speakers[i].speakerDescriptor.resitanceMass=0.1f;
-		testCalculation->speakers[i].speakerDescriptor.springForce=1.0f;
+		testCalculation->speakers[i].speakerDescriptor.DCResistance=6.7f;
+		testCalculation->speakers[i].speakerDescriptor.inductance=1.4e-3f;
+		testCalculation->speakers[i].speakerDescriptor.mass=0.029f;
+		testCalculation->speakers[i].speakerDescriptor.resitanceMass=5.0f;
+		testCalculation->speakers[i].speakerDescriptor.springForce=1.0e3f;
 		testCalculation->speakers[i].v=0.0f;
 		testCalculation->speakers[i].x=0.0f;
 		testCalculation->speakers[i].i=0.0f;
@@ -74,7 +74,7 @@ main(int argc, char* argv[])
 	}
 	//output<<"<ID> <tab> <timestep> <tab> <pressure> <newline>"<<std::endl;
 
-	for (unsigned int i=0; i<testCalculation->info->numberTimesteps;i++){
+	for (unsigned int i=0; i<testCalculation->info->numberTimesteps;i+=5){
 		for (unsigned int j=0; j<testCalculation->elements.size();j++)
 		{
 			output<<testCalculation->elements[j].ID<<'\t';

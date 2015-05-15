@@ -980,7 +980,7 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 int initializeOpenEnds(f1DCalculationContainer* container){
 
 	float exp_m=0; //opening constant
-	float area=0;
+	float area=7.277648007551662;//Fehler!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	std::vector<float> initial(container->info->OpenEndElements,0);
 	for (unsigned int i=0; i<container->openElements.size();i++){//for every openelement 
 		area=container->openElements[i].connector->crossSectionArea; // allocate memory
@@ -989,6 +989,7 @@ int initializeOpenEnds(f1DCalculationContainer* container){
 		container->openElements[i].aField=initial;
 		container->openElements[i].pField=initial;
 		container->openElements[i].vField=initial;
+
 		for (unsigned int j=0; j<container->openElements[i].aField.size();j++) {
 			container->openElements[i].aField[j]=area*exp(exp_m*j); //calculate cross sections
 		}
