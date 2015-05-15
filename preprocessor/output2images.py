@@ -77,6 +77,7 @@ for time in times:
 		imageY = posY
 		
 		pixMap[imageX, imageY] = (0,255,0)
+		pixMap[posX, posY] = (255,255,255)
 
 	strCounter = str(counter)
 	if len(strCounter) > 4:
