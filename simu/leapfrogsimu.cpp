@@ -18,30 +18,32 @@
 int
 main(int argc, char* argv[])
 {
+	if(argc < 3)
+	{
+		puts("give argument, nap!");
+		return -1;
+	}
+	char* pcConfig = argv[1];
+	char* pcOutput = argv[2];
 
 	f1DCalculationContainer* testCalculation=new f1DCalculationContainer;
 	testCalculation->info= new f1DCalculationDescriptor;
 
 	useDefaultDescriptor(testCalculation->info);
 
-	char* input= new char[100];
-
-	std::cout<<"please enter the filename of an element list..."<<std::endl;	
-	std::cin>>input;
-    std::cin.clear();
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-	if (load1DKernelInput(input,testCalculation)!=NO_ERR) 
+	if (load1DKernelInput(pcConfig,testCalculation)!=NO_ERR)
 	{
-		std::cout<<"Press any key to quit calculation..."<<std::endl;
-		std::cin.get();
+		puts("error during calculation.");
+//		std::cout<<"Press any key to quit calculation..."<<std::endl;
+//		std::cin.get();
+
 		return 0;
 	}
 
 	//assigned speaker functions and init speakers
 	for(unsigned int i=0; i<testCalculation->speakers.size();i++)
 	{
-		testCalculation->speakers[i].f=&deltaimpuls;
+		testCalculation->speakers[i].f=&hdeltaimpuls;
 		testCalculation->speakers[i].airmass=0.0f;
 		testCalculation->speakers[i].speakerDescriptor.bl=20.0f;
 		testCalculation->speakers[i].speakerDescriptor.damping=1.0f;
@@ -62,15 +64,15 @@ main(int argc, char* argv[])
 	f1DStartCalculation(testCalculation,buffer);
 	std::cout<<"Finish calculation... "<<std::endl;	
 	std::cout<<"Storing results... "<<std::endl;
-	std::ofstream output("output.txt");
+	std::ofstream output(pcOutput);
     if (!output.is_open()){//create file stream and check it
 		std::cout<<"Error while opening file: "<<std::endl;
-        std::perror("output.txt");
+        std::perror(pcOutput);
 		std::cout<<"Berechnung beendet"<<std::endl;
-		std::cin.get();
+//		std::cin.get();
 		return 0; 
 	}
-	output<<"<ID> <tab> <timestep> <tab> <pressure> <newline>"<<std::endl;
+	//output<<"<ID> <tab> <timestep> <tab> <pressure> <newline>"<<std::endl;
 
 	for (unsigned int i=0; i<testCalculation->info->numberTimesteps;i++){
 		for (unsigned int j=0; j<testCalculation->elements.size();j++)
@@ -87,10 +89,8 @@ main(int argc, char* argv[])
 	delete testCalculation->info;
 	delete testCalculation;
 
-
-
 	std::cout<<"Berechnung beendet"<<std::endl;
-	std::cin.get();
+//	std::cin.get();
 
 	return 0;
 }
