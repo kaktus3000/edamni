@@ -87,8 +87,8 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 
 			//calculate pressure at element connection
 			field->openElements[k].element.pressure= field->info->OpenElementsDamping*(field->openElements[k].element.pressure+field->openElements[k].element.pFactor*
-				(field->openElements[k].connector->velocity *field->openElements[k].connector->crossSectionArea*field->openElements[k].direction)
-				-field->openElements[k].vField[0]*field->openElements[k].aField[0]);	
+				(field->openElements[k].connector->velocity *field->openElements[k].element.negativeNeighbours[0]->crossSectionArea*field->openElements[k].element.negativeDirections[0]
+				-field->openElements[k].vField[0]*field->openElements[k].aField[0]));
 			}// calculate new pressures for all open ends
 
 		for (unsigned int j=0;j <field->microphones.size();j++) // store microphonevalues in memory
@@ -103,32 +103,7 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 		buffer[j+field->elements.size()*i]=field->elements[j].pressure;
 	}
 	
-	//velocity test, can be removed later 
-	//only valid in a tube with constant cross section area around id 80-70 
-	//space to reflectors needed
 
-	if ((field->elements[80].pressure<=high1)){
-		high1=field->elements[80].pressure;
-		start1=true;
-	}
-	else {
-		if ((!found1)&&start1){
-			t1=i*field->info->dt;
-			found1=true;
-		}
-	}
-	if ((field->elements[70].pressure<=high2)){
-		high2=field->elements[70].pressure;
-		start2=true;
-	}
-	else {
-		if ((!found2)&&start2){
-			t2=i*field->info->dt;
-			found2=true;
-			std::cout<<"v= "<<(field->dx*(80.0f-70.0f)/(t2-t1));
-			std::cout<<std::endl;
-		}
-	}
 	start=false;
 	}//calculation timeintegration main loop
 

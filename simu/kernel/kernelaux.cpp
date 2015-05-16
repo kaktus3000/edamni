@@ -597,7 +597,7 @@ int AllBackConnection(std::vector<connectionParser> &unparsedConnections, int &i
 }
 
 //support function for check double connection
-//returns true if an int value exists alreade in an int vector-array
+//returns true if an int value exists already in an int vector-array
 bool intInVector(int id,std::vector<int> &vector)
 {
 	for (unsigned int i=0 ; i<vector.size();i++){
@@ -640,7 +640,7 @@ int checkDoubleConnection(std::vector<connectionParser> &unparsedConnections,int
 
 //validates that for every connection for an element there is a second connection in another element which referes to the first element
 //validates also that there is only allowed exact one connection or no connection between to elements
-//recommed to use because it can indicate failures in the parsing graph-to-elementlist proces
+//recommend to use because it can indicate failures in the parsing graph-to-elementlist process
 bool preCheckElementConnections(f1DCalculationContainer* container,std::vector<connectionParser> &unparsedConnections)
 {
 	int line=0;
@@ -870,6 +870,7 @@ int mapVPointers(f1DCalculationContainer* container,std::vector<connectionParser
 		}
 		container->openElements[i].element.negativeNeighbours.push_back(aConnectorPointer);
 		container->openElements[i].element.negativeDirections.push_back(container->openElements[i].direction);
+
 	}//v-pointer mapping for openelements is done
 
 
@@ -980,7 +981,7 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 int initializeOpenEnds(f1DCalculationContainer* container){
 
 	float exp_m=0; //opening constant
-	float area=7.277648007551662;//Fehler!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	float area=0;//Fehler!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	std::vector<float> initial(container->info->OpenEndElements,0);
 	for (unsigned int i=0; i<container->openElements.size();i++){//for every openelement 
 		area=container->openElements[i].connector->crossSectionArea; // allocate memory
@@ -989,6 +990,9 @@ int initializeOpenEnds(f1DCalculationContainer* container){
 		container->openElements[i].aField=initial;
 		container->openElements[i].pField=initial;
 		container->openElements[i].vField=initial;
+
+		//rewrite vfactor for the connector element
+		container->openElements[i].connector->vfactor= container->info->dt/(container->info->density*container->dx);
 
 		for (unsigned int j=0; j<container->openElements[i].aField.size();j++) {
 			container->openElements[i].aField[j]=area*exp(exp_m*j); //calculate cross sections
@@ -1214,7 +1218,12 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 		return error;
 	}
 
+
+	preCalculateFactors(container);
+
 	//now open-end elements are initialized 
+
+
 	error= initializeOpenEnds(container);
 	if(error){
 		std::cout<<"Error while creating OpenEndElements!"<<std::endl;
@@ -1228,7 +1237,6 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 	}
 
 
-	preCalculateFactors(container);
 
 	//Show Parsing Result
 	std::cout<<std::endl;

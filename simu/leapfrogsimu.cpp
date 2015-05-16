@@ -43,7 +43,7 @@ main(int argc, char* argv[])
 	//assigned speaker functions and init speakers
 	for(unsigned int i=0; i<testCalculation->speakers.size();i++)
 	{
-		testCalculation->speakers[i].f=&deltaimpuls;
+		testCalculation->speakers[i].f=&csin;
 		testCalculation->speakers[i].airmass=0.0f;
 		testCalculation->speakers[i].speakerDescriptor.bl=20.0f;
 		testCalculation->speakers[i].speakerDescriptor.damping=1.0f;
