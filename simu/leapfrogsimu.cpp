@@ -6,91 +6,72 @@
 //#include <Windows.h>
 #include <string>
 #include <fstream>
-
+#include <limits>
 
 #include "kernel/simtyps.h"
 //#include "bitmap.h"
 #include "kernel/kernelaux.h"
 #include "tests/testfunction.h"
 #include "kernel/core1d.h"
-#include <limits> 
+#include "kernel/speaker.h"
+#include "output/output.h"
+
+
+
+
+
 
 int
 main(int argc, char* argv[])
 {
-	if(argc < 3)
+	if(argc < 4)
 	{
 		puts("give argument, nap!");
 		return -1;
 	}
 	char* pcConfig = argv[1];
-	char* pcOutput = argv[2];
+	char* pcTSP = argv[2];
+	char* pcOutput = argv[3];
+	int error;
 
-	f1DCalculationContainer* testCalculation=new f1DCalculationContainer;
-	testCalculation->info= new f1DCalculationDescriptor;
+	f1DCalculationContainer* calculation=new f1DCalculationContainer;
+	calculation->info= new f1DCalculationDescriptor;
 
-	useDefaultDescriptor(testCalculation->info);
+	useDefaultDescriptor(calculation->info);
 
-	if (load1DKernelInput(pcConfig,testCalculation)!=NO_ERR)
+	if ((error=load1DKernelInput(pcConfig,calculation))!=NO_ERR)
 	{
-		puts("error during calculation.");
-//		std::cout<<"Press any key to quit calculation..."<<std::endl;
-//		std::cin.get();
-
-		return 0;
+		std::cout<<"An Error occurred during parsing geometry to kernel format. ErrorCode = "<<error<<std::endl;
+		return -1;
 	}
-  // http://www.visaton.de/bilder/forum/tsp-daten-alt.htm für tsp
-	//assigned speaker functions and init speakers
-	for(unsigned int i=0; i<testCalculation->speakers.size();i++)
+
+	if(!initializeSpeakers(pcTSP,calculation->speakers,deltaimpuls))
 	{
-		testCalculation->speakers[i].f=&csin;
-		testCalculation->speakers[i].airmass=0.0f;
-		testCalculation->speakers[i].speakerDescriptor.bl=20.0f;
-		testCalculation->speakers[i].speakerDescriptor.damping=1.0f;
-		testCalculation->speakers[i].speakerDescriptor.DCResistance=6.7f;
-		testCalculation->speakers[i].speakerDescriptor.inductance=1.4e-3f;
-		testCalculation->speakers[i].speakerDescriptor.mass=0.029f;
-		testCalculation->speakers[i].speakerDescriptor.resitanceMass=5.0f;
-		testCalculation->speakers[i].speakerDescriptor.springForce=1.0e3f;
-		testCalculation->speakers[i].v=0.0f;
-		testCalculation->speakers[i].x=0.0f;
-		testCalculation->speakers[i].i=0.0f;
+		std::cout<<"An Error occurred during initializing drivers"<<std::endl;
+		return -1;
 	}
 
 	//reserve memory for storing results
-	float* buffer= new float[testCalculation->elements.size()*testCalculation->info->numberTimesteps];
+	float* buffer= new float[calculation->elements.size()*calculation->info->numberTimesteps];
+
 	//do calculation
 	std::cout<<"Start calculation... "<<std::endl;
-	f1DStartCalculation(testCalculation,buffer);
+	f1DStartCalculation(calculation,buffer,20); //500 frequency
+
 	std::cout<<"Finish calculation... "<<std::endl;	
 	std::cout<<"Storing results... "<<std::endl;
-	std::ofstream output(pcOutput);
-    if (!output.is_open()){//create file stream and check it
-		std::cout<<"Error while opening file: "<<std::endl;
-        std::perror(pcOutput);
-		std::cout<<"Berechnung beendet"<<std::endl;
-//		std::cin.get();
-		return 0; 
-	}
-	//output<<"<ID> <tab> <timestep> <tab> <pressure> <newline>"<<std::endl;
 
-	for (unsigned int i=0; i<testCalculation->info->numberTimesteps;i+=5){
-		for (unsigned int j=0; j<testCalculation->elements.size();j++)
-		{
-			output<<testCalculation->elements[j].ID<<'\t';
-			output<<testCalculation->info->dt*float(i)<<'\t';
-			output<<buffer[j+testCalculation->elements.size()*i]<<'\n';
-		}
+	writeOutput( pcOutput,calculation,buffer,5);
+	for (int i=0;i<calculation->microphones.size();i++)
+	{
+		writeOutput( pcOutput,calculation->microphones[i]);
 	}
-
-	output.close();
 	
 	delete[] buffer;
-	delete testCalculation->info;
-	delete testCalculation;
+	delete calculation->info;
+	delete calculation;
 
 	std::cout<<"Berechnung beendet"<<std::endl;
-//	std::cin.get();
 
 	return 0;
 }

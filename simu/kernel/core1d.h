@@ -1,6 +1,6 @@
 //Leapfrog Speakersimulation Project
 //Headerfile created by Hendrik Levering
-//© Hendrik Levering Februar 2015
+//ï¿½ Hendrik Levering Februar 2015
 
 //This header includes the functions to calculate 1 1d sound pressurefield
 
@@ -15,6 +15,6 @@
 	
 
 
-int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int parameter=0);
+int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int param);
 
 #endif //CORE1D_H

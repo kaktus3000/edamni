@@ -11,20 +11,13 @@
 
 
 
-int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int parameter)
+int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int param)
 {
-	static bool start=true;
+	bool start=true;
 
 	float VolumeFlow=0; //needed in elements p-calculation loop
 
-	float high1=10;
-	float high2=10;
-	float t1=0;
-	float t2=0;
-	bool start1=false;
-	bool found1=false;
-	bool start2=false;
-	bool found2=false;
+
 
 
 
@@ -43,7 +36,7 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 		{
 			field->speakers[j].position->velocity=field->speakers[j].f(field->info->dt, //timestep
 																field->speakers[j], //speakerinfo
-																500,  //old velocity
+																param,  //param
 																start);
 			
 		}// calculate new velocitys for speakers
@@ -93,7 +86,8 @@ int f1DStartCalculation(f1DCalculationContainer* field, float* buffer,  int para
 
 		for (unsigned int j=0;j <field->microphones.size();j++) // store microphonevalues in memory
 		{
-			field->microphones[i].putValue(field->microphones[i].refE->pressure);
+
+			field->microphones[j].putValue(field->microphones[j].refE->pressure);
 		} // store microphonevalues in memory
 
 

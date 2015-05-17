@@ -21,6 +21,8 @@
 #include <ostream>      // std::flush
 #include <fstream> 
 
+#include <iostream>
+
 #ifndef simtyps_h
 #define simtyps_h
 
@@ -40,6 +42,8 @@
 #define OPEN_ELEMENT_DAMPING 0.98f
 #define DEFAULT_NUM_OPEN_ELEMENTS 500
 #define DEFAULT_TIME_STEPS 2000
+
+#define VOLTAGE_DEFAULT 2.83f
 
 // the designation of the datatypes is of the following form
 // [precision][dimensions][functionname]
@@ -66,7 +70,7 @@ struct fSpeakerDescriptor{ //Description of a Speaker, TSP parameter
 	float inductance;
 	float bl;
 	float DCResistance;
-	float damping;
+	float sd;
 	float resitanceMass;
 	float springForce;
 	float mass;
@@ -124,6 +128,23 @@ struct f1DSpeaker{ //Fully Description of an element of the raw-file
 	float x;
 	float i;
 	pVelocityFunction f;
+	f1DSpeaker()
+	{
+		airmass=0.0f;
+		x=0.0f;
+		v=0.0f;
+		i=0.0f;
+		f=0;
+		ID=0;
+		position=0;
+	}
+	void reset(pVelocityFunction ptr)
+	{
+		f=ptr;
+		x=0.0f;
+		v=0.0f;
+		i=0.0f;
+	}
 };
 
 struct f1DMicrophone{ //Fully Description of an element of the raw-file
@@ -139,7 +160,8 @@ public:
 		ID=id;
 		m_dt=dt;
 		m_pos=0;
-		m_values;
+		m_values.clear();
+		refE=0;
 		for (unsigned int i=0;i<size;i++)
 			m_values.push_back(0.0f);
 	}
@@ -154,19 +176,17 @@ public:
 		for (unsigned int i=0;i<m_values.size();i++)
 			m_values[i]=0;
 	}
-	bool putValue(float value)
+	void putValue(float value)
 	{
 		if (m_pos<m_values.size())
 		{
 			m_values[m_pos]= value;
 			m_pos++;
-			return true;
 		}
-		return false;
 	}
 	std::ofstream& writeToStream(std::ofstream& os)
 	{
-		os<<ID<<'\n';
+		//os<<ID<<'\n';
 		for (unsigned int i=0;i<m_values.size();i++)
 		{
 			os<<i*m_dt<<'\t'<<m_values[i]<<'\n';

@@ -684,7 +684,6 @@ int parseVRawData(f1DCalculationContainer* container,std::vector<connectionParse
 
 
 	for (unsigned int i=0; i<unparsedConnections.size();i++){// for each  element there is connection buffercontainer
-		float dummys=0;
 		for (unsigned int k=0;k<unparsedConnections[i].negconnectionBuffer.size();k++){ //look for the negative neighbours connections
 
 			bool IsNew=false;//needed to mark an openelement
@@ -1188,7 +1187,7 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 	file.close(); //everything is buffered, so file can be closed
 
 	if(! param){
-		useDefaultDescriptor(container->info); //use standart calculation descriptor
+		useDefaultDescriptor(container->info); //use standard calculation descriptor
 	}
 	fullfillDescriptor(container); //missing descriptor values are calculated
 
@@ -1241,7 +1240,7 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 	//Show Parsing Result
 	std::cout<<std::endl;
 	std::cout<<"**************************************"<<std::endl;	
-	std::cout<<"Parsing to kernelformat succesfully done."<<std::endl;
+	std::cout<<"Parsing data to kernel successfully done."<<std::endl;
 	std::cout<<"**************************************"<<std::endl;	
 	std::cout<<container->elements.size()<<" Element(s) were created"<<std::endl;
 	std::cout<<container->connectors.size()<<" Connector(s) were created"<<std::endl;
