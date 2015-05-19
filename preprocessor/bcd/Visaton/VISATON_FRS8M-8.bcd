@@ -1,0 +1,20 @@
+[Info]
+Version=Edamni 0.0.0
+Sprache=deutsch
+[Chassis]
+manufactor=VISATON
+name=FRS 8M-8
+comment=fullrange
+Re=7,2
+Le=300
+useXparameter=1
+Xparameter=Xmax (mm)
+Xvalue=2.5
+[other TSPs]
+Qms=3,24
+Sd=29,0
+BL=4,0
+Mms=1,8
+Cms=0,9
+Rms=0.436332313
+type=8 cm / 3"
