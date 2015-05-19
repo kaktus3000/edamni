@@ -35,46 +35,57 @@ def check_cross_sections(hornSections):
 		(sectionType, sectionDict) = hornSections[sectionID]
 #		print("checking section", sectionID, "(" + sectionType + ")")
 		#check neighbors
+		#(neighborID, portID)
+		lNeighbors = []
 		for propertyName in sectionDict.keys():
 			propValue = sectionDict[propertyName];
 #			print("checking property", propertyName)
 			#see whether we have a connection to that branch
 			if propertyName.find("neighbor") >=0:
-				portID = propertyName.replace("neighbor", "")
-				neighborID = propValue
+				lNeighbors.append(propValue, propertyName.replace("neighbor", "") )
 #				print("found link to neighbor", neighborID, ", connected to port", portID)
-				#now locate the link back to this section on the neighbor to get its port
 				
-				(neighborSectionType, neighborSectionDict) = hornSections[neighborID];
-				for neighborPropertyName in neighborSectionDict.keys():
-					neighborPropValue = neighborSectionDict[neighborPropertyName];
-#					print("checking neighbor property", neighborPropertyName)
-					#see whether we have a connection to that branch
-					if neighborPropertyName.find("neighbor") >=0:
-						neighborPortID = neighborPropertyName.replace("neighbor", "")
-						if neighborPropValue == sectionID:
-							connection_tuple = (neighborID, int(portID), int(neighborPortID))
-							if sectionID in neighborDict:
-								neighborDict[sectionID].append( connection_tuple )
-							else:
-								neighborDict[sectionID] = [connection_tuple]
-							
-#							print("identified link:", sectionID, "(port", portID + ")", "->", neighborID, "(port", neighborPortID + ")", ".")
-							
-							key1 = "A" + portID
-							key2 = "A" + neighborPortID
-							if (key1 in sectionDict) and (key2 in neighborSectionDict):
-								crossSect1 = sectionDict[key1]
-								crossSect2 = neighborSectionDict[key2]
-								if crossSect1 != crossSect2:
-									print("cross-sections do not match!")
-#								else:
-#									print("cross-sections match!")
-							else:
-								print("did not find", key1, "in", sectionID, "or", key2, "in", neighborID)
+		#scan neighbors
+		for (neighborID, portID) in lNeighbors:
+			#now locate the link back to this section on the neighbor to get its port
+			(neighborSectionType, neighborSectionDict) = hornSections[neighborID];
+			for neighborPropertyName in neighborSectionDict.keys():
+				neighborPropValue = neighborSectionDict[neighborPropertyName];
+	#					print("checking neighbor property", neighborPropertyName)
+				#see whether we have a connection to that branch
+				if neighborPropertyName.find("neighbor") >=0:
+					neighborPortID = neighborPropertyName.replace("neighbor", "")
+					if neighborPropValue == sectionID:
+						connection_tuple = (neighborID, int(portID), int(neighborPortID))
+						if sectionID in neighborDict:
+							neighborDict[sectionID].append( connection_tuple )
+						else:
+							neighborDict[sectionID] = [connection_tuple]
+					
+	#							print("identified link:", sectionID, "(port", portID + ")", "->", neighborID, "(port", neighborPortID + ")", ".")
+					
+						key1 = "A" + portID
+						key2 = "A" + neighborPortID
+						if (key1 in sectionDict) and (key2 in neighborSectionDict):
+							crossSect1 = sectionDict[key1]
+							crossSect2 = neighborSectionDict[key2]
+							if crossSect1 != crossSect2:
+								print("cross-sections do not match!")
+	#								else:
+	#									print("cross-sections match!")
+						else:
+							print("did not find", key1, "in", sectionID, "or", key2, "in", neighborID)
 	#unravel neighbor dictionary
 	
 	return neighborDict
+
+
+#outputs:
+#(A1, A2, damp)
+
+#area = 0 denotes closed end
+#area = inf denotes open end
+
 def conical_section(dx, params):
 	#params should all be float
 	A1 = params["A1"]
@@ -154,15 +165,19 @@ def wall_section(dx, params):
 	
 	length = params["damping_thickness"]
 	damping = params["damping_constant"]
-	
-	nElems = int((length / dx) + 1);
-	print("creating", nElems, "wall elements")
-	
-	outList = [(A2, A2, damping)]*nElems
-	
+	transient = params["damping_transient"]
+
+	nWallElems = int((length / dx) + 1);
+	print("creating", nWallElems, "wall elements")
+	outList = [(A2, A2, damping)]*nWallElems
+
+	nTransientElems = int((transient / dx) + 1);
+	for iTransient in range(nTransientElems):
+		outList.append( (A2, A2, damping * (1- iTransient / nTransientElems) ) )
+
 	return outList
 
-def mouth_section(dx, params):
+def space_section(dx, params):
 	#params should all be float
 	A1 = params["A1"]
 	
@@ -194,7 +209,8 @@ geometryHandlers = dict()
 geometryHandlers["conical"] = conical_section
 geometryHandlers["expo"] = expo_section
 geometryHandlers["wall"] = wall_section
-geometryHandlers["mouth"] = mouth_section
+geometryHandlers["space"] = space_section
+geometryHandlers["open"] = open_section
 
 
 tree = ET.parse(infile)
@@ -259,46 +275,8 @@ def writeElem(elID, negNeighbors, posNeighbors, velDamp):
 wallID = 0
 currElID = 1
 
-begEndDict = dict()
-elementNumber = 1
-for sectionID in hornDict.keys():
-	(sectionType, sectionDict) = hornDict.get(sectionID);
-	if sectionType in geometryHandlers:
-		begEndDict[sectionID] = [currElID, currElID + 1]
-		currElID += 2
-	else:
-		continue
-#		begEndDict[sectionID] = [currElID]
-#		currElID += 1
-
-print("dumping beginning and end cell dictionary")
-print(begEndDict)
-
-begEndConnectionsDict = dict()
-for sectionID in begEndDict:
-	neighborList = neighborDict[sectionID]
-	
-	connections = [-1]*2
-	for (neighID, thisPort, otherPort) in neighborList:
-		(sectionType, sectionDict) = hornDict.get(neighID);
-#		if sectionType == 'wall':
-#			connections[thisPort - 1] = begEndDict[neighID][1]
-		if sectionType in geometryHandlers:
-			connections[thisPort - 1] = begEndDict[neighID][otherPort - 1]
-	
-	(sectionType, sectionDict) = hornDict.get(sectionID)
-	if sectionType == "mouth":
-		print(connections)
-		connections[1] = 0
-		
-	begEndConnectionsDict[sectionID] = connections
-
-print("dumping beginning and end cell connections dictionary")
-print(begEndConnectionsDict)
-
 #write simulation input file
 for sectionID in hornDict.keys():
-	print("processing section", sectionID)
 	#check if this section is just geometry
 	(sectionType, sectionDict) = hornDict.get(sectionID);
 	print("processing section", sectionID, "(" + sectionType + ")")

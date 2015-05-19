@@ -1,6 +1,6 @@
 <!-- dtd for 1D speaker box simulation. doubly linked graph -->
 
-<!ELEMENT horn (conical|expo|wall|mouth|speaker|fork)*>
+<!ELEMENT horn (conical|expo|wall|space|speaker|mic|fork)*>
 <!ATTLIST horn dx CDATA #REQUIRED>
 
 <!-- definitions for graph links -->
@@ -31,20 +31,23 @@
 
 <!-- special geometry elements (just one connection) -->
 
-<!ELEMENT wall (A2, damping_thickness, damping_constant, neighbor2)>
+<!ELEMENT wall (A2, damping_thickness, damping_transient, damping_constant, neighbor2)>
 <!ATTLIST wall id ID #REQUIRED>
 <!ELEMENT damping_thickness (#PCDATA)>
+<!ELEMENT damping_transient (#PCDATA)>
 
-<!ELEMENT mouth (A1, space, free_length, neighbor1)>
-<!ATTLIST mouth id ID #REQUIRED>
-<!ELEMENT space (#PCDATA)>
+<!ELEMENT space (A1, fraction, length, neighbor1)>
+<!ATTLIST space id ID #REQUIRED>
+<!ELEMENT fraction (#PCDATA)>
 <!ELEMENT free_length (#PCDATA)>
 
 <!-- non-geometry elements (have no spacial extent) -->
-<!--definition, -->
-<!ELEMENT speaker (A1, A2, neighbor1, neighbor2)>
+<!ELEMENT speaker (A1, A2, type, neighbor1, neighbor2)>
 <!ATTLIST speaker id ID #REQUIRED>
-<!--<!ELEMENT definition (#PCDATA)>-->
+<!ELEMENT type (#PCDATA)>
+
+<!ELEMENT mic (neighbor1|neighbor2|neighbor2)*>
+<!ATTLIST mic id ID #REQUIRED>
 
 <!ELEMENT fork (A1, A2, A3, neighbor1, neighbor2, neighbor3)>
 <!ATTLIST fork id ID #REQUIRED>
