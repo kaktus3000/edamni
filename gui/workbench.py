@@ -47,23 +47,57 @@ mainFrame.columnconfigure(0, weight=1)
 
 speakerFrame = tk.Frame(mainFrame)
 speakerFrame['background'] = '#00e'
-speakerListBox = tk.Listbox(speakerFrame)
-speakerListBox.grid(sticky=tk.N+tk.S+tk.W+tk.E)
-
-speakerFrame.rowconfigure(0, weight=1)
-speakerFrame.columnconfigure(0, weight=1)
 
 buttonFrame = ttk.Frame(speakerFrame)
 buttonFrame.grid(sticky=tk.W)
+
+speakerListBox = tk.Listbox(speakerFrame)
+speakerListBox['selectmode'] = tk.SINGLE
+speakerListBox.grid(sticky=tk.N+tk.S+tk.W+tk.E)
+
+speakerFrame.rowconfigure(1, weight=1)
+speakerFrame.columnconfigure(0, weight=1)
+
+
 
 def addSpeaker(*args):
 	speakerFileName = askopenfilename(initialdir="../preprocessor/bcd")
 	speakerListBox.insert(tk.END, speakerFileName)
 
-ttk.Button(buttonFrame, text="Add Speaker", command=addSpeaker).grid(row=1, column=0)
-ttk.Button(buttonFrame, text="Remove Speaker", command=addSpeaker).grid(row=1, column=1)
-ttk.Button(buttonFrame, text="Move Up", command=addSpeaker).grid(row=1, column=2)
-ttk.Button(buttonFrame, text="Move Down", command=addSpeaker).grid(row=1, column=3)
+def removeSpeaker(*args):
+	lSelections = speakerListBox.curselection()
+	if len(lSelections) == 0:
+		return
+	speakerListBox.delete(lSelections[0])
+
+def moveSpeakerUp(*args):
+	lSelections = speakerListBox.curselection()
+	if len(lSelections) == 0:
+		return
+	iSelection = lSelections[0]
+	if iSelection < 1:
+		return
+	strContent = speakerListBox.get(iSelection)
+	speakerListBox.delete(iSelection)
+	speakerListBox.insert(iSelection - 1, strContent)
+	speakerListBox.selection_set(iSelection - 1)
+
+def moveSpeakerDown(*args):
+	lSelections = speakerListBox.curselection()
+	if len(lSelections) == 0:
+		return
+	iSelection = lSelections[0]
+	if iSelection >= speakerListBox.size()-1:
+		return
+	strContent = speakerListBox.get(iSelection)
+	speakerListBox.delete(iSelection)
+	speakerListBox.insert(iSelection + 1, strContent)
+	speakerListBox.selection_set(iSelection + 1)
+
+tk.Button(buttonFrame, bitmap="@xbm/add.xbm", command=addSpeaker).grid(row=1, column=0)
+tk.Button(buttonFrame, bitmap="@xbm/remove.xbm", command=removeSpeaker).grid(row=1, column=1)
+tk.Button(buttonFrame, bitmap="@xbm/up.xbm", command=moveSpeakerUp).grid(row=1, column=2)
+tk.Button(buttonFrame, bitmap="@xbm/down.xbm", command=moveSpeakerDown).grid(row=1, column=3)
 
 
 acuCircuitFrame = ttk.Frame(mainFrame)
