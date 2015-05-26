@@ -273,7 +273,7 @@ def addAcousticElement(*args):
 		buttons = []
 		for iButton in range(len(dElements[elemType.get()][0])):
 			gridRow, gridColumn = dElements[elemType.get()][0][iButton][0]
-			button = tk.Button(elementFrame, text = str(iButton), command=exit)
+			button = tk.Button(elementFrame, text = str(iButton + 1), command=exit)
 			button.grid(row = gridRow, column = gridColumn)
 			buttons.append(button)
 
