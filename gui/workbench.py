@@ -17,7 +17,7 @@ root.geometry('{}x{}'.format(600, 450) )
 
 #configure master frame
 windowFrame = tk.Frame(root)
-windowFrame['background'] = '#e00'
+#windowFrame['background'] = '#e00'
 windowFrame.grid(sticky=tk.N+tk.E+tk.S+tk.W)
 windowFrame.columnconfigure(1, weight=1)
 windowFrame.rowconfigure(0, weight=1)
@@ -42,7 +42,7 @@ for strMode in lModes:
 
 #create frame for contents of program
 mainFrame = tk.Frame(windowFrame)
-mainFrame['background'] = '#0e0'
+#mainFrame['background'] = '#0e0'
 mainFrame['borderwidth'] = 2
 mainFrame['relief'] = 'solid'
 mainFrame.grid(row=0, column=1, sticky=tk.N+tk.E+tk.S+tk.W)
@@ -52,7 +52,7 @@ mainFrame.columnconfigure(0, weight=1)
 
 #create frame for mode speaker list
 speakerFrame = tk.Frame(mainFrame)
-speakerFrame['background'] = '#00e'
+#speakerFrame['background'] = '#00e'
 speakerFrame.rowconfigure(1, weight=1)
 speakerFrame.columnconfigure(0, weight=1)
 
@@ -113,24 +113,74 @@ acuCircuitFrame.columnconfigure(0, weight=1)
 
 #frame for buttons
 acuButtonFrame = tk.Frame(acuCircuitFrame)
-acuButtonFrame['background'] = '#770'
+#acuButtonFrame['background'] = '#770'
 acuButtonFrame.grid(sticky=tk.W+tk.E)
 
 #canvas for circuit elements
 acuCanvas = tk.Canvas(acuCircuitFrame)
-acuCanvas['background'] = '#070'
+acuCanvas['background'] = '#fff'
 acuCanvas.grid(row=1, column=0, sticky=tk.N+tk.S+tk.W+tk.E)
 
+#modes for the gui to be in
+lElementTypes = ['Conical', 'Exponential', 'Mic', 'Open', 'Speaker', 'Wall']
+
+#dictionary with element options
+#buttons: row, column
+#in the four rotation states
+dElements = dict(
+	Conical = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			   ('length', 'm'),
+			   ('damping constant', '1'),
+			   ('A1', 'm^2'),
+			   ('A2', 'm^2')],
+	
+	Exponential = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('length', 'm'),
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('exponent', '1')],
+	 
+	Wall = [ [[(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('damping thickness', 'm'),
+			('damping transient', 'm'),
+			('damping constant', 'Ns/m^4')],
+	 
+	Open = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]],
+			 ('length', 'm'),
+			 ('fraction', '1')],
+	
+	Speaker = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+				('index', '1')],
+	
+#	Fork = [('A1', 'm^2'),
+#			('A2', 'm^2'),
+#			('A3', 'm^2')],
+
+	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]] ]
+	)
+
+
+dCanvasElements = dict()
+
+def updateCanvas():
+	print("updateing canvas...")
+
 class MovableHandler:
-	def __init__(self, canvas, widget, canvasID):#, canvas, canvasID):
+	def __init__(self, canvas, imageWidget, canvasID, buttons):#, canvas, canvasID):
 		self.m_Canvas = canvas
 
+		self.imageWidget = imageWidget
 		self.moving_widget = canvasID
+		self.buttons = buttons
 		self.moving_x = 0
 		self.moving_y = 0
 
-		widget.bind("<ButtonPress-1>", self.onMovablePress)
-		widget.bind("<ButtonRelease-1>", self.onMovableRelease)
+		imageWidget.bind("<ButtonPress-1>", self.onMovablePress)
+		imageWidget.bind("<ButtonRelease-1>", self.onMovableRelease)
+
+		imageWidget.bind("<ButtonRelease-3>", self.onRMBRelease)
+
+		imageWidget.bind("<Double-Button-1>", self.onDoubleClick)
 
 	def onMovablePress(self, event):
 #		self.moving_widget = self.m_Canvas.find_closest(event.x, event.y)[0]
@@ -150,6 +200,51 @@ class MovableHandler:
 		self.moving_x = 0
 		self.moving_y = 0
 
+	def onRMBRelease(self, event):
+		#rotate widget
+		strBitmap = self.imageWidget['bitmap']
+		iBitmap = int(strBitmap[-5]) + 1
+		if iBitmap > 3:
+			iBitmap = 0
+		self.imageWidget['bitmap'] = strBitmap.replace(strBitmap[-5], str(iBitmap) )
+		#relocate the buttons
+		strElementType = self.imageWidget['text']
+		buttonPositions = dElements[strElementType][0]
+		for iButton in range(len(buttonPositions)):
+			buttonRow, buttonCol = buttonPositions[iButton][iBitmap]
+			self.buttons[iButton].grid(row = buttonRow, column = buttonCol)
+
+	def onDoubleClick(self, event):
+		editElementDialog = tk.Toplevel(root)
+		editElementDialog.transient(root)
+		editElementDialog.bind("<Map>", lambda event:editElementDialog.grab_set())
+		editElementDialog.wm_title("Acoustic Element Properties")
+
+		strElementType = self.imageWidget['text']		
+
+		#add all the properties
+		gridRow = 0
+	
+		for (propName, propUnit) in dElements[strElementType][1:]:
+			ttk.Label(editElementDialog, text=propName).grid(column=0, row=gridRow)
+			ttk.Entry(editElementDialog, width=8).grid(column=1, row=gridRow)
+			
+			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
+			
+			gridRow += 1;
+		#add button to delete element
+		def deleteMe():
+			self.m_Canvas.delete(self.moving_widget)
+			editElementDialog.destroy()
+
+		tk.Button(editElementDialog, text="Delete", command=deleteMe).grid(row = gridRow, column = 0, sticky = tk.W)
+		#add button to confirm
+		tk.Button(editElementDialog, text="OK", command=lambda:editElementDialog.destroy()).grid(row = gridRow, column = 1, sticky = tk.E)
+		#add button to cancel
+		tk.Button(editElementDialog, text="Cancel", command=lambda:editElementDialog.destroy()).grid(row = gridRow, column = 2, sticky = tk.E)
+
+		root.wait_window(editElementDialog)
+
 #callbacks for buttons
 def addAcousticElement(*args):
 	print("adding element...")
@@ -158,16 +253,13 @@ def addAcousticElement(*args):
 	addElementDialog.grab_set()
 	addElementDialog.wm_title("Add Acoustic Element")
 
-	#modes for the gui to be in
-	lElementTypes = ['Conical', 'Exponential', 'Mic', 'Open', 'Speaker', 'Wall']
-
 	elemType = tk.StringVar()
 
 	#create radio buttons for mode setting
-	for iElementType in range(len(lElementTypes) ):
-		strElemType = lElementTypes[iElementType]
+	for iElementType in range(len(dElements.keys()) ):
+		strElemType = list(dElements.keys())[iElementType]
 		ttk.Radiobutton(addElementDialog, text=strElemType, variable=elemType, value=strElemType).grid(row = 1, column = iElementType)
-		tk.Label(addElementDialog, bitmap="@xbm/" + strElemType.lower() + "0.xbm").grid(row=0, column = iElementType)
+		tk.Label(addElementDialog, bitmap="@xbm/" + strElemType.lower() + "0.xbm", text = strElemType).grid(row=0, column = iElementType)
 
 	def addElementToCanvas(*args):
 		print("element type is " + elemType.get())
@@ -175,12 +267,17 @@ def addAcousticElement(*args):
 
 		canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
 
-		movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm")
+		movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
 		movingLabel.grid(row = 1, column = 1)
-		tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
-		tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 2)
+		#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
+		buttons = []
+		for iButton in range(len(dElements[elemType.get()][0])):
+			gridRow, gridColumn = dElements[elemType.get()][0][iButton][0]
+			button = tk.Button(elementFrame, text = str(iButton), command=exit)
+			button.grid(row = gridRow, column = gridColumn)
+			buttons.append(button)
 
-		myHandler = MovableHandler(acuCanvas, movingLabel, canvasID)
+		myHandler = MovableHandler(acuCanvas, movingLabel, canvasID, buttons)
 
 		addElementDialog.destroy()
 
@@ -194,39 +291,6 @@ def addAcousticElement(*args):
 
 #create buttons
 tk.Button(acuButtonFrame, bitmap="@xbm/add.xbm", command=addAcousticElement).grid(row=1, column=0)
-
-#put up a window to modify element options
-
-#dictionary with element options
-dElements = dict(
-	conical = [('length', 'm'),
-			   ('damping constant', '1'),
-			   ('A1', 'm^2'),
-			   ('A2', 'm^2')],
-	
-	expo = [('length', 'm'),
-			('A1', 'm^2'),
-			('A2', 'm^2'),
-			('exponent', '1')],
-	 
-	wall = [('damping thickness', 'm'),
-			('damping transient', 'm'),
-			('damping constant', 'Ns/m^4')],
-	 
-	space = [('length', 'm'),
-			 ('fraction', '1')],
-	
-	speaker = [('index', '1')],
-	
-	fork = [('A1', 'm^2'),
-			('A2', 'm^2'),
-			('A3', 'm^2')],
-
-	mic = []
-	)
-
-#create frame for element options
-
 
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
