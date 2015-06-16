@@ -245,6 +245,57 @@ class MovableHandler:
 
 		root.wait_window(editElementDialog)
 
+#( (frame, button), (frame, button) )
+g_lLinks = []
+g_currStack = None
+
+def checkForConnection(ending):
+	bPresent = False
+	for (end1, end2) in g_lLinks:
+		if end1 == ending or end2 == ending:
+			bPresent = True
+	return bPresent
+
+def drawCanvasLines():
+	#remove old ones
+	acuCanvas.deleteByTag("connctorLine")
+	#add new ones
+	for (end1, end2) in g_lLinks:
+		(frame1, button1) = end1
+		(frame2, button2) = end2
+
+		#check out positions of these
+
+def linkElements(elementFrame, iButton):
+	print("button id:", iButton)
+	global g_currStack
+	currEnd = (elementFrame, iButton)
+	bIsConnected = checkForConnection(currEnd)
+	print("connected:", bIsConnected)
+	
+	if g_currStack == None:
+		#check if there is a link already
+		if bIsConnected:
+			for (end1, end2) in g_lLinks:
+				if end1 == currEnd or end2 == currEnd:
+					g_lLinks.remove( (end1, end2) )
+		g_currStack = currEnd
+	else:
+		#check if you try to connect to itself
+		stackFrame, stackButton = g_currStack
+		print("stackFrame:", stackFrame, "elementFrame:", elementFrame)
+		if stackFrame == elementFrame:
+			g_currStack = None
+			#branch out
+			return
+		#check if that connection has already been made
+		if not bIsConnected:
+			g_lLinks.append( (currEnd, g_currStack) )
+			g_currStack = None
+
+	print("stack:", g_currStack)
+	print("links:", g_lLinks)
+
 #callbacks for buttons
 def addAcousticElement(*args):
 	print("adding element...")
@@ -270,10 +321,20 @@ def addAcousticElement(*args):
 		movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
 		movingLabel.grid(row = 1, column = 1)
 		#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
+		#add connection buttons
 		buttons = []
 		for iButton in range(len(dElements[elemType.get()][0])):
 			gridRow, gridColumn = dElements[elemType.get()][0][iButton][0]
-			button = tk.Button(elementFrame, text = str(iButton + 1), command=exit)
+
+			#got fuckup with lambda expression. dunno...
+			if iButton == 0:
+				myLambda = lambda:linkElements(elementFrame, 0)
+			elif iButton == 1:
+				myLambda = lambda:linkElements(elementFrame, 1)
+			else:
+				myLambda = lambda:linkElements(elementFrame, 2)
+
+			button = tk.Button(elementFrame, text = str(iButton + 1), command=myLambda )
 			button.grid(row = gridRow, column = gridColumn)
 			buttons.append(button)
 
