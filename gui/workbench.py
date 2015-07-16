@@ -1,7 +1,7 @@
 '''
 a tk gui to specify the geometry of a horn speaker
 saves projects in xml format
-will create an input file for simulation (element definition) 
+will create an input file for simulation (element definition)
 '''
 
 import tkinter as tk
@@ -183,7 +183,6 @@ class MovableHandler:
 		imageWidget.bind("<Double-Button-1>", self.onDoubleClick)
 
 	def onMovablePress(self, event):
-#		self.moving_widget = self.m_Canvas.find_closest(event.x, event.y)[0]
 		self.moving_x = event.x
 		self.moving_y = event.y
 
@@ -196,7 +195,8 @@ class MovableHandler:
 
 		self.m_Canvas.move(self.moving_widget, delta_x, delta_y)
 
-#		self.moving_widget = None
+		acuCanvas.after_idle(drawCanvasLines)
+
 		self.moving_x = 0
 		self.moving_y = 0
 
@@ -258,13 +258,44 @@ def checkForConnection(ending):
 
 def drawCanvasLines():
 	#remove old ones
-	acuCanvas.deleteByTag("connctorLine")
+	#acuCanvas.deleteByTag("connectorLine")
+	#lFoundItems = acuCanvas.find_withtag("connectorLine")
+	#print("found by tag", lFoundItems)
+	acuCanvas.delete("connectorLine")
 	#add new ones
 	for (end1, end2) in g_lLinks:
 		(frame1, button1) = end1
 		(frame2, button2) = end2
+		
+		#check out positions of frame
 
-		#check out positions of these
+		end1x, end1y, end2x, end2y = 0,0,0,0
+		print("button 1 =", button1)
+		for child in frame1.winfo_children():
+			print("child text =", child['text'])
+			if child['text'] == str(button1 + 1):
+				print("found for button1")
+				end1x = child.winfo_rootx() + child.winfo_width() // 2
+				end1y = child.winfo_rooty() + child.winfo_height() // 2
+				break
+		
+		print("button 2 =", button2)
+		for child in frame2.winfo_children():
+			print("child text =", child['text'])
+			if child['text'] == str(button2 + 1):
+				print("found for button2")
+				end2x = child.winfo_rootx() + child.winfo_width() // 2
+				end2y = child.winfo_rooty() + child.winfo_height() // 2
+				break
+
+		#draw line
+		print("line", end1x, end1y, end2x, end2y)
+		c1x, c1y, c2x, c2y = acuCanvas.canvasx(end1x), acuCanvas.canvasy(end1y), acuCanvas.canvasx(end2x), acuCanvas.canvasy(end2y)
+		
+		c1x, c1y, c2x, c2y = end1x - acuCanvas.winfo_rootx(), end1y - acuCanvas.winfo_rooty(), end2x - acuCanvas.winfo_rootx(), end2y - acuCanvas.winfo_rooty()
+		
+		print("line on canvas", c1x, c1y, c2x, c2y)
+		acuCanvas.create_line(c1x, c1y, c2x, c2y, width=2.0, tags="connectorLine")
 
 def linkElements(elementFrame, iButton):
 	print("button id:", iButton)
@@ -295,6 +326,8 @@ def linkElements(elementFrame, iButton):
 
 	print("stack:", g_currStack)
 	print("links:", g_lLinks)
+
+	acuCanvas.after_idle(drawCanvasLines)
 
 #callbacks for buttons
 def addAcousticElement(*args):
@@ -334,7 +367,7 @@ def addAcousticElement(*args):
 			else:
 				myLambda = lambda:linkElements(elementFrame, 2)
 
-			button = tk.Button(elementFrame, text = str(iButton + 1), command=myLambda )
+			button = tk.Button(elementFrame, text = str(iButton + 1), command=myLambda)
 			button.grid(row = gridRow, column = gridColumn)
 			buttons.append(button)
 
