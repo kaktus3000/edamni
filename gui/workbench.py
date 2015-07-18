@@ -213,6 +213,8 @@ class MovableHandler:
 		for iButton in range(len(buttonPositions)):
 			buttonRow, buttonCol = buttonPositions[iButton][iBitmap]
 			self.buttons[iButton].grid(row = buttonRow, column = buttonCol)
+			
+		acuCanvas.after_idle(drawCanvasLines)
 
 	def onDoubleClick(self, event):
 		editElementDialog = tk.Toplevel(root)
@@ -220,7 +222,7 @@ class MovableHandler:
 		editElementDialog.bind("<Map>", lambda event:editElementDialog.grab_set())
 		editElementDialog.wm_title("Acoustic Element Properties")
 
-		strElementType = self.imageWidget['text']		
+		strElementType = self.imageWidget['text']
 
 		#add all the properties
 		gridRow = 0
@@ -248,6 +250,7 @@ class MovableHandler:
 #( (frame, button), (frame, button) )
 g_lLinks = []
 g_currStack = None
+g_lastStack = None
 
 def checkForConnection(ending):
 	bPresent = False
@@ -297,9 +300,33 @@ def drawCanvasLines():
 		print("line on canvas", c1x, c1y, c2x, c2y)
 		acuCanvas.create_line(c1x, c1y, c2x, c2y, width=2.0, tags="connectorLine")
 
+	#mark currently selected connector button
+	#first delete marking on last selected
+	if g_lastStack != None:
+		stackFrame, stackButton = g_lastStack
+		print("unmarking", stackFrame, stackButton + 1)
+		for child in stackFrame.winfo_children():
+			print("child text =", child['text'])
+			if child['text'] == str(stackButton + 1):
+				print("found for last stack button")
+				child['bitmap']=""
+				break
+
+	#then add marking on selected
+	if g_currStack != None:
+		stackFrame, stackButton = g_currStack
+		print("marking", stackFrame, stackButton + 1)
+		for child in stackFrame.winfo_children():
+			print("child text =", child['text'])
+			if child['text'] == str(stackButton + 1):
+				print("found for stack button")
+				child['bitmap']="@xbm/connector.xbm"
+				break
+
 def linkElements(elementFrame, iButton):
 	print("button id:", iButton)
 	global g_currStack
+	global g_lastStack
 	currEnd = (elementFrame, iButton)
 	bIsConnected = checkForConnection(currEnd)
 	print("connected:", bIsConnected)
@@ -316,14 +343,18 @@ def linkElements(elementFrame, iButton):
 		stackFrame, stackButton = g_currStack
 		print("stackFrame:", stackFrame, "elementFrame:", elementFrame)
 		if stackFrame == elementFrame:
+			g_lastStack = g_currStack
 			g_currStack = None
+
 			#branch out
 			return
 		#check if that connection has already been made
 		if not bIsConnected:
 			g_lLinks.append( (currEnd, g_currStack) )
+			g_lastStack = g_currStack
 			g_currStack = None
 
+	print("last stack:", g_lastStack)
 	print("stack:", g_currStack)
 	print("links:", g_lLinks)
 
