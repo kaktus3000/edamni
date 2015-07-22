@@ -1,14 +1,18 @@
+
 '''
 a tk gui to specify the geometry of a horn speaker
 saves projects in xml format
 will create an input file for simulation (element definition)
 '''
 
+#gui stuff
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 from tkinter import messagebox
-#import tkMessageBox
+
+#fancy stuff
+from functools import partial
 
 #configure root window
 root = tk.Tk()
@@ -146,59 +150,70 @@ lElementTypes = ['Conical', 'Exponential', 'Mic', 'Open', 'Speaker', 'Wall']
 #dictionary with element options
 #buttons: row, column
 #in the four rotation states
-dElements = dict(
+g_dElements = dict(
 	Conical = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
-			   ('length', 'm'),
-			   ('damping constant', '1'),
-			   ('A1', 'm^2'),
-			   ('A2', 'm^2')],
-	
-	Exponential = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
-			('length', 'm'),
 			('A1', 'm^2'),
 			('A2', 'm^2'),
-			('exponent', '1')],
-	 
+			('length', 'm'),
+			('damping constant', 'Ns/m^4')],
+
+	Exponential = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('length', 'm'),
+			('damping constant', 'Ns/m^4'),
+			('exponent', '')],
+
 	Wall = [ [[(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('A1', 'm^2'),
 			('damping thickness', 'm'),
 			('damping transient', 'm'),
 			('damping constant', 'Ns/m^4')],
-	 
+
 	Open = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]],
-			 ('length', 'm'),
-			 ('fraction', '1')],
-	
+			('A1', 'm^2'),
+			('length', 'm'),
+			('fraction', '')],
+
 	Speaker = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
-				('index', '1')],
-	
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('index', '')],
+
 #	Fork = [('A1', 'm^2'),
 #			('A2', 'm^2'),
 #			('A3', 'm^2')],
 
-	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]] ]
-	)
+	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)] ]
+)
 
+g_dAcousticElements = dict()
+g_iIDCounter = 1
 
-dCanvasElements = dict()
+class Element:
+	def __init__(self, strType, lValues, frame, lButtons):
+		#type
+		self.m_Type = strType
 
-def updateCanvas():
-	print("updateing canvas...")
+		#stored input values
+		self.m_lValues = lValues
+
+		#frame on canvas
+		self.m_Frame = frame
+
+		#list of connection buttons inside frame
+		self.m_lButtons = lButtons
 
 class MovableHandler:
-	def __init__(self, canvas, imageWidget, canvasID, buttons):#, canvas, canvasID):
-		self.m_Canvas = canvas
-
+	def __init__(self, imageWidget, strElemID):
 		self.imageWidget = imageWidget
-		self.moving_widget = canvasID
-		self.buttons = buttons
+		self.strID = strElemID
 		self.moving_x = 0
 		self.moving_y = 0
 
 		imageWidget.bind("<ButtonPress-1>", self.onMovablePress)
 		imageWidget.bind("<ButtonRelease-1>", self.onMovableRelease)
-
 		imageWidget.bind("<ButtonRelease-3>", self.onRMBRelease)
-
 		imageWidget.bind("<Double-Button-1>", self.onDoubleClick)
 
 	def onMovablePress(self, event):
@@ -212,7 +227,7 @@ class MovableHandler:
 		delta_x = dest_x - self.moving_x
 		delta_y = dest_y - self.moving_y
 
-		self.m_Canvas.move(self.moving_widget, delta_x, delta_y)
+		acuCanvas.move(g_dAcousticElements[self.strID].m_Frame, delta_x, delta_y)
 
 		acuCanvas.after_idle(drawCanvasLines)
 
@@ -228,11 +243,15 @@ class MovableHandler:
 		self.imageWidget['bitmap'] = strBitmap.replace(strBitmap[-5], str(iBitmap) )
 		#relocate the buttons
 		strElementType = self.imageWidget['text']
-		buttonPositions = dElements[strElementType][0]
+		buttonPositions = g_dElements[strElementType][0]
+
+		#get list of buttons from dictionary
+		lButtons = g_dAcousticElements[self.strID].m_lButtons
+
 		for iButton in range(len(buttonPositions)):
 			buttonRow, buttonCol = buttonPositions[iButton][iBitmap]
-			self.buttons[iButton].grid(row = buttonRow, column = buttonCol)
-			
+			lButtons[iButton].grid(row = buttonRow, column = buttonCol)
+
 		acuCanvas.after(1,drawCanvasLines)
 
 	def onDoubleClick(self, event):
@@ -245,22 +264,52 @@ class MovableHandler:
 
 		#add all the properties
 		gridRow = 0
-	
-		for (propName, propUnit) in dElements[strElementType][1:]:
+
+		lTextVars = []
+
+		for iProp in range(len(g_dElements[strElementType]) - 1):
+			propName, propUnit = g_dElements[strElementType][1 + iProp]
+
 			ttk.Label(editElementDialog, text=propName).grid(column=0, row=gridRow)
-			ttk.Entry(editElementDialog, width=8).grid(column=1, row=gridRow)
-			
+
+			value = g_dAcousticElements[self.strID].m_lValues[iProp]
+
+			lTextVars.append(tk.StringVar())
+			lTextVars[-1].set(str(value))
+
+			ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
+
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
-			
+
 			gridRow += 1;
 		#add button to delete element
 		def deleteMe():
-			self.m_Canvas.delete(self.moving_widget)
+			print("deleting ID", self.strID)
+			acuCanvas.delete(g_dAcousticElements[self.strID].m_Frame)
+			g_dAcousticElements.pop(self.strID)
 			editElementDialog.destroy()
+			acuCanvas.after(1,drawCanvasLines)
 
 		tk.Button(editElementDialog, text="Delete", command=deleteMe).grid(row = gridRow, column = 0, sticky = tk.W)
 		#add button to confirm
-		tk.Button(editElementDialog, text="OK", command=lambda:editElementDialog.destroy()).grid(row = gridRow, column = 1, sticky = tk.E)
+		def confirmMe():
+			#save input data to dict
+			bFailed = False
+
+			for iProp in range(len(lTextVars)):
+				try:
+					fValue = float(lTextVars[iProp].get())
+					g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
+				except ValueError:
+					#input was invalid, reset field
+					lTextVars[iProp].set("0")
+					bFailed = True
+
+			if not bFailed:
+				#check if parsing failed, in that case allow new input
+				editElementDialog.destroy()
+
+		tk.Button(editElementDialog, text="OK", command=confirmMe).grid(row = gridRow, column = 1, sticky = tk.E)
 		#add button to cancel
 		tk.Button(editElementDialog, text="Cancel", command=lambda:editElementDialog.destroy()).grid(row = gridRow, column = 2, sticky = tk.E)
 
@@ -283,75 +332,60 @@ def drawCanvasLines():
 	#acuCanvas.deleteByTag("connectorLine")
 	#lFoundItems = acuCanvas.find_withtag("connectorLine")
 	#print("found by tag", lFoundItems)
+	print("drawing lines")
 	acuCanvas.delete("connectorLine")
 	#add new ones
 	for (end1, end2) in g_lLinks:
-		(frame1, button1) = end1
-		(frame2, button2) = end2
+		(id1, button1) = end1
+		(id2, button2) = end2
 		
-		#check out positions of frame
+		print("drawing for", id1, id2)
 
-		end1x, end1y, end2x, end2y = 0,0,0,0
-		print("button 1 =", button1)
-		for child in frame1.winfo_children():
-			print("child text =", child['text'])
-			if child['text'] == str(button1 + 1):
-				print("found for button1")
-				end1x = child.winfo_rootx() + child.winfo_width() // 2
-				end1y = child.winfo_rooty() + child.winfo_height() // 2
-				break
-		
-		print("button 2 =", button2)
-		for child in frame2.winfo_children():
-			print("child text =", child['text'])
-			if child['text'] == str(button2 + 1):
-				print("found for button2")
-				end2x = child.winfo_rootx() + child.winfo_width() // 2
-				end2y = child.winfo_rooty() + child.winfo_height() // 2
-				break
+		#check if link is valid
+		if id1 not in g_dAcousticElements or id2 not in g_dAcousticElements:
+			#one of the ids doesn't exist, erase link.
+			g_lLinks.remove( (end1, end2) )
+		else:
+			#get buttons of frames
+			button1frame = g_dAcousticElements[id1].m_lButtons[button1]
+			button2frame = g_dAcousticElements[id2].m_lButtons[button2]
 
-		#draw line
-		print("line", end1x, end1y, end2x, end2y)
-		c1x, c1y, c2x, c2y = acuCanvas.canvasx(end1x), acuCanvas.canvasy(end1y), acuCanvas.canvasx(end2x), acuCanvas.canvasy(end2y)
-		
-		c1x, c1y, c2x, c2y = end1x - acuCanvas.winfo_rootx(), end1y - acuCanvas.winfo_rooty(), end2x - acuCanvas.winfo_rootx(), end2y - acuCanvas.winfo_rooty()
-		
-		print("line on canvas", c1x, c1y, c2x, c2y)
-		acuCanvas.create_line(c1x, c1y, c2x, c2y, width=2.0, tags="connectorLine")
+			#get center points of buttons
+			end1x = button1frame.winfo_rootx() + button1frame.winfo_width() // 2
+			end1y = button1frame.winfo_rooty() + button1frame.winfo_height() // 2
+
+			end2x = button2frame.winfo_rootx() + button2frame.winfo_width() // 2
+			end2y = button2frame.winfo_rooty() + button2frame.winfo_height() // 2
+
+			#draw line
+			c1x, c1y, c2x, c2y = end1x - acuCanvas.winfo_rootx(), end1y - acuCanvas.winfo_rooty(), end2x - acuCanvas.winfo_rootx(), end2y - acuCanvas.winfo_rooty()
+
+			print("line on canvas", c1x, c1y, c2x, c2y)
+			acuCanvas.create_line(c1x, c1y, c2x, c2y, width=2.0, tags="connectorLine")
 
 	#mark currently selected connector button
 	#first delete marking on last selected
 	if g_lastStack != None:
-		stackFrame, stackButton = g_lastStack
-		print("unmarking", stackFrame, stackButton + 1)
-		for child in stackFrame.winfo_children():
-			print("child text =", child['text'])
-			if child['text'] == str(stackButton + 1):
-				print("found for last stack button")
-				child['bitmap']=""
-				break
+		stackID, stackButton = g_lastStack
+		buttonframe = g_dAcousticElements[stackID].m_lButtons[stackButton]
+		buttonframe['bitmap'] = ""
 
 	#then add marking on selected
 	if g_currStack != None:
-		stackFrame, stackButton = g_currStack
-		print("marking", stackFrame, stackButton + 1)
-		for child in stackFrame.winfo_children():
-			print("child text =", child['text'])
-			if child['text'] == str(stackButton + 1):
-				print("found for stack button")
-				child['bitmap']="@xbm/connector.xbm"
-				break
+		stackID, stackButton = g_currStack
+		buttonframe = g_dAcousticElements[stackID].m_lButtons[stackButton]
+		buttonframe['bitmap'] = "@xbm/connector.xbm"
 
-def linkElements(elementFrame, iButton):
+def linkElements(elementID, iButton):
 	print("button id:", iButton)
 	global g_currStack
 	global g_lastStack
-	currEnd = (elementFrame, iButton)
+	currEnd = (elementID, iButton)
 	bIsConnected = checkForConnection(currEnd)
 	print("connected:", bIsConnected)
-	
+
 	if g_currStack == None:
-		#check if there is a link already
+		#check if there already is a link
 		if bIsConnected:
 			for (end1, end2) in g_lLinks:
 				if end1 == currEnd or end2 == currEnd:
@@ -359,9 +393,9 @@ def linkElements(elementFrame, iButton):
 		g_currStack = currEnd
 	else:
 		#check if you try to connect to itself
-		stackFrame, stackButton = g_currStack
-		print("stackFrame:", stackFrame, "elementFrame:", elementFrame)
-		if stackFrame == elementFrame:
+		stackID, stackButton = g_currStack
+		print("stack id:", stackID, "element id:", elementID)
+		if stackID == elementID:
 			g_lastStack = g_currStack
 			g_currStack = None
 
@@ -390,13 +424,20 @@ def addAcousticElement(*args):
 	elemType = tk.StringVar()
 
 	#create radio buttons for mode setting
-	for iElementType in range(len(dElements.keys()) ):
-		strElemType = list(dElements.keys())[iElementType]
+	for iElementType in range(len(g_dElements.keys()) ):
+		strElemType = list(g_dElements.keys())[iElementType]
 		ttk.Radiobutton(addElementDialog, text=strElemType, variable=elemType, value=strElemType).grid(row = 1, column = iElementType)
 		tk.Label(addElementDialog, bitmap="@xbm/" + strElemType.lower() + "0.xbm", text = strElemType).grid(row=0, column = iElementType)
 
 	def addElementToCanvas(*args):
-		print("element type is " + elemType.get())
+		strElemType = elemType.get()
+		print("element type is " + strElemType)
+
+		#create element in global dictionary
+		global g_iIDCounter
+		g_iIDCounter += 1
+		strElemID = str(g_iIDCounter)
+
 		elementFrame = ttk.Frame(acuCircuitFrame)
 
 		canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
@@ -406,22 +447,20 @@ def addAcousticElement(*args):
 		#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
 		#add connection buttons
 		buttons = []
-		for iButton in range(len(dElements[elemType.get()][0])):
-			gridRow, gridColumn = dElements[elemType.get()][0][iButton][0]
+		for iButton in range(len(g_dElements[elemType.get()][0])):
+			gridRow, gridColumn = g_dElements[elemType.get()][0][iButton][0]
 
-			#got fuckup with lambda expression. dunno...
-			if iButton == 0:
-				myLambda = lambda:linkElements(elementFrame, 0)
-			elif iButton == 1:
-				myLambda = lambda:linkElements(elementFrame, 1)
-			else:
-				myLambda = lambda:linkElements(elementFrame, 2)
+			button = tk.Button(elementFrame, text = str(iButton + 1), command=partial(linkElements, strElemID, iButton))
 
-			button = tk.Button(elementFrame, text = str(iButton + 1), command=myLambda)
 			button.grid(row = gridRow, column = gridColumn)
 			buttons.append(button)
 
-		myHandler = MovableHandler(acuCanvas, movingLabel, canvasID, buttons)
+		myHandler = MovableHandler(movingLabel, strElemID)
+
+		#add element to global dictionary
+		#(strType, lValues, frame, lButtons):
+		lValues = [0] * (len(g_dElements[strElemType]) - 1)
+		g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons)
 
 		addElementDialog.destroy()
 
@@ -458,7 +497,7 @@ def onChangeMode(*args):
 	#hide all other frames, show selected
 	for subFrame in dModeFrames.values():
 		subFrame.grid_remove()
-	
+
 	dModeFrames[mode.get()].grid(sticky=tk.N+tk.E+tk.S+tk.W)
 
 #initialize to speaker mode
