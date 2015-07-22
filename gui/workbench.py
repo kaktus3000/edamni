@@ -7,6 +7,8 @@ will create an input file for simulation (element definition)
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
+from tkinter import messagebox
+#import tkMessageBox
 
 #configure root window
 root = tk.Tk()
@@ -14,6 +16,23 @@ root.title("Edamni")
 root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
 root.geometry('{}x{}'.format(600, 450) )
+
+
+#configure menu
+menubar = tk.Menu(root)
+# create a pulldown menu, and add it to the menu bar
+filemenu = tk.Menu(menubar, tearoff=0)
+filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../preprocessor/")))
+filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../preprocessor/")))
+filemenu.add_separator()
+filemenu.add_command(label="Exit", command=root.quit)
+menubar.add_cascade(label="File", menu=filemenu)
+
+helpmenu = tk.Menu(menubar, tearoff=0)
+helpmenu.add_command(label="About", command=lambda: messagebox.showwarning("About", "Edamni v0.0 dev") )
+menubar.add_cascade(label="Help", menu=helpmenu )
+
+root.config(menu=menubar)
 
 #configure master frame
 windowFrame = tk.Frame(root)
@@ -214,7 +233,7 @@ class MovableHandler:
 			buttonRow, buttonCol = buttonPositions[iButton][iBitmap]
 			self.buttons[iButton].grid(row = buttonRow, column = buttonCol)
 			
-		acuCanvas.after_idle(drawCanvasLines)
+		acuCanvas.after(1,drawCanvasLines)
 
 	def onDoubleClick(self, event):
 		editElementDialog = tk.Toplevel(root)
@@ -416,6 +435,13 @@ def addAcousticElement(*args):
 
 #create buttons
 tk.Button(acuButtonFrame, bitmap="@xbm/add.xbm", command=addAcousticElement).grid(row=1, column=0)
+
+#functions for import and export of simulation definitions
+def loadDefinition(strFile):
+	return
+
+def saveDefinition(strFile):
+	return
 
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
