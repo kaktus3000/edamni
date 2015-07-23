@@ -1,4 +1,3 @@
-
 '''
 a tk gui to specify the geometry of a horn speaker
 saves projects in xml format
@@ -9,10 +8,14 @@ will create an input file for simulation (element definition)
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfilename
 from tkinter import messagebox
 
 #fancy stuff
 from functools import partial
+
+#xml support
+import xml.etree.ElementTree as ET
 
 #configure root window
 root = tk.Tk()
@@ -21,16 +24,25 @@ root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
 root.geometry('{}x{}'.format(600, 450) )
 
-
 #configure menu
 menubar = tk.Menu(root)
 # create a pulldown menu, and add it to the menu bar
 filemenu = tk.Menu(menubar, tearoff=0)
 filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../preprocessor/")))
-filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../preprocessor/")))
+filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../preprocessor/", defaultextension = ".xml")))
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="File", menu=filemenu)
+
+#global settings
+g_fDeltaX = 0.01
+
+def configureDialog():
+	return
+
+settingsmenu = tk.Menu(menubar, tearoff=0)
+settingsmenu.add_command(label="Configure", command=configureDialog)
+menubar.add_cascade(label="Settings", menu=settingsmenu )
 
 helpmenu = tk.Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About", command=lambda: messagebox.showwarning("About", "Edamni v0.0 dev") )
@@ -184,7 +196,7 @@ g_dElements = dict(
 #			('A2', 'm^2'),
 #			('A3', 'm^2')],
 
-	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)] ]
+	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]] ]
 )
 
 g_dAcousticElements = dict()
@@ -338,7 +350,7 @@ def drawCanvasLines():
 	for (end1, end2) in g_lLinks:
 		(id1, button1) = end1
 		(id2, button2) = end2
-		
+
 		print("drawing for", id1, id2)
 
 		#check if link is valid
@@ -480,7 +492,32 @@ def loadDefinition(strFile):
 	return
 
 def saveDefinition(strFile):
-	return
+	#create root element for output tree
+	root = ET.Element("horn", dx = str(g_fDeltaX) )
+
+	#iterate existing elements
+	for eleID in g_dAcousticElements:
+		strType = g_dAcousticElements[eleID].m_Type
+
+		element = ET.SubElement(root, strType.lower().replace(" ", "_"), id = eleID)
+
+		#find links for this element, add neighbor tags
+		for (end1, end2) in g_lLinks:
+			id1, port1 = end1
+			id2, port2 = end2
+			if id1 == eleID:
+				ET.SubElement(element, "neighbor" + str(port1 + 1), ref = id2)
+			if id2 == eleID:
+				ET.SubElement(element, "neighbor" + str(port2 + 1), ref = id1)
+
+		#extract element parameters
+		for iProp in range(len(g_dElements[strType]) - 1):
+			propName, propUnit = g_dElements[strType][1 + iProp]
+			strValue = str(g_dAcousticElements[eleID].m_lValues[iProp])
+			ET.SubElement(element, propName.lower().replace(" ", "_")).text = strValue
+
+	tree = ET.ElementTree(root)
+	tree.write(strFile)
 
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
