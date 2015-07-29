@@ -513,7 +513,41 @@ tk.Button(acuButtonFrame, bitmap="@xbm/add.xbm", command=addAcousticElement).gri
 
 #functions for import and export of simulation definitions
 def loadDefinition(strFile):
-	return
+	tree = ET.parse(strFile)
+	root = tree.getroot()
+
+	dx = root.get("dx")
+
+	for element in root:
+		#get type of element
+		strElementType = element.tag
+		#get id of element
+		strElementID = element.get("id")
+		#create element on canvas
+		for prop in element:
+			if prop.tag.find("neighbor")!= -1:
+				#this is a neighbor tag, create a link.
+				iLinkIndex = int(prop.tag[-1]) - 1
+				strTargetID = prop.get("ref")
+			elif prop.tag=="screen_position":
+				x,y = int(prop.get("x") ), int(prop.get("y"))
+			elif prop.tag=="screen_rotation":
+				rot = int(prop.get("rot"))
+			else:
+				#read value of property
+				#if this is a 'type' property, it will contain a string
+				if prop.tag != "type":
+					#no type, this must be a floating point value
+					print("this tag", prop.tag)
+					fProperty = float(prop.text)
+					#find out visual name of property
+					#write to property dictionary of element
+				else:
+					#read speaker type
+					strSpeaker = prop.text
+					#add speaker to speaker list
+					#get speaker list index
+					#write to properties 
 
 def saveDefinition(strFile):
 	print("writing to file...")
