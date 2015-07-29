@@ -173,8 +173,8 @@ g_dElements = dict(
 			('A1', 'm^2'),
 			('A2', 'm^2'),
 			('length', 'm'),
-			('damping constant', 'Ns/m^4'),
-			('exponent', '')],
+			('exponent', ''),
+			('damping constant', 'Ns/m^4')],
 
 	Wall = [ [[(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),
@@ -182,7 +182,7 @@ g_dElements = dict(
 			('damping transient', 'm'),
 			('damping constant', 'Ns/m^4')],
 
-	Open = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]],
+	Space = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]],
 			('A1', 'm^2'),
 			('length', 'm'),
 			('fraction', '')],
@@ -190,13 +190,15 @@ g_dElements = dict(
 	Speaker = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),
 			('A2', 'm^2'),
-			('index', '')],
+			('type', '')],
 
-#	Fork = [('A1', 'm^2'),
-#			('A2', 'm^2'),
-#			('A3', 'm^2')],
+	Fork = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(0, 2), (0, 0), (2, 0), (2, 2)], [(2, 2), (0, 2), (0, 0), (2, 0)]],
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('A3', 'm^2')],
 
-	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]] ]
+	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('name', '')]
 )
 
 g_dAcousticElements = dict()
@@ -215,6 +217,9 @@ class Element:
 
 		#list of connection buttons inside frame
 		self.m_lButtons = lButtons
+
+		#rotation state of buttons and image
+		self.m_iRotation = 0
 
 class MovableHandler:
 	def __init__(self, imageWidget, strElemID):
@@ -247,12 +252,15 @@ class MovableHandler:
 		self.moving_y = 0
 
 	def onRMBRelease(self, event):
-		#rotate widget
+		g_dAcousticElements[self.strID].m_iRotation += 1
+		if g_dAcousticElements[self.strID].m_iRotation > 3:
+			g_dAcousticElements[self.strID].m_iRotation = 0
+			
+		iRot = g_dAcousticElements[self.strID].m_iRotation
+
 		strBitmap = self.imageWidget['bitmap']
-		iBitmap = int(strBitmap[-5]) + 1
-		if iBitmap > 3:
-			iBitmap = 0
-		self.imageWidget['bitmap'] = strBitmap.replace(strBitmap[-5], str(iBitmap) )
+		self.imageWidget['bitmap'] = strBitmap.replace(strBitmap[-5], str(iRot) )
+
 		#relocate the buttons
 		strElementType = self.imageWidget['text']
 		buttonPositions = g_dElements[strElementType][0]
@@ -261,7 +269,7 @@ class MovableHandler:
 		lButtons = g_dAcousticElements[self.strID].m_lButtons
 
 		for iButton in range(len(buttonPositions)):
-			buttonRow, buttonCol = buttonPositions[iButton][iBitmap]
+			buttonRow, buttonCol = buttonPositions[iButton][iRot]
 			lButtons[iButton].grid(row = buttonRow, column = buttonCol)
 
 		acuCanvas.after(1,drawCanvasLines)
@@ -289,7 +297,19 @@ class MovableHandler:
 			lTextVars.append(tk.StringVar())
 			lTextVars[-1].set(str(value))
 
-			ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
+			#a specialty
+			if g_dAcousticElements[self.strID].m_Type == "Speaker" and propName == "type":
+				#get speaker model names
+				lstrSpeakers = []
+				for iSpeaker in range(speakerListBox.size()):
+					strListBoxEntry = speakerListBox.get(iSpeaker)
+					lstrSpeakers.append(strListBoxEntry.rsplit("/", 1)[1].replace(".bcd", "") )
+				#produce a dropdown box
+				speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
+				speakerModelBox.state(['readonly'])
+				speakerModelBox.grid(column=1, row=gridRow)
+			else:
+				ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
 
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
 
@@ -309,13 +329,17 @@ class MovableHandler:
 			bFailed = False
 
 			for iProp in range(len(lTextVars)):
-				try:
-					fValue = float(lTextVars[iProp].get())
-					g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
-				except ValueError:
-					#input was invalid, reset field
-					lTextVars[iProp].set("0")
-					bFailed = True
+				propName, propUnit = g_dElements[strElementType][1 + iProp]
+				if propName == "type":
+					g_dAcousticElements[self.strID].m_lValues[iProp] = lTextVars[iProp].get()
+				else:
+					try:
+						fValue = float(lTextVars[iProp].get())
+						g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
+					except ValueError:
+						#input was invalid, reset field
+						lTextVars[iProp].set("0")
+						bFailed = True
 
 			if not bFailed:
 				#check if parsing failed, in that case allow new input
@@ -492,6 +516,7 @@ def loadDefinition(strFile):
 	return
 
 def saveDefinition(strFile):
+	print("writing to file...")
 	#create root element for output tree
 	root = ET.Element("horn", dx = str(g_fDeltaX) )
 
@@ -499,6 +524,7 @@ def saveDefinition(strFile):
 	for eleID in g_dAcousticElements:
 		strType = g_dAcousticElements[eleID].m_Type
 
+		#create element
 		element = ET.SubElement(root, strType.lower().replace(" ", "_"), id = eleID)
 
 		#find links for this element, add neighbor tags
@@ -516,8 +542,23 @@ def saveDefinition(strFile):
 			strValue = str(g_dAcousticElements[eleID].m_lValues[iProp])
 			ET.SubElement(element, propName.lower().replace(" ", "_")).text = strValue
 
+		#write screen coordinates of element
+		frame = g_dAcousticElements[eleID].m_Frame
+
+		(x1, y1) = acuCanvas.coords(frame)
+
+		ET.SubElement(element, "screen_position", x = str(int(x1)), y= str(int(y1)))
+
+		#write rotation state
+		ET.SubElement(element, "screen_rotation", rot = str(g_dAcousticElements[eleID].m_iRotation))
+
 	tree = ET.ElementTree(root)
-	tree.write(strFile)
+
+	with open(strFile, 'wb') as f:
+		f.write(bytes('<?xml version="1.0" encoding="UTF-8" ?><!DOCTYPE horn SYSTEM "../horn.dtd">', 'utf-8'))
+		tree.write(f, 'utf-8')
+	
+	print("finished writing")
 
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
