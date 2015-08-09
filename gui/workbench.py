@@ -103,7 +103,8 @@ speakerListBox.grid(sticky=tk.N+tk.S+tk.W+tk.E)
 #callbacks for buttons
 def addSpeaker(*args):
 	speakerFileName = askopenfilename(initialdir="../preprocessor/bcd")
-	speakerListBox.insert(tk.END, speakerFileName)
+	
+	speakerListBox.insert(tk.END, speakerFileName.rsplit("/", 1)[1].replace(".bcd", ""))
 
 def removeSpeaker(*args):
 	lSelections = speakerListBox.curselection()
@@ -205,7 +206,7 @@ g_dAcousticElements = dict()
 g_iIDCounter = 1
 
 class Element:
-	def __init__(self, strType, lValues, frame, lButtons):
+	def __init__(self, strType, lValues, frame, lButtons, handler):
 		#type
 		self.m_Type = strType
 
@@ -220,6 +221,9 @@ class Element:
 
 		#rotation state of buttons and image
 		self.m_iRotation = 0
+
+		#gui callback object
+		self.m_MovableHandler = handler
 
 class MovableHandler:
 	def __init__(self, imageWidget, strElemID):
@@ -303,7 +307,7 @@ class MovableHandler:
 				lstrSpeakers = []
 				for iSpeaker in range(speakerListBox.size()):
 					strListBoxEntry = speakerListBox.get(iSpeaker)
-					lstrSpeakers.append(strListBoxEntry.rsplit("/", 1)[1].replace(".bcd", "") )
+					lstrSpeakers.append(strListBoxEntry )
 				#produce a dropdown box
 				speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
 				speakerModelBox.state(['readonly'])
@@ -375,8 +379,6 @@ def drawCanvasLines():
 		(id1, button1) = end1
 		(id2, button2) = end2
 
-		print("drawing for", id1, id2)
-
 		#check if link is valid
 		if id1 not in g_dAcousticElements or id2 not in g_dAcousticElements:
 			#one of the ids doesn't exist, erase link.
@@ -396,8 +398,16 @@ def drawCanvasLines():
 			#draw line
 			c1x, c1y, c2x, c2y = end1x - acuCanvas.winfo_rootx(), end1y - acuCanvas.winfo_rooty(), end2x - acuCanvas.winfo_rootx(), end2y - acuCanvas.winfo_rooty()
 
-			print("line on canvas", c1x, c1y, c2x, c2y)
 			acuCanvas.create_line(c1x, c1y, c2x, c2y, width=2.0, tags="connectorLine")
+
+			#a little helper: if a cross section area field is '0' and the neighbor
+			#has a value, set this field to the neighbors value
+			#check datas on elements
+			if g_dAcousticElements[id2].m_lValues[button2] != 0.0 and g_dAcousticElements[id1].m_lValues[button1] == 0.0:
+				g_dAcousticElements[id1].m_lValues[button1] = g_dAcousticElements[id2].m_lValues[button2]
+
+			if g_dAcousticElements[id1].m_lValues[button1] != 0.0 and g_dAcousticElements[id2].m_lValues[button2] == 0.0:
+				g_dAcousticElements[id2].m_lValues[button2] = g_dAcousticElements[id1].m_lValues[button1]
 
 	#mark currently selected connector button
 	#first delete marking on last selected
@@ -413,12 +423,10 @@ def drawCanvasLines():
 		buttonframe['bitmap'] = "@xbm/connector.xbm"
 
 def linkElements(elementID, iButton):
-	print("button id:", iButton)
 	global g_currStack
 	global g_lastStack
 	currEnd = (elementID, iButton)
 	bIsConnected = checkForConnection(currEnd)
-	print("connected:", bIsConnected)
 
 	if g_currStack == None:
 		#check if there already is a link
@@ -443,21 +451,51 @@ def linkElements(elementID, iButton):
 			g_lastStack = g_currStack
 			g_currStack = None
 
-	print("last stack:", g_lastStack)
-	print("stack:", g_currStack)
-	print("links:", g_lLinks)
-
 	acuCanvas.after_idle(drawCanvasLines)
+
+elemType = tk.StringVar()
+
+#adds an element frame to the working area
+def addElementToCanvas(*args):
+	strElemType = elemType.get()
+	print("element type is " + strElemType)
+
+	#create element in global dictionary
+	global g_iIDCounter
+	strElemID = str(g_iIDCounter)
+
+	g_iIDCounter += 1
+
+	elementFrame = ttk.Frame(acuCircuitFrame)
+
+	canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
+
+	movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
+	movingLabel.grid(row = 1, column = 1)
+	#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
+	#add connection buttons
+	buttons = []
+	for iButton in range(len(g_dElements[elemType.get()][0])):
+		gridRow, gridColumn = g_dElements[elemType.get()][0][iButton][0]
+
+		button = tk.Button(elementFrame, text = str(iButton + 1), command=partial(linkElements, strElemID, iButton))
+
+		button.grid(row = gridRow, column = gridColumn)
+		buttons.append(button)
+
+	myHandler = MovableHandler(movingLabel, strElemID)
+
+	#add element to global dictionary
+	#(strType, lValues, frame, lButtons):
+	lValues = [0] * (len(g_dElements[strElemType]) - 1)
+	g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons, myHandler)
 
 #callbacks for buttons
 def addAcousticElement(*args):
-	print("adding element...")
 	addElementDialog = tk.Toplevel(root)
 	addElementDialog.transient(root)
 	addElementDialog.grab_set()
 	addElementDialog.wm_title("Add Acoustic Element")
-
-	elemType = tk.StringVar()
 
 	#create radio buttons for mode setting
 	for iElementType in range(len(g_dElements.keys()) ):
@@ -465,46 +503,14 @@ def addAcousticElement(*args):
 		ttk.Radiobutton(addElementDialog, text=strElemType, variable=elemType, value=strElemType).grid(row = 1, column = iElementType)
 		tk.Label(addElementDialog, bitmap="@xbm/" + strElemType.lower() + "0.xbm", text = strElemType).grid(row=0, column = iElementType)
 
-	def addElementToCanvas(*args):
-		strElemType = elemType.get()
-		print("element type is " + strElemType)
-
-		#create element in global dictionary
-		global g_iIDCounter
-		g_iIDCounter += 1
-		strElemID = str(g_iIDCounter)
-
-		elementFrame = ttk.Frame(acuCircuitFrame)
-
-		canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
-
-		movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
-		movingLabel.grid(row = 1, column = 1)
-		#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
-		#add connection buttons
-		buttons = []
-		for iButton in range(len(g_dElements[elemType.get()][0])):
-			gridRow, gridColumn = g_dElements[elemType.get()][0][iButton][0]
-
-			button = tk.Button(elementFrame, text = str(iButton + 1), command=partial(linkElements, strElemID, iButton))
-
-			button.grid(row = gridRow, column = gridColumn)
-			buttons.append(button)
-
-		myHandler = MovableHandler(movingLabel, strElemID)
-
-		#add element to global dictionary
-		#(strType, lValues, frame, lButtons):
-		lValues = [0] * (len(g_dElements[strElemType]) - 1)
-		g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons)
-
+	def okayCallback(*args):
+		addElementToCanvas(args)
 		addElementDialog.destroy()
 
 	#add button to create element
-	tk.Button(addElementDialog, text="OK", command=addElementToCanvas).grid()
+	tk.Button(addElementDialog, text="OK", command=okayCallback).grid()
 	#add button to cancel creation
 	tk.Button(addElementDialog, text="Cancel", command=lambda:addElementDialog.destroy()).grid()
-
 
 	root.wait_window(addElementDialog)
 
@@ -513,44 +519,89 @@ tk.Button(acuButtonFrame, bitmap="@xbm/add.xbm", command=addAcousticElement).gri
 
 #functions for import and export of simulation definitions
 def loadDefinition(strFile):
+	print("loading from file", strFile ,"...")
+	global g_iIDCounter
 	tree = ET.parse(strFile)
 	root = tree.getroot()
 
 	dx = root.get("dx")
 
+	#preliminary links
+	#id1 -> (id2, button1)
+	dLinks = dict()
+
 	for element in root:
 		#get type of element
-		strElementType = element.tag
+		#capitalize key
+		strElementType = element.tag[0].upper() + element.tag[1:]
 		#get id of element
 		strElementID = element.get("id")
+
 		#create element on canvas
+		elemType.set(strElementType)
+		g_iIDCounter = int(strElementID)
+		addElementToCanvas()
+
+		dLinks[strElementID] = []
+
 		for prop in element:
 			if prop.tag.find("neighbor")!= -1:
 				#this is a neighbor tag, create a link.
 				iLinkIndex = int(prop.tag[-1]) - 1
 				strTargetID = prop.get("ref")
+
+				#write preliminary link information
+				dLinks[strElementID].append( (strTargetID, iLinkIndex) )
 			elif prop.tag=="screen_position":
+				#read screen position of frame and set position accordingly
 				x,y = int(prop.get("x") ), int(prop.get("y"))
+				acuCanvas.coords(g_dAcousticElements[strElementID].m_Frame, x, y)
 			elif prop.tag=="screen_rotation":
+				#read screen rotation of frame and set accordingly
 				rot = int(prop.get("rot"))
+				for i in range(rot):
+					g_dAcousticElements[strElementID].m_MovableHandler.onRMBRelease(None)
 			else:
-				#read value of property
-				#if this is a 'type' property, it will contain a string
-				if prop.tag != "type":
-					#no type, this must be a floating point value
-					print("this tag", prop.tag)
-					fProperty = float(prop.text)
-					#find out visual name of property
-					#write to property dictionary of element
-				else:
-					#read speaker type
-					strSpeaker = prop.text
-					#add speaker to speaker list
-					#get speaker list index
-					#write to properties 
+				#find out visual name of property
+				for iProp in range(1, len(g_dElements[strElementType]) - 1):
+					propName, propUnit = g_dElements[strElementType][1 + iProp]
+					#check against input
+					if prop.tag == propName.lower().replace(" ", "_"):
+						#read value of property
+						#if this is a 'type' property, it will contain a string
+						if prop.tag != "type":
+							#no type, this must be a floating point value
+							fProperty = float(prop.text)
+							#write to property dictionary of element
+							g_dAcousticElements[strElementID].m_lValues[ iProp ] = fProperty
+						else:
+							#read speaker type
+							strSpeaker = prop.text
+							#add speaker to speaker list
+							speakerListBox.insert(tk.END, strSpeaker)
+							#write to properties
+							g_dAcousticElements[strElementID].m_lValues[ iProp ] = strSpeaker
+	#finalize links
+	sFinished = set()
+	for strID1 in dLinks:
+		for (strID2, link1) in dLinks[strID1]:
+			end1 = (strID1, link1)
+			if end1 not in sFinished:
+				#find other end of link
+				for (strID1_1, link2) in dLinks[strID2]:
+					if strID1_1 == strID1:
+						end2 = (strID2, link2)
+						g_lLinks.append( (end1, end2) )
+
+						sFinished.add(end1)
+						sFinished.add(end2)
+	#update visuals
+	acuCanvas.after_idle(drawCanvasLines)
+	
+	print("finished loading")
 
 def saveDefinition(strFile):
-	print("writing to file...")
+	print("writing to file", strFile ,"...")
 	#create root element for output tree
 	root = ET.Element("horn", dx = str(g_fDeltaX) )
 
@@ -611,6 +662,8 @@ def onChangeMode(*args):
 		subFrame.grid_remove()
 
 	dModeFrames[mode.get()].grid(sticky=tk.N+tk.E+tk.S+tk.W)
+	
+	acuCanvas.after(100,drawCanvasLines)
 
 #initialize to speaker mode
 mode.trace("w", onChangeMode)
