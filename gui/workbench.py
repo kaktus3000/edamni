@@ -563,8 +563,8 @@ def loadDefinition(strFile):
 					g_dAcousticElements[strElementID].m_MovableHandler.onRMBRelease(None)
 			else:
 				#find out visual name of property
-				for iProp in range(1, len(g_dElements[strElementType]) - 1):
-					propName, propUnit = g_dElements[strElementType][1 + iProp]
+				for iProp in range(len(g_dElements[strElementType]) - 1):
+					propName, propUnit = g_dElements[strElementType][iProp + 1]
 					#check against input
 					if prop.tag == propName.lower().replace(" ", "_"):
 						#read value of property
