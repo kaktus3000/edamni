@@ -174,7 +174,6 @@ g_dElements = dict(
 			('A1', 'm^2'),
 			('A2', 'm^2'),
 			('length', 'm'),
-			('exponent', ''),
 			('damping constant', 'Ns/m^4')],
 
 	Wall = [ [[(1, 2), (0, 1), (1, 0), (2, 1)]],
@@ -462,7 +461,7 @@ def addElementToCanvas(*args):
 
 	#create element in global dictionary
 	global g_iIDCounter
-	strElemID = str(g_iIDCounter)
+	strElemID = strElemType + str(g_iIDCounter)
 
 	g_iIDCounter += 1
 
@@ -536,10 +535,19 @@ def loadDefinition(strFile):
 		strElementType = element.tag[0].upper() + element.tag[1:]
 		#get id of element
 		strElementID = element.get("id")
+		#remove everything but the id number
+		strElementIDNum = ""
+		
+		for char in strElementID:
+			if char.isdigit():
+				strElementIDNum += char
+			
+		print(strElementID, strElementIDNum)
 
 		#create element on canvas
 		elemType.set(strElementType)
-		g_iIDCounter = int(strElementID)
+		g_iIDCounter = int(strElementIDNum)
+		strElementID = strElementType + str(g_iIDCounter)
 		addElementToCanvas()
 
 		dLinks[strElementID] = []

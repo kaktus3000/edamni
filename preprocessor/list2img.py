@@ -117,7 +117,7 @@ while iLine < len(aLines):
 
 #build directed graph from speaker
 #search positive direction
-def subGraph(elems, elem, currGraph):	
+def subGraph(elems, elem, currGraph):
 	#there should be only one direction to go
 	currGraph.append(elem)
 	

@@ -141,9 +141,7 @@ def expo_section(dx, params):
 	
 	lastA = A1
 	positiveGradient = A2 > A1
-	
-#	print("b ** x2 =", math.pow(base, x2), "A2 =", A2)
-	
+		
 	outList = [] 
 	
 	for iElem in range(nElems):
