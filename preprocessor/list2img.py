@@ -6,6 +6,19 @@ from PIL import Image
 import math
 import sys
 
+g_lSpeakerVectorGraphics = [[(0.0, 0.0),
+							 (1.0, 0.0),
+							 (0.6, 0.4),
+							 (0.0, 0.4)],
+							[(0.3, 0.4),
+							 (0.3, 0.5)],
+							[(0.0, 0.5),
+							 (0.4, 0.5),
+							 (0.4, 0.8),
+							 (0.0, 0.8)]
+							]
+								
+
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
