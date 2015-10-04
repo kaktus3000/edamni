@@ -518,6 +518,15 @@ tk.Button(acuButtonFrame, bitmap="@xbm/add.xbm", command=addAcousticElement).gri
 
 #functions for import and export of simulation definitions
 def loadDefinition(strFile):
+	print("deleting old objects")
+	if speakerListBox.size() > 0:
+		speakerListBox.delete(0, speakerListBox.size())
+
+	acuCanvas.delete("all")
+	g_lLinks.clear()
+
+	g_dAcousticElements.clear()
+	
 	print("loading from file", strFile ,"...")
 	global g_iIDCounter
 	tree = ET.parse(strFile)
@@ -605,6 +614,7 @@ def loadDefinition(strFile):
 						sFinished.add(end2)
 	#update visuals
 	acuCanvas.after_idle(drawCanvasLines)
+	acuCanvas.after(1,drawCanvasLines)
 	
 	print("finished loading")
 

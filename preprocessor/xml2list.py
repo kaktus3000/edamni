@@ -381,7 +381,7 @@ for sectionID in hornDict.keys():
 		writeElem(posElID, lNegNeighbors, lPosNeighbors, posDamping)
 
 	elif sectionType == "speaker":
-		hElemFile.write("s\n")
+		hElemFile.write("s " + sectionDict["type"] + "\n")
 		neighborList = neighborDict[sectionID]
 		print("speaker neighbors:", neighborList)
 
