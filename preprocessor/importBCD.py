@@ -50,9 +50,9 @@ def parseSpeakerFile(strSpeakerFile, strOutFile):
 		for section in config.sections():
 			if section == "Units":
 				continue
-			print("section: ", section)
+#			print("section: ", section)
 			if fieldName in config[section]:
-				print("fieldName: ", fieldName)
+#				print("fieldName: ", fieldName)
 				strValue = config[section][fieldName]
 				
 				orgVal = float(strValue.replace(",", "."))
