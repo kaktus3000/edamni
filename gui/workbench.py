@@ -10,6 +10,10 @@ from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import asksaveasfilename
 from tkinter import messagebox
+import configparser
+import numpy
+
+from subprocess import call
 
 #fancy stuff
 from functools import partial
@@ -104,7 +108,7 @@ speakerListBox.grid(sticky=tk.N+tk.S+tk.W+tk.E)
 def addSpeaker(*args):
 	speakerFileName = askopenfilename(initialdir="../preprocessor/bcd")
 	
-	speakerListBox.insert(tk.END, speakerFileName.rsplit("/", 1)[1].replace(".bcd", ""))
+	speakerListBox.insert(tk.END, speakerFileName.rsplit("/", 1)[1].replace(".xml", ""))
 
 def removeSpeaker(*args):
 	lSelections = speakerListBox.curselection()
@@ -665,7 +669,58 @@ def saveDefinition(strFile):
 
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
-ttk.Button(simuFrame, text="Run Simulation", command=exit).grid()
+
+def onSimulationButtonClick():
+    #write xml file of setup
+    strFilename = "current_simulation"
+    
+    strXMLFile = strFilename + ".xml"
+    
+    saveDefinition(strXMLFile)
+
+    #write element list
+    strElementListFile = strFilename + ".txt"
+    
+    #writeElementList(strElementListFile)
+    call(["python3", "../preprocessor/xml2list.py", strXMLFile, strElementListFile])
+    
+    strImageFile = strFilename + ".png"
+    call(["python3", "../preprocessor/list2img.py", strElementListFile, strImageFile])
+    
+    
+    config = configparser.ConfigParser()
+    
+    g_fMaxTimeStep = 0.001
+    
+    config['general'] = {'element_file': strElementListFile,
+                         'max_timestep': str(g_fMaxTimeStep)}
+
+    strSignalType = "sine"
+
+    lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
+    strFreqs = ""
+    for fFreq in lfFreqs:
+        strFreqs += str(fFreq) + "; "
+
+    g_iSignalPeriods = 15
+    g_iTrailingPeriods = 15
+
+    config['signal'] = {'signal_type': strSignalType,
+                        'frequencies': strFreqs,
+                        'signal_periods': str(g_iSignalPeriods),
+                        'trailing_periods': str(g_iTrailingPeriods)}
+
+    dSpeakers = dict()
+    for iSpeaker in range(speakerListBox.size()):
+        dSpeakers[speakerListBox.get(iSpeaker)] = speakerListBox.get(iSpeaker)
+
+    config['speakers'] = dSpeakers
+
+    #open simulation input file for writing
+    with open(strFilename + ".in", 'w') as configfile:
+        config.write(configfile) 
+
+ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 
 #create frame for mode results
 resultsFrame = ttk.Frame(mainFrame)
