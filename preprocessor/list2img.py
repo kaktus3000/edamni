@@ -6,6 +6,19 @@ from PIL import Image
 import math
 import sys
 
+g_lSpeakerVectorGraphics = [[(0.0, 0.0),
+							 (1.0, 0.0),
+							 (0.6, 0.4),
+							 (0.0, 0.4)],
+							[(0.3, 0.4),
+							 (0.3, 0.5)],
+							[(0.0, 0.5),
+							 (0.4, 0.5),
+							 (0.4, 0.8),
+							 (0.0, 0.8)]
+							]
+								
+
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
@@ -117,13 +130,29 @@ while iLine < len(aLines):
 
 #build directed graph from speaker
 #search positive direction
-def subGraph(elems, elem, positiveDir, currGraph):
+def subGraph(elems, elem, currGraph):
+	#there should be only one direction to go
+	currGraph.append(elem)
+	
+	if len(elems[elem].positiveNeighbors) > 0:
+		(elem, area) = elems[elem].positiveNeighbors[0]
+	else:
+		(elem, area) = elems[elem].negativeNeighbors[0]
+	
 	while(elem > 0):
+#		print("lastElem:", lastElem, "elem:", elem, "neg:", elems[elem].negativeNeighbors, "pos:", elems[elem].positiveNeighbors)
+
+		bFound = False
+		for (neighID, area) in elems[elem].positiveNeighbors:
+			if neighID in currGraph:
+				bFound = True
+		
 		neighs = []
-		if positiveDir:
-			neighs = elems[elem].positiveNeighbors
-		else:
+
+		if bFound:
 			neighs = elems[elem].negativeNeighbors
+		else:
+			neighs = elems[elem].positiveNeighbors
 
 		nNeighs = len(neighs)
 #		print("elem", elem, elems[elem], "has", nNeighs, "neighs")
@@ -148,8 +177,8 @@ def subGraph(elems, elem, positiveDir, currGraph):
 	return currGraph
 
 print(speakers[0])
-negGraph = subGraph(elems, speakers[0].negativeElem, False, [])
-posGraph = subGraph(elems, speakers[0].positiveElem, True, [])
+negGraph = subGraph(elems, speakers[0].negativeElem, [])
+posGraph = subGraph(elems, speakers[0].positiveElem, [])
 
 negGraph.reverse()
 

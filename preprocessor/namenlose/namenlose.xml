@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!--http://www.hifi-forum.de/viewthread-267-592.html-->
+
 <!DOCTYPE horn SYSTEM "../horn.dtd">
 
 <horn dx="0.005">
 	<wall id="rear_wall">
 		<A2>.137</A2>
-		<damping_thickness>0.14</damping_thickness>
+		<damping_thickness>0.09</damping_thickness>
+		<damping_transient>0.05</damping_transient>
 		<damping_constant>17100</damping_constant>
 		<neighbor2 ref="rear_chamber" />
 	</wall>
+
 	<conical id="rear_chamber">
 		<length>.21</length>
 		<A1>.137</A1>
@@ -17,9 +21,11 @@
 		<neighbor1 ref="rear_wall" />
 		<neighbor2 ref="speaker" />
 	</conical>
+
 	<speaker id="speaker">
 		<A1>0.35</A1>
 		<A2>0.0855</A2>
+		<type>Monacor_SP-38A500BS</type>
 		<neighbor1 ref="rear_chamber" />
 		<neighbor2 ref="pressure_chamber" />
 	</speaker>
@@ -32,6 +38,10 @@
 		<neighbor1 ref="speaker" />
 		<neighbor2 ref="nozzle" />
 	</conical>
+
+	<mic id="chamber_mic">
+		<neighbor2 ref="pressure_chamber" />
+	</mic>
 	
 	<conical id="nozzle">
 		<length>.01</length>
@@ -51,11 +61,15 @@
 		<neighbor2 ref="throat" />
 	</conical>
 	
-	<mouth id="throat">
+	<space id="throat">
 		<A1>.4</A1>
-		<space>0.25</space>
-		<free_length>1.0</free_length>
+		<fraction>0.25</fraction>
+		<length>1.0</length>
 		<neighbor1 ref="horn" />
-	</mouth>
+	</space>
+
+	<mic id="SPL">
+		<neighbor2 ref="throat" />
+	</mic>
 
 </horn>
