@@ -151,6 +151,8 @@ bool getSignalType(std::ifstream &file, int &LineInFile, const char* const label
 	std::cout<<"Bad File: Unknown signal typ: "<<buffer<<" found @Line: "<<std::endl;
 }
 
+
+
 bool loadControlFile(char* filename,cfData &data)
 {
 	std::cout<<"Load configuration-file: "<<filename<<std::endl;
