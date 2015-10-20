@@ -11,7 +11,7 @@
 
 
 
-int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int param)
+int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, float param)
 {
 	bool start=true;
 
@@ -34,11 +34,23 @@ int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int param)
 
 		for (unsigned int j=0;j <field[0].speakers.size();j++) // calculate new velocitys for speakers
 		{
-			field->speakers[j].position->velocity=field->speakers[j].f(field->info->dt, //timestep
+			field->speakers[j].position->velocity= field->speakers[j].f(field->info->dt, //timestep
 																field->speakers[j], //speakerinfo
 																param,  //param
 																start);
-			
+			field->speakers[j].position2->velocity=field->speakers[j].f(field->info->dt, //timestep
+																field->speakers[j], //speakerinfo
+																param,  //param
+																start);
+
+			//std::cout<<"v1: "<<field->speakers[j].position->velocity<<std::endl;
+			//std::cout<<"p1: "<<field->speakers[j].position->positiveNeighbour->pressure<<std::endl;
+
+
+			//std::cout<<"v2: "<<field->speakers[j].position2->velocity<<std::endl;
+			//std::cout<<"p2: "<<field->speakers[j].position2->negativeNeighbour->pressure<<std::endl;
+
+
 		}// calculate new velocitys for speakers
 
 		for (unsigned int k=0; k<field->openElements.size();k++)// calculate new velocitys for the open ends

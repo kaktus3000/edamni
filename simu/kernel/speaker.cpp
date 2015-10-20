@@ -1,7 +1,7 @@
 #include "speaker.h"
 //this is a speaker model.
 
-
+#include <iostream>
 
 //auxilary function for load speaker TSP
 // needs a tsp label and a corrosponding tsp value
@@ -78,7 +78,7 @@ bool convertTSP(fSpeakerDescriptor &desc)
 	if( desc.springForce<=0) return false;
 
 	desc.springForce=1.0f/desc.springForce;
-	desc.resitanceMass=desc.bl*desc.bl/desc.resitanceMass;
+	//desc.resitanceMass=desc.resitanceMass;
 
 	return true;
 }
@@ -196,7 +196,7 @@ bool loadTSPSet(const char* filename,fSpeakerDescriptor &desc, const int id)
 
 }
 
-bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal)
+bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal, f1DCalculationDescriptor  const &desc)
 {
 	if (testsignal==0)
 	{
@@ -205,9 +205,14 @@ bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,p
 	}
 	for(unsigned int i=0; i<speakers.size();i++)
 	{
+
 		speakers[i].reset(testsignal);
 		speakers[i].airmass=0.0f;
 		if (!loadTSPSet(filename,speakers[i].speakerDescriptor,0)) return false;
+
+		speakers[i].position->crossSectionArea=speakers[i].speakerDescriptor.sd;
+		//speakers[i].position2->crossSectionArea=speakers[i].speakerDescriptor.sd;
+		speakers[i].monitor.initialize(speakers[i].ID,desc.numberTimesteps,desc.dt);
 	}
 	return true;
 }
@@ -239,13 +244,15 @@ int speakerdgl (float u,float dt,fSpeakerDescriptor const & desc,float & v,float
 	if( desc.bl==0) return 0;
 	if( desc.mass==0) return 0;
 
-	i= (u+desc.bl*v+desc.inductance*i/dt)/(desc.DCResistance+desc.inductance/dt);
-	float iind= (-desc.bl*v-desc.resitanceMass*i)/desc.resitanceMass; //inductive current
-	float forceMembran=desc.bl*iind;
-	float a=(forceMembran+(p_left-p_right)*desc.sd-x*desc.springForce)/(desc.mass+airmass);
-
-	x=x+v*dt;
+	i= (u-desc.bl*v+desc.inductance*i/dt)/(desc.DCResistance+desc.inductance/dt);
+	//float iind= (-desc.bl*v-desc.resitanceMass*i)/desc.resitanceMass; //inductive current
+	float forceMembran=desc.bl*i;
+	float a=(+forceMembran+(p_left-p_right)*desc.sd-x*desc.springForce-desc.resitanceMass*u/desc.bl)/(desc.mass+airmass);
 	v=v+a*dt;
+	//v=0;
+	x=x+v*dt;
+	//std::cout<<"U: "<<u<<" I: "<<i<<" v: "<<v<<" x: "<<x<<std::endl;
+
 
 	return 1;
 }

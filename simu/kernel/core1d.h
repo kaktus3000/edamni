@@ -15,6 +15,6 @@
 	
 
 
-int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, int param);
+int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, float param);
 
 #endif //CORE1D_H

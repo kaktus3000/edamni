@@ -17,7 +17,7 @@
 #include <sstream>
 
 
-bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal);
+bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal, f1DCalculationDescriptor  const &desc);
 
 bool resetspeakers(std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal);
 

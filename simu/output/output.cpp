@@ -35,7 +35,7 @@ bool writeOutput(char* pcOutput,f1DCalculationContainer const *
 bool writeOutput(char* pcOutput,f1DMicrophone &microphone)
 {
 	std::ostringstream  ostr;
-	ostr<<pcOutput<<"_m"<<microphone.ID;
+	ostr<<pcOutput<<"_mic"<<microphone.ID;
 	std::string str(ostr.str());
 	std::ofstream output(str.c_str());
 
@@ -46,6 +46,44 @@ bool writeOutput(char* pcOutput,f1DMicrophone &microphone)
 		return false;
 	}
     microphone.writeToStream(output);
+
+	output.close();
+	return true;
+}
+
+bool writeOutput(char* pcOutput,frequencyOutput  &data,int ID)
+{
+	std::ostringstream  ostr;
+	ostr<<pcOutput<<"_frequency_response"<<ID;
+	std::string str(ostr.str());
+	std::ofstream output(str.c_str());
+
+    if (!output.is_open()){//create file stream and check it
+		std::cout<<"Error while opening file: "<<std::endl;
+        std::perror(str.c_str());
+		std::cout<<"Berechnung beendet"<<std::endl;
+		return false;
+	}
+    data.writeToStream(output);
+
+	output.close();
+	return true;
+}
+
+bool writeRms(char* pcOutput,frequencyOutput  &data,int ID)
+{
+	std::ostringstream  ostr;
+	ostr<<pcOutput<<"_rms"<<ID;
+	std::string str(ostr.str());
+	std::ofstream output(str.c_str());
+
+    if (!output.is_open()){//create file stream and check it
+		std::cout<<"Error while opening file: "<<std::endl;
+        std::perror(str.c_str());
+		std::cout<<"Berechnung beendet"<<std::endl;
+		return false;
+	}
+    data.writeToStream(output);
 
 	output.close();
 	return true;

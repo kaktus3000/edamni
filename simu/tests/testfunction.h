@@ -18,16 +18,16 @@
 // c= contionious loop;
 // s= single wave
 
-float deltaimpuls (float dt,f1DSpeaker & speaker,int param=0,bool reset=false);//param = impulse duration in timesteps+1, reset will reset the function to t=0;
+float deltaimpuls (float dt,f1DSpeaker & speaker,float param,bool reset=false);//param = impulse duration in timesteps+1, reset will reset the function to t=0;
 
-float csin (float dt,f1DSpeaker & speaker,int param,bool reset);
+float csin (float dt,f1DSpeaker & speaker,float param,bool reset);
 
-float hdeltaimpuls (float dt,f1DSpeaker & speaker,int param,bool reset=false);  //param is not needed, reset will reset the function to t=0;
+float hdeltaimpuls (float dt,f1DSpeaker & speaker,float param,bool reset=false);  //param is not needed, reset will reset the function to t=0;
 
-float hcsin (float dt,f1DSpeaker & speaker,int param,bool reset=false); //continous sin wave ,param = frequence
+float hcsin (float dt,f1DSpeaker & speaker,float param,bool reset=false); //continous sin wave ,param = frequence
 
 
-float hcsin2 (float dt,f1DSpeaker & speaker,int param,bool reset=false); //continous sin² wave ,param = frequence
+float hcsin2 (float dt,f1DSpeaker & speaker,float param,bool reset=false); //continous sin² wave ,param = frequence
 
-float hssin2 (float dt,f1DSpeaker & speaker,int param,bool reset=false); //single sin² wave ,param = frequence
+float hssin2 (float dt,f1DSpeaker & speaker,float param,bool reset=false); //single sin² wave ,param = frequence
 #endif

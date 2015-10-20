@@ -2,6 +2,7 @@
 echo "base filename $1"
 
 python3 ../preprocessor/xml2list.py $1.xml $1.elems.txt
+echo "test"
 python3 ../preprocessor/list2img.py $1.elems.txt $1.png
 
 ./simu $1.elems.txt $1.tsp.txt $1.output.txt

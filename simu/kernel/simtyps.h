@@ -34,16 +34,20 @@
 #define TEMPERATURE 293.15 // in [K]
 #define GASCONSTANT  287.0*1.4f // gasconstant of air [J/(kg K)]
 
+#define STARTFREQUENCY 35.0f
+#define ENDFREQUENCY 700.0f
+#define TENTHSQRT2 1.07177f
+#define STEPSTOIGNORE 7000
 
 
 // Referencepressure to calculate sound pressure in db
-#define PRESSUREREFERENCE 0.00002 // This means a sound pressure of p 0.00002 equal zero db
+#define PRESSUREREFERENCE 2e-5f // This means a sound pressure of p 0.00002 equal zero db
 #define MAX_ELEMENTS_FOR_INFINITE 1000
 #define OPEN_ELEMENT_DAMPING 0.98f
-#define DEFAULT_NUM_OPEN_ELEMENTS 500
-#define DEFAULT_TIME_STEPS 2000
+#define DEFAULT_NUM_OPEN_ELEMENTS 50
+#define DEFAULT_TIME_STEPS 10000
 
-#define VOLTAGE_DEFAULT 2.83f
+#define VOLTAGE_DEFAULT 4.0f
 
 // the designation of the datatypes is of the following form
 // [precision][dimensions][functionname]
@@ -115,19 +119,146 @@ struct f1DConnector{ //Fully Description of an element of the raw-file
 };
 
 
-struct f1DSpeaker;
 
-typedef float (*pVelocityFunction) (float ,f1DSpeaker & ,int ,bool ); // ( (dt, timestepsize, speaker, param for giving a value to the function eg frequence, reset (function will be reseted if true)
+struct f1DSpeakerMonitor{ //Fully Description of an element of the raw-file
+private:
+	unsigned int m_pos;
+	float m_dt;
+	std::vector<float> m_u;
+	std::vector<float> m_i;
+	std::vector<float> m_v;
+	std::vector<float> m_x;
+public:
+	int ID;
+	f1DSpeakerMonitor()
+	{
+		ID=0;
+		m_dt=0;
+		m_pos=0;
+		m_u.clear();
+		m_i.clear();
+		m_v.clear();
+		m_x.clear();
+
+	}
+	void initialize(int id, unsigned int size, float dt)
+	{
+		m_dt=dt;
+		ID=id;
+		m_u.clear();
+		m_v.clear();
+		m_x.clear();
+		m_i.clear();
+		for (unsigned int i=0;i<size;i++)
+		{
+			m_u.push_back(0.0f);
+			m_v.push_back(0.0f);
+			m_x.push_back(0.0f);
+			m_i.push_back(0.0f);
+		}
+		m_pos=0;
+
+	}
+	void resize(unsigned int size){
+		m_u.clear();
+		m_v.clear();
+		m_x.clear();
+		m_i.clear();
+		for (unsigned int i=0;i<size;i++)
+		{
+			m_u.push_back(0.0f);
+			m_v.push_back(0.0f);
+			m_x.push_back(0.0f);
+			m_i.push_back(0.0f);
+		}
+		m_pos=0;
+	}
+	void resetBuffer(){
+		m_pos=0;
+		for (unsigned int i=0;i<m_u.size();i++)
+		{
+			m_u[i]=0;
+			m_i[i]=0;
+			m_v[i]=0;
+			m_x[i]=0;
+		}
+	}
+	void putValue(float u,float i, float v, float x)
+	{
+		if (m_pos<m_u.size())
+		{
+			m_u[m_pos]= u;
+			m_i[m_pos]= i;
+			m_x[m_pos]= x;
+			m_v[m_pos]= v;
+			m_pos++;
+		}
+	}
+	float getU(unsigned int index)
+	{
+		if (index<m_u.size())
+		{
+			return m_u[index];
+		}
+		return 0.0f;
+	}
+	float getI(unsigned int index)
+	{
+		if (index<m_i.size())
+		{
+			return m_i[index];
+		}
+		return 0.0f;
+	}
+	float getV(unsigned int index)
+	{
+		if (index<m_v.size())
+		{
+			return m_v[index];
+		}
+		return 0.0f;
+	}
+	float getX(unsigned int index)
+	{
+		if (index<m_x.size())
+		{
+			return m_x[index];
+		}
+		return 0.0f;
+	}
+	float getDt()
+	{
+		return m_dt;
+	}
+	int getSize()
+	{
+		return m_u.size();
+	}
+	std::ofstream& writeToStream(std::ofstream& os)
+	{
+		//os<<ID<<'\n';
+		for (unsigned int i=0;i<m_u.size();i++)
+		{
+			os<<i*m_dt<<'\t'<<m_u[i]<<'\n'<<m_i[i]<<'\n'<<m_v[i]<<'\n'<<m_x[i]<<'\n';
+		}
+		return os;
+	}
+};
+
+struct f1DSpeaker;
+typedef float (*pVelocityFunction) (float ,f1DSpeaker & ,float ,bool ); // ( (dt, timestepsize, speaker, param for giving a value to the function eg frequence, reset (function will be reseted if true)
 
 struct f1DSpeaker{ //Fully Description of an element of the raw-file	
 	int ID;
 	fSpeakerDescriptor speakerDescriptor;	//TSP parameter of the speaker
 	f1DConnector* position;
+	f1DConnector* position2;
 	float airmass;
 	float v;
 	float x;
 	float i;
 	pVelocityFunction f;
+	f1DSpeakerMonitor monitor;
 	f1DSpeaker()
 	{
 		airmass=0.0f;
@@ -137,6 +268,8 @@ struct f1DSpeaker{ //Fully Description of an element of the raw-file
 		f=0;
 		ID=0;
 		position=0;
+		position2=0;
+
 	}
 	void reset(pVelocityFunction ptr)
 	{
@@ -144,6 +277,11 @@ struct f1DSpeaker{ //Fully Description of an element of the raw-file
 		x=0.0f;
 		v=0.0f;
 		i=0.0f;
+		monitor.resetBuffer();
+	}
+	void storeStatus(float u)
+	{
+		monitor.putValue(u,i,v,x);
 	}
 };
 
@@ -152,6 +290,7 @@ private:
 	unsigned int m_pos;
 	float m_dt;
 	std::vector<float> m_values;
+	std::vector<float> m_values2;
 public:
 	int ID;	
 	f1DElement* refE; //id of messured element
@@ -161,39 +300,109 @@ public:
 		m_dt=dt;
 		m_pos=0;
 		m_values.clear();
+		m_values2.clear();
 		refE=0;
 		for (unsigned int i=0;i<size;i++)
+		{
 			m_values.push_back(0.0f);
+			m_values2.push_back(0.0f);
+		}
 	}
 	void resize(unsigned int size){
 		m_values.clear();
+		m_values2.clear();
 		for (unsigned int i=0;i<size;i++)
 			m_values.push_back(0.0f);
+			m_values2.push_back(0.0f);
 		m_pos=0;
 	}
 	void resetBuffer(){
 		m_pos=0;
 		for (unsigned int i=0;i<m_values.size();i++)
+		{
 			m_values[i]=0;
+			m_values2[i]=0;
+		}
 	}
-	void putValue(float value)
+	void putValue(float value,float value2 =0)
 	{
 		if (m_pos<m_values.size())
 		{
 			m_values[m_pos]= value;
+			m_values2[m_pos]= value;
 			m_pos++;
 		}
+	}
+	float getValue(unsigned int index)
+	{
+		if (index<m_values.size())
+		{
+			return m_values[index];
+		}
+		return 0.0f;
+	}
+	float get()
+	{
+		return m_values[m_pos];
+	}
+	int getPos()
+	{
+		return m_pos;
+	}
+	float getValue2(unsigned int index)
+	{
+		if (index<m_values2.size())
+		{
+			return m_values2[index];
+		}
+		return 0.0f;
+	}
+	float getDt()
+	{
+		return m_dt;
+	}
+	int getSize()
+	{
+		return m_values.size();
 	}
 	std::ofstream& writeToStream(std::ofstream& os)
 	{
 		//os<<ID<<'\n';
 		for (unsigned int i=0;i<m_values.size();i++)
 		{
-			os<<i*m_dt<<'\t'<<m_values[i]<<'\n';
+			os<<i*m_dt<<'\t'<<m_values[i]<<'\n'<<m_values2[i]<<'\n';
 		}
 		return os;
 	}
 };
+
+struct frequencyOutput{
+private:
+	std::vector<float> m_frequencies;
+	std::vector<float> m_values;
+public:
+	frequencyOutput()
+	{
+		 m_frequencies.clear();
+		 m_values.clear();
+	}
+	void storeData(float frequency, float value)
+	{
+		m_frequencies.push_back(frequency);
+		m_values.push_back(value);
+	}
+	std::ofstream& writeToStream(std::ofstream& os)
+	{
+		//os<<ID<<'\n';
+		for (unsigned int i=0;i<m_frequencies.size();i++)
+		{
+			os<<m_frequencies[i]<<'\t'<<m_values[i]<<'\n';
+		}
+		return os;
+	}
+};
+
+
 
 struct f1DOpenElement{
 	int ID;

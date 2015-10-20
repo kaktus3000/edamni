@@ -37,6 +37,8 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container,i
 
 int checkKernelInput(f1DCalculationContainer* container);
 
+int preCalculate(f1DCalculationContainer* container, int param=0);
+
 #define nullptr 0
 
 

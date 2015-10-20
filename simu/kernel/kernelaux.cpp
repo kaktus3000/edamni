@@ -19,7 +19,7 @@ int useDefaultDescriptor(f1DCalculationDescriptor* desc){
 
 int fullfillDescriptor(f1DCalculationContainer* container){ //calculate dt and damping from dx
 	if (container->dx<=0.0f) return FATAL_ERROR;
-	container->info->dt=0.499f*container->dx/(float)sqrt(container->info->gasconstant*container->info->temperature);
+	container->info->dt=0.2f*container->dx/(float)sqrt(container->info->gasconstant*container->info->temperature);
 	container->info->OpenEndLength=container->dx*container->info->OpenEndElements;
 	container->info->OpenElementsDamping=static_cast<float>(OPEN_ELEMENT_DAMPING); //To do : has to be calculated from timestep
 	return NO_ERR;
@@ -915,20 +915,23 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 		dummySpeaker.ID=unparsedSpeakers[i].ID;
 		dummySpeaker.f=nullptr;
 		//create connection
-		dummyConnector.crossSectionArea=(unparsedSpeakers[i].area1+unparsedSpeakers[i].area2)*0.5f;
-		dummyConnector.ID=IDOffset+container->speakers.size();
+		dummyConnector.crossSectionArea=unparsedSpeakers[i].area1;
+		dummyConnector.ID=IDOffset+container->speakers.size()*2;
 		dummyConnector.damping=0.0f;
+
 		dummyConnector.negativeNeighbour=getNeighbourPointer(unparsedSpeakers[i].ref1,container->elements); //parse the p-pointers 
 		if(!dummyConnector.negativeNeighbour){
 			std::cout<<"Element with ID: "<<unparsedSpeakers[i].ref1<<" could not be found for speaker ID: "<<dummySpeaker.ID<<" @line: "<<(unparsedSpeakers[i].line+1)<<std::endl;
 			return FATAL_ERROR;
 		}
 
-		dummyConnector.positiveNeighbour=getNeighbourPointer(unparsedSpeakers[i].ref2,container->elements);
-		if(!dummyConnector.positiveNeighbour){
-			std::cout<<"Element with ID: "<<unparsedSpeakers[i].ref2<<" could not be found for speaker ID: "<<dummySpeaker.ID<<" @line: "<<(unparsedSpeakers[i].line+2)<<std::endl;
+		dummyConnector.positiveNeighbour=getNeighbourPointer(unparsedSpeakers[i].ref2,container->elements); //parse the p-pointers
+		if(!dummyConnector.negativeNeighbour){
+			std::cout<<"Element with ID: "<<unparsedSpeakers[i].ref1<<" could not be found for speaker ID: "<<dummySpeaker.ID<<" @line: "<<(unparsedSpeakers[i].line+1)<<std::endl;
 			return FATAL_ERROR;
 		}
+		//dummyConnector.positiveNeighbour=dummyConnector.negativeNeighbour;
+
 		dummyConnector.vfactor=container->info->dt/(container->dx*container->info->dt);//initialize
 		dummyConnector.velocity=0;
 		container->connectors.push_back(dummyConnector);//connection is created
@@ -948,6 +951,36 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 			std::cout<<"Error during v-element creation for speaker coupling"<<std::endl;
 			return FATAL_ERROR;
 		}
+
+
+
+		dummySpeaker.position=&container->connectors[container->connectors.size()-1];
+		//dummySpeaker.airmass= container->connectors[container->connectors.size()-1].crossSectionArea*container->dx*container->info->density;
+
+		if (dummySpeaker.position==nullptr){
+			std::cout<<"Lost speaker pointer to Connector!"<<std::endl;
+			std::cout<<"ref1: "<<unparsedSpeakers[i].ref1<<std::endl;
+			std::cout<<"ref2: "<<unparsedSpeakers[i].ref2<<std::endl;
+			return FATAL_ERROR;
+		}
+
+		//dummyConnector.crossSectionArea=unparsedSpeakers[i].area2;
+		//dummyConnector.ID=IDOffset+container->speakers.size()*2+1;
+		//dummyConnector.damping=0.0f;
+
+
+		//dummyConnector.positiveNeighbour=dummyConnector.negativeNeighbour;
+
+		//dummyConnector.vfactor=container->info->dt/(container->dx*container->info->dt);//initialize
+		//dummyConnector.velocity=0;
+		//container->connectors.push_back(dummyConnector);//connection is created
+
+		//create v-pointers and map them to the created connector
+		//check if the connectors neighbours have closed ends
+		// speaker is connected to closed end
+		// new v-pointer is created from element with closed end to speaker-connector-element
+		//for the negative side
+
 		//for the positive side
 		if(container->connectors[container->connectors.size()-1].positiveNeighbour->negativeNeighbours.size()==0){
 			container->connectors[container->connectors.size()-1].positiveNeighbour->negativeNeighbours.push_back(&container->connectors[container->connectors.size()-1]);
@@ -961,15 +994,16 @@ int parseAndMapSpeakers(f1DCalculationContainer* container,std::vector<speakerPa
 		}
 
 
-		dummySpeaker.position=&container->connectors[container->connectors.size()-1];
+		dummySpeaker.position2=&container->connectors[container->connectors.size()-1];
 		dummySpeaker.airmass= container->connectors[container->connectors.size()-1].crossSectionArea*container->dx*container->info->density;
 
-		if (dummySpeaker.position==nullptr){
+		if (dummySpeaker.position2==nullptr){
 			std::cout<<"Lost speaker pointer to Connector!"<<std::endl;
 			std::cout<<"ref1: "<<unparsedSpeakers[i].ref1<<std::endl;
 			std::cout<<"ref2: "<<unparsedSpeakers[i].ref2<<std::endl;
 			return FATAL_ERROR;
 		} 
+
 		container->speakers.push_back(dummySpeaker);
 	}
 	return NO_ERR;
@@ -1139,6 +1173,11 @@ int preCalculateFactors(f1DCalculationContainer* container){
 			(container->info->density*container->dx*0.5f*(container->connectors[i].crossSectionArea+0.5f*
 			(area01+area12)));
 	}
+
+	for (unsigned int i=0;i<container->speakers.size();i++){
+		container->speakers[i].position->vfactor=container->info->dt/(container->dx*container->info->density);//initialize
+		container->speakers[i].position2->vfactor=container->info->dt/(container->dx*container->info->density);//initialize
+	}
 	return NO_ERR;
 }
 
@@ -1211,24 +1250,20 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 
 	//now speaker elements are created and mapped on v-elements
 
+
+
 	error=parseAndMapSpeakers(container,unparsedSpeakers);
 	if(error){
 		std::cout<<"Error during Speaker parsing and mapping!"<<std::endl;
 		return error;
 	}
-
-
-	preCalculateFactors(container);
-
-	//now open-end elements are initialized 
-
-
 	error= initializeOpenEnds(container);
 	if(error){
 		std::cout<<"Error while creating OpenEndElements!"<<std::endl;
 		return error;
 	}
-		// To do create micropohnes and map them to p-elements
+
+	// To do create micropohnes and map them to p-elements
 	error=initializeMicrophones(container,unparsedMicrophones);
 	if(error){
 		std::cout<<"Error while initializing microphones!"<<std::endl;
@@ -1238,7 +1273,10 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 
 
 	//Show Parsing Result
+
 	std::cout<<std::endl;
+	std::cout<<container->info->dt<<std::endl;
+	std::cout<<container->dx<<std::endl;
 	std::cout<<"**************************************"<<std::endl;	
 	std::cout<<"Parsing data to kernel successfully done."<<std::endl;
 	std::cout<<"**************************************"<<std::endl;	
@@ -1247,7 +1285,16 @@ int load1DKernelInput(const char* filename, f1DCalculationContainer* container, 
 	std::cout<<container->speakers.size()<<" Speaker(s) were created"<<std::endl;
 	std::cout<<container->microphones.size()<<" Microphone(s) were created"<<std::endl;
 	std::cout<<container->openElements.size()<<" Infinite baffle(s) were created"<<std::endl;
-	std::cout<<"**************************************"<<std::endl;	
+	std::cout<<"**************************************"<<std::endl;
+
 	return NO_ERR; //pointer to buffer, buffersize in bytes
 }
 
+int preCalculate(f1DCalculationContainer* container, int param)
+{
+
+	return preCalculateFactors(container);
+
+	//now open-end elements are initialized
+
+}
