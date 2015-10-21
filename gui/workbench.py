@@ -161,9 +161,6 @@ acuCanvas = tk.Canvas(acuCircuitFrame)
 acuCanvas['background'] = '#fff'
 acuCanvas.grid(row=1, column=0, sticky=tk.N+tk.S+tk.W+tk.E)
 
-#modes for the gui to be in
-lElementTypes = ['Conical', 'Exponential', 'Mic', 'Open', 'Speaker', 'Wall']
-
 #dictionary with element options
 #buttons: row, column
 #in the four rotation states
@@ -189,7 +186,7 @@ g_dElements = dict(
 	Space = [ [[(1, 0), (2, 1), (1, 2), (0, 1)]],
 			('A1', 'm^2'),
 			('length', 'm'),
-			('fraction', '')],
+			('fraction', '1')],
 
 	Speaker = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),
@@ -202,6 +199,8 @@ g_dElements = dict(
 			('A3', 'm^2')],
 
 	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('A1', 'm^2'),
+			('A2', 'm^2'),
 			('name', '')]
 )
 
@@ -337,11 +336,14 @@ class MovableHandler:
 
 			for iProp in range(len(lTextVars)):
 				propName, propUnit = g_dElements[strElementType][1 + iProp]
-				if propName == "type":
+				
+				#catch string properties
+				if propUnit == "":
 					g_dAcousticElements[self.strID].m_lValues[iProp] = lTextVars[iProp].get()
 				else:
+					#rest must be floats and this will be enforced
 					try:
-						fValue = float(lTextVars[iProp].get())
+						fValue = float(lTextVars[iProp].get().replace(",","."))
 						g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
 					except ValueError:
 						#input was invalid, reset field
@@ -618,7 +620,7 @@ def loadDefinition(strFile):
 						sFinished.add(end2)
 	#update visuals
 	acuCanvas.after_idle(drawCanvasLines)
-	acuCanvas.after(1,drawCanvasLines)
+	acuCanvas.after(100,drawCanvasLines)
 	
 	print("finished loading")
 
@@ -670,55 +672,143 @@ def saveDefinition(strFile):
 #create frame for mode simulation
 simuFrame = ttk.Frame(mainFrame)
 
+def parseColumns(hFile):
+	points = []
+	for line in hFile:
+		numbers = line.split("\t")
+		#garbage input -> terminate
+		if len(numbers[0]) == 0:
+			break
+		aNumbers = []
+		for number in numbers:
+			aNumbers.append( float(number))
+
+		points.append(aNumbers)
+	return points
+
+def rmsColumn(aData, iColumn):
+	fSquares = 0
+	for aLine in aData:
+		fData = aLine[iColumn]
+		fSquares += fData * fData
+	return math.sqrt(fSquares / float(len(aData)) )
+
+def cutRows(aData, fStart, fEnd):
+	aOut = []
+	for aLine in aData:
+		if aLine[0] >= fStart  and aLine[0] <= fEnd:
+			aOut.append(aLine)
+	return aOut
+
 def onSimulationButtonClick():
-    #write xml file of setup
-    strFilename = "current_simulation"
-    
-    strXMLFile = strFilename + ".xml"
-    
-    saveDefinition(strXMLFile)
+	#write xml file of setup
+	strFile = "current_simulation"
+	strDir = "../temp/"
+	strFilename = strDir + strFile
 
-    #write element list
-    strElementListFile = strFilename + ".txt"
-    
-    #writeElementList(strElementListFile)
-    call(["python3", "../preprocessor/xml2list.py", strXMLFile, strElementListFile])
-    
-    strImageFile = strFilename + ".png"
-    call(["python3", "../preprocessor/list2img.py", strElementListFile, strImageFile])
-    
-    
-    config = configparser.ConfigParser()
-    
-    g_fMaxTimeStep = 0.001
-    
-    config['general'] = {'element_file': strElementListFile,
-                         'max_timestep': str(g_fMaxTimeStep)}
+	
+	strXMLFile = strFilename + ".xml"
+	
+	saveDefinition(strXMLFile)
 
-    strSignalType = "sine"
+	#write element list
+	strElementListFile = strFilename + ".txt"
+	
+	#writeElementList(strElementListFile)
+	call(["python3", "../tools/xml2list.py", strXMLFile, strElementListFile])
+	
+	strImageFile = strFilename + ".png"
+	call(["python3", "../tools/list2img.py", strElementListFile, strImageFile])
+	
+	
+	config = configparser.ConfigParser()
+	
+	g_fMaxTimeStep = 0.001
+	
+	config['general'] = {'element_file': strElementListFile,
+						 'max_timestep': str(g_fMaxTimeStep)}
 
-    lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
-    strFreqs = ""
-    for fFreq in lfFreqs:
-        strFreqs += str(fFreq) + "; "
+	strSignalType = "sine"
 
-    g_iSignalPeriods = 15
-    g_iTrailingPeriods = 15
+	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
+	strFreqs = ""
+	for fFreq in lfFreqs:
+		strFreqs += str(fFreq) + "; "
 
-    config['signal'] = {'signal_type': strSignalType,
-                        'frequencies': strFreqs,
-                        'signal_periods': str(g_iSignalPeriods),
-                        'trailing_periods': str(g_iTrailingPeriods)}
+	g_iSignalPeriods = 15
+	g_iTrailingPeriods = 15
 
-    dSpeakers = dict()
-    for iSpeaker in range(speakerListBox.size()):
-        dSpeakers[speakerListBox.get(iSpeaker)] = speakerListBox.get(iSpeaker)
+	config['signal'] = {'signal_type': strSignalType,
+						'frequencies': strFreqs,
+						'signal_periods': str(g_iSignalPeriods),
+						'trailing_periods': str(g_iTrailingPeriods)}
 
-    config['speakers'] = dSpeakers
+	dSpeakers = dict()
+	for iSpeaker in range(speakerListBox.size()):
+		dSpeakers[speakerListBox.get(iSpeaker)] = speakerListBox.get(iSpeaker)
 
-    #open simulation input file for writing
-    with open(strFilename + ".in", 'w') as configfile:
-        config.write(configfile) 
+	config['speakers'] = dSpeakers
+
+	#open simulation input file for writing
+	strSimuInputFile = strFile + ".in"
+	with open(strDir + strSimuInputFile, 'w') as configfile:
+		config.write(configfile)
+		
+	strSimuOutputFile = strFile + ".out"
+	
+	#call simulation with all the data
+	call(["../bin/simu", strSimuInputFile, strSimuOutputFile], cwd="../temp")
+	
+	#collect results
+	#parse simu output file
+	tree = ET.parse(strSimuOutputFile)
+	root = tree.getroot()
+
+	daMicSPLs = dict()
+
+	#periods for measuring spl and phase
+	g_nMeasPeriods = 3
+
+	#process signals
+	for signal in root.findall("signal"):
+		strSignalType = signal.attrib["type"]
+		fSsignalFreq = float(signal.attrib["freq"])
+
+		print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
+
+		#process outputs
+		for mic_output in signal.findall("mic_output"):
+			strMicId = mic_output.attrib["id"]
+			strMicFile = mic_output.attrib["file"]
+
+			print("Mic - id =", strMicId, ", file =", strMicFile)
+
+			#load output file
+			hMicSamples = open(strMicFile, 'rb')
+			aMicData = parse2column(hMicSamples)
+
+			#cut the last signal period from the data
+			fPeriodTime = 1.0 / fSsignalFreq
+
+			fMeasPeriodEnd   = g_iSignalPeriods * fPeriodTime
+			fMeasPeriodStart = fMeasPeriodEnd - g_nMeasPeriods * fPeriodTime
+
+			aMeasData = cutRows(aMicData, fMeasPeriodStart, fMeasPeriodEnd)
+
+			fMicSPL = rmsColumn(aMeasData, 1)
+
+			if not strMicId in daMicSPLs:
+				daMicSPLs[strMicId] = []
+
+			daMicSPLs[strMicId].append( (fSsignalFreq, fMicSPL) )
+
+		#video output is per frequency, no iteration needed.
+
+	#write spl files for mics
+	for strMicID in daMicSPLs:
+		hMicFile = open("spl_mic_" + strMicID, 'w')
+		for (freq, spl) in daMicSPLs[strMicID]:
+			hOutput.write(str( freq ) + "\t" + str( spl ) + "\n" ) 
 
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 
