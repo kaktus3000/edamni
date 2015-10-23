@@ -12,6 +12,7 @@ from tkinter.filedialog import asksaveasfilename
 from tkinter import messagebox
 import configparser
 import numpy
+import decimal
 
 from subprocess import call
 
@@ -104,11 +105,101 @@ speakerListBox = tk.Listbox(speakerFrame)
 speakerListBox['selectmode'] = tk.SINGLE
 speakerListBox.grid(sticky=tk.N+tk.S+tk.W+tk.E)
 
+#frame to display speaker properties
+
+speakerPropertyFrame = ttk.Frame(speakerFrame)
+speakerPropertyFrame.grid(sticky=tk.S+tk.W)
+
+speakerPropertyNameFrame = ttk.Frame(speakerPropertyFrame)
+speakerPropertyNameFrame.grid(row = 0, column = 0)
+
+speakerPropertyValueFrame = ttk.Frame(speakerPropertyFrame)
+speakerPropertyValueFrame.grid(row = 0, column = 1)
+
+speakerPropertyUnitFrame = ttk.Frame(speakerPropertyFrame)
+speakerPropertyUnitFrame.grid(row = 0, column = 2)
+
+#mapping property -> display label
+dPropDisplay = {"Cms" : None,
+				"Sd"  : None,
+				"Re"  : None,
+				"BL"  : None,
+				"Mmd" : None,
+				"Rms" : None,
+				"Le"  : None}
+
+dPropUnits = {"Cms" : "m/N",
+			  "Sd"  : "m^2",
+			  "Re"  : "Ohms",
+			  "BL"  : "Tm",
+			  "Mmd" : "kg",
+			  "Rms" : "kg/s",
+			  "Le"  : "H"}
+
+#create labels to display spieaker properties
+for strProp in dPropDisplay:
+	tk.Label(speakerPropertyNameFrame, text = strProp).grid()
+	label = tk.Label(speakerPropertyValueFrame, text = "no data")
+	dPropDisplay[strProp] = label
+	label.grid()
+	tk.Label(speakerPropertyUnitFrame, text = dPropUnits[strProp]).grid()
+
+dSpeakers = dict()
+
+decimal.getcontext().prec = 3
+
+def onListBoxSelect(evt):
+	print("onselect")
+	w = evt.widget
+	if len(w.curselection()) < 1:
+		return
+	index = int(w.curselection()[0])
+	
+	strSelectedSpeaker = w.get(index)
+	
+	print("selected speaker", strSelectedSpeaker)
+	
+	#clear labels
+	for strProp in dPropDisplay:
+		dPropDisplay[strProp].text = "no data"
+
+	if not strSelectedSpeaker in dSpeakers:
+		return
+
+	print("speaker props", dSpeakers[strSelectedSpeaker])
+
+	for strProp in dPropDisplay:
+		if not strProp in dSpeakers[strSelectedSpeaker]:
+			print("missing speaker property", strProp)
+			return
+		print(strProp, "=", dSpeakers[strSelectedSpeaker][strProp])
+		
+		decimalValue = decimal.Decimal (dSpeakers[strSelectedSpeaker][strProp])
+		strValue = decimalValue.normalize().to_eng_string()
+		
+		dPropDisplay[strProp].configure(text = strValue )
+
+speakerListBox.bind('<<ListboxSelect>>', onListBoxSelect)
+
+def readSpeakerXML(rootNode):
+	strSpeakerName = rootNode.attrib["id"]
+	dProps = dict()
+	#read properties
+	for prop in rootNode:
+		dProps[prop.tag] = float(prop.text)
+	#assign properties to global speaker buffer
+	if not strSpeakerName in dSpeakers:
+		dSpeakers[strSpeakerName] = dProps
+	
+	return strSpeakerName
+
 #callbacks for buttons
 def addSpeaker(*args):
-	speakerFileName = askopenfilename(initialdir="../preprocessor/bcd")
+	strSpeakerFile = askopenfilename(initialdir="../preprocessor/bcd")
+	tree = ET.parse(strSpeakerFile)
+	strSpeakerName = readSpeakerXML(tree.getroot() )
 	
-	speakerListBox.insert(tk.END, speakerFileName.rsplit("/", 1)[1].replace(".xml", ""))
+	speakerListBox.insert(tk.END, strSpeakerName)
 
 def removeSpeaker(*args):
 	lSelections = speakerListBox.curselection()
@@ -588,22 +679,25 @@ def loadDefinition(strFile):
 				#find out visual name of property
 				for iProp in range(len(g_dElements[strElementType]) - 1):
 					propName, propUnit = g_dElements[strElementType][iProp + 1]
+					print("parsing property", propName, "[" + propUnit + "]")
 					#check against input
 					if prop.tag == propName.lower().replace(" ", "_"):
 						#read value of property
 						#if this is a 'type' property, it will contain a string
-						if prop.tag != "type":
+						if propUnit != "":
 							#no type, this must be a floating point value
 							fProperty = float(prop.text)
 							#write to property dictionary of element
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = fProperty
 						else:
-							#read speaker type
-							strSpeaker = prop.text
-							#add speaker to speaker list
-							speakerListBox.insert(tk.END, strSpeaker)
 							#write to properties
-							g_dAcousticElements[strElementID].m_lValues[ iProp ] = strSpeaker
+							g_dAcousticElements[strElementID].m_lValues[ iProp ] = prop.text
+							if prop.tag == "type":
+								#read speaker type
+								strSpeaker = prop.text
+								#add speaker to speaker list
+								speakerListBox.insert(tk.END, strSpeaker)
+							
 	#finalize links
 	sFinished = set()
 	for strID1 in dLinks:
@@ -712,13 +806,14 @@ def onSimulationButtonClick():
 	saveDefinition(strXMLFile)
 
 	#write element list
-	strElementListFile = strFilename + ".txt"
+	strElementListFile = strFile + ".txt"
+	strElementListFilename = strDir + strElementListFile
 	
-	#writeElementList(strElementListFile)
-	call(["python3", "../tools/xml2list.py", strXMLFile, strElementListFile])
+	#writeElementList(strElementListFilename)
+	call(["python3", "../tools/xml2list.py", strXMLFile, strElementListFilename])
 	
 	strImageFile = strFilename + ".png"
-	call(["python3", "../tools/list2img.py", strElementListFile, strImageFile])
+	call(["python3", "../tools/list2img.py", strElementListFilename, strImageFile])
 	
 	
 	config = configparser.ConfigParser()

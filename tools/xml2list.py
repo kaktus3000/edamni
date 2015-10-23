@@ -67,8 +67,8 @@ def check_cross_sections(hornSections):
 					
 	#							print("identified link:", sectionID, "(port", portID + ")", "->", neighborID, "(port", neighborPortID + ")", ".")
 					
-						key1 = "A" + portID
-						key2 = "A" + neighborPortID
+						key1 = "a" + portID
+						key2 = "a" + neighborPortID
 						if (key1 in sectionDict) and (key2 in neighborSectionDict):
 							crossSect1 = sectionDict[key1]
 							crossSect2 = neighborSectionDict[key2]
