@@ -375,7 +375,7 @@ for sectionID in hornDict.keys():
 	
 			for (negNeighID, unused) in lPosNeighbors:
 				if negNeighID == 0:
-					hElemFile.write("m " + sectionID + "_" + str(elID) + " " + str(posElID) + "\n")
+					hElemFile.write("m " + sectionID + "_" + str(elID) + " " + str(elID) + "\n")
 				
 			writeElem(elID, lNegNeighbors, lPosNeighbors, damping)
 
