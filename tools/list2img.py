@@ -115,7 +115,7 @@ while iLine < len(aLines):
 		speakers.append(spkr)
 		iLine = line
 	elif linetype == "m":
-		micID = int(currLine[2:])
+		micID = int(currLine.split(" ")[-1])
 #		print("mic ID", micID)
 	elif linetype == "d":
 		#HACK: this is the 'dx' element

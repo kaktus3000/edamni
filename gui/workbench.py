@@ -136,7 +136,7 @@ dPropUnits = {"Cms" : "m/N",
 			  "Rms" : "kg/s",
 			  "Le"  : "H"}
 
-#create labels to display spieaker properties
+#create labels to display speaker properties
 for strProp in dPropDisplay:
 	tk.Label(speakerPropertyNameFrame, text = strProp).grid()
 	label = tk.Label(speakerPropertyValueFrame, text = "no data")
@@ -144,12 +144,11 @@ for strProp in dPropDisplay:
 	label.grid()
 	tk.Label(speakerPropertyUnitFrame, text = dPropUnits[strProp]).grid()
 
-dSpeakers = dict()
+g_dSpeakers = dict()
 
 decimal.getcontext().prec = 3
 
 def onListBoxSelect(evt):
-	print("onselect")
 	w = evt.widget
 	if len(w.curselection()) < 1:
 		return
@@ -157,24 +156,19 @@ def onListBoxSelect(evt):
 	
 	strSelectedSpeaker = w.get(index)
 	
-	print("selected speaker", strSelectedSpeaker)
-	
 	#clear labels
 	for strProp in dPropDisplay:
 		dPropDisplay[strProp].text = "no data"
 
-	if not strSelectedSpeaker in dSpeakers:
+	if not strSelectedSpeaker in g_dSpeakers:
 		return
 
-	print("speaker props", dSpeakers[strSelectedSpeaker])
-
 	for strProp in dPropDisplay:
-		if not strProp in dSpeakers[strSelectedSpeaker]:
+		if not strProp in g_dSpeakers[strSelectedSpeaker]:
 			print("missing speaker property", strProp)
 			return
-		print(strProp, "=", dSpeakers[strSelectedSpeaker][strProp])
 		
-		decimalValue = decimal.Decimal (dSpeakers[strSelectedSpeaker][strProp])
+		decimalValue = decimal.Decimal (g_dSpeakers[strSelectedSpeaker][strProp])
 		strValue = decimalValue.normalize().to_eng_string()
 		
 		dPropDisplay[strProp].configure(text = strValue )
@@ -182,16 +176,24 @@ def onListBoxSelect(evt):
 speakerListBox.bind('<<ListboxSelect>>', onListBoxSelect)
 
 def readSpeakerXML(rootNode):
-	strSpeakerName = rootNode.attrib["id"]
+	strSpeakerName = rootNode.attrib["id"].lower()
 	dProps = dict()
 	#read properties
 	for prop in rootNode:
 		dProps[prop.tag] = float(prop.text)
 	#assign properties to global speaker buffer
-	if not strSpeakerName in dSpeakers:
-		dSpeakers[strSpeakerName] = dProps
+	if not strSpeakerName in g_dSpeakers:
+		g_dSpeakers[strSpeakerName] = dProps
 	
 	return strSpeakerName
+
+def writeSpeakerXML(strSpeakerName, rootElem):
+	#write speaker xml file
+	rootElem.attrib["id"] = strSpeakerName
+
+	for key in g_dSpeakers[strSpeakerName].keys():
+		valueElem = ET.SubElement(rootElem, key)
+		valueElem.text = str(g_dSpeakers[strSpeakerName][key])
 
 #callbacks for buttons
 def addSpeaker(*args):
@@ -283,12 +285,15 @@ g_dElements = dict(
 			('A1', 'm^2'),
 			('A2', 'm^2'),
 			('type', '')],
-
-	Fork = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(0, 2), (0, 0), (2, 0), (2, 2)], [(2, 2), (0, 2), (0, 0), (2, 0)]],
-			('A1', 'm^2'),
-			('A2', 'm^2'),
-			('A3', 'm^2')],
-
+	
+	
+	#TODO: handle forks
+	#Fork = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(0, 2), (0, 0), (2, 0), (2, 2)], [(2, 2), (0, 2), (0, 0), (2, 0)]],
+	#		('A1', 'm^2'),
+	#		('A2', 'm^2'),
+	#		('A3', 'm^2')],
+	#
+	
 	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),
 			('A2', 'm^2'),
@@ -624,6 +629,8 @@ def loadDefinition(strFile):
 
 	g_dAcousticElements.clear()
 	
+	g_dSpeakers.clear()
+	
 	print("loading from file", strFile ,"...")
 	global g_iIDCounter
 	tree = ET.parse(strFile)
@@ -636,6 +643,13 @@ def loadDefinition(strFile):
 	dLinks = dict()
 
 	for element in root:
+		#check if this is speaker data
+		if element.tag=="tspset":
+			strSpeakerName = readSpeakerXML(element)
+			
+			speakerListBox.insert(tk.END, strSpeakerName)
+			continue
+	
 		#get type of element
 		#capitalize key
 		strElementType = element.tag[0].upper() + element.tag[1:]
@@ -692,11 +706,6 @@ def loadDefinition(strFile):
 						else:
 							#write to properties
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = prop.text
-							if prop.tag == "type":
-								#read speaker type
-								strSpeaker = prop.text
-								#add speaker to speaker list
-								speakerListBox.insert(tk.END, strSpeaker)
 							
 	#finalize links
 	sFinished = set()
@@ -722,6 +731,12 @@ def saveDefinition(strFile):
 	print("writing to file", strFile ,"...")
 	#create root element for output tree
 	root = ET.Element("horn", dx = str(g_fDeltaX) )
+	
+	#add speakers
+	for strSpeakerName in g_dSpeakers:
+		#create xml data
+		speakerElem = ET.SubElement(root, "tspset")
+		writeSpeakerXML(strSpeakerName, speakerElem)
 
 	#iterate existing elements
 	for eleID in g_dAcousticElements:
@@ -838,11 +853,23 @@ def onSimulationButtonClick():
 						'signal_periods': str(g_iSignalPeriods),
 						'trailing_periods': str(g_iTrailingPeriods)}
 
-	dSpeakers = dict()
+	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
-		dSpeakers[speakerListBox.get(iSpeaker)] = speakerListBox.get(iSpeaker)
+		strSpeakerName = speakerListBox.get(iSpeaker)
+		strSpeakerFile = strSpeakerName.replace(" ", "_").replace("/", "_") + ".xml"
+		
+		strSpeakerFilename = strDir + strSpeakerFile
+		
+		dSpeakerFileMapping[strSpeakerName] = strSpeakerFile
+		#create xml data
+		xmlTree = ET.ElementTree(ET.Element("tspset") )
+		rootElem = xmlTree.getroot()
+		writeSpeakerXML(strSpeakerName, rootElem)
 
-	config['speakers'] = dSpeakers
+		#write xml to disk
+		xmlTree.write(strSpeakerFilename)
+
+	config['speakers'] = dSpeakerFileMapping
 
 	#open simulation input file for writing
 	strSimuInputFile = strFile + ".in"

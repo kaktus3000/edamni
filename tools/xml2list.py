@@ -73,7 +73,7 @@ def check_cross_sections(hornSections):
 							crossSect1 = sectionDict[key1]
 							crossSect2 = neighborSectionDict[key2]
 							if crossSect1 != crossSect2:
-								print("cross-sections do not match!")
+								print("WARNING: cross-sections do not match.", sectionID, key1, "->", neighborID, key2)
 	#								else:
 	#									print("cross-sections match!")
 						else:
@@ -222,6 +222,7 @@ geometryHandlers["exponential"] = expo_section
 geometryHandlers["wall"] = wall_section
 geometryHandlers["space"] = space_section
 geometryHandlers["fork"] = dummy_section
+geometryHandlers["mic"] = dummy_section
 
 tree = ET.parse(infile)
 horn = tree.getroot()
@@ -245,6 +246,10 @@ dElementLists = dict()
 for section in horn:
 	if not "id" in section.attrib:
 		print("malformed xml: elem", section.tag, "has no 'id' attribute!")
+	
+	if section.tag=="tspset":
+		#skip speaker
+		continue	
 #	print(section.tag, "(" + section.attrib["id"] + ")")
 	sectionID = section.attrib["id"]
 	
@@ -283,7 +288,7 @@ for section in horn:
 			currElID += 1
 
 		#assign id to element
-		dElementLists[sectionID].append( (str(elID), A1, A2, damping) )
+		dElementLists[sectionID].append( (elID, A1, A2, damping) )
 
 #check whether the cross-sections given are discontinuous
 neighborDict = check_cross_sections(hornDict)
@@ -319,13 +324,17 @@ hElemFile.write("dx " + str(dx) + "\n")
 
 #neighbors := [(id, area)]
 def writeElem(elID, negNeighbors, posNeighbors, velDamp):
+	#check if this is the special element 0
+	if elID == 0:
+		return
+		
 	hElemFile.write("e " + str(elID) )
 	hElemFile.write("\n")
 	for (negNeighbor, area) in negNeighbors:
-		hElemFile.write("- " + negNeighbor + " " + str(area))
+		hElemFile.write("- " + str(negNeighbor) + " " + str(area))
 		hElemFile.write("\n")
 	for (posNeighbor, area) in posNeighbors:
-		hElemFile.write("+ " + posNeighbor + " " + str(area))
+		hElemFile.write("+ " + str(posNeighbor) + " " + str(area))
 		hElemFile.write("\n")
 		
 	if velDamp != 0:
@@ -338,16 +347,21 @@ for sectionID in hornDict.keys():
 	(sectionType, sectionDict) = hornDict.get(sectionID)
 	print("processing section", sectionID, "(" + sectionType + ")")
 	
+	neighborList = neighborDict.get(sectionID)
+	
 	if sectionType in geometryHandlers:
 		lElements = dElementLists.get(sectionID)
-		neighborList = neighborDict.get(sectionID)
-
+	
 		#link 0 is on the "-" side of the xml elements
 		#link 1...n are on the "+" side
 
 		print(sectionType, "id:", sectionID, "neighbors:", neighborList)
 		minusID = getNeighborElemID(neighborList, 1)
 		print(sectionType, "id:", sectionID, "minusID = ", minusID)
+		
+		#initialization if only one element exists
+		(posElID, A1, A2, posDamping) = lElements[0]
+		lNegNeighbors = [ (minusID, A1) ]
 
 		for iElement in range(len(lElements)-1):
 			(elID, A1, A2, damping) = lElements[iElement]
@@ -355,13 +369,15 @@ for sectionID in hornDict.keys():
 			lNegNeighbors = []
 			if minusID != None:
 				lNegNeighbors = [ (minusID, A1) ]
-
+				
 			(posElID, posA1, posA2, posDamping) = lElements[iElement + 1]
 			lPosNeighbors = [ (posElID, A2) ]
 	
-			#check if we write the special element 0
-			if elID != 0:
-				writeElem(elID, lNegNeighbors, lPosNeighbors, damping)
+			for (negNeighID, unused) in lPosNeighbors:
+				if negNeighID == 0:
+					hElemFile.write("m " + sectionID + "_" + str(elID) + " " + str(posElID) + "\n")
+				
+			writeElem(elID, lNegNeighbors, lPosNeighbors, damping)
 
 			lNegNeighbors = [ (elID, A2) ]
 			
@@ -378,16 +394,24 @@ for sectionID in hornDict.keys():
 
 		print("neighbor list:", neighborList)
 		print("positive neighbors:", lPosNeighbors)
+		
+		for (posNeighID, unused) in lPosNeighbors:
+			if posNeighID == 0:
+				hElemFile.write("m " + sectionID + "_" + str(posElID) + " " + str(posElID) + "\n")
+				
 		writeElem(posElID, lNegNeighbors, lPosNeighbors, posDamping)
+		
+		if sectionType == "mic":
+			hElemFile.write("m " + sectionDict["name"] + " " + str(posElID))
+			hElemFile.write("\n")
 
 	elif sectionType == "speaker":
 		hElemFile.write("s " + sectionDict["type"] + "\n")
-		neighborList = neighborDict[sectionID]
 		print("speaker neighbors:", neighborList)
 
-		hElemFile.write("- " + getNeighborElemID(neighborList, 1) + " " + str(sectionDict["a1"]))
+		hElemFile.write("- " + str(getNeighborElemID(neighborList, 1)) + " " + str(sectionDict["a1"]))
 		hElemFile.write("\n")
-		hElemFile.write("+ " + getNeighborElemID(neighborList, 2) + " " + str(sectionDict["a2"]))
+		hElemFile.write("+ " + str(getNeighborElemID(neighborList, 2)) + " " + str(sectionDict["a2"]))
 		hElemFile.write("\n")
 
 hElemFile.close();
