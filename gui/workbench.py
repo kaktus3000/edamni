@@ -14,6 +14,8 @@ import configparser
 import numpy
 import decimal
 
+from PIL import Image
+
 from subprocess import call
 
 #fancy stuff
@@ -33,8 +35,8 @@ root.geometry('{}x{}'.format(600, 450) )
 menubar = tk.Menu(root)
 # create a pulldown menu, and add it to the menu bar
 filemenu = tk.Menu(menubar, tearoff=0)
-filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../preprocessor/")))
-filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../preprocessor/", defaultextension = ".xml")))
+filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../testcases/")))
+filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../testcases/", defaultextension = ".xml")))
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="File", menu=filemenu)
@@ -177,10 +179,14 @@ speakerListBox.bind('<<ListboxSelect>>', onListBoxSelect)
 
 def readSpeakerXML(rootNode):
 	strSpeakerName = rootNode.attrib["id"].lower()
+	
+	print("reading speaker", strSpeakerName)
+	
 	dProps = dict()
 	#read properties
 	for prop in rootNode:
 		dProps[prop.tag] = float(prop.text)
+		print("speaker property", prop.tag, "->", prop.text)
 	#assign properties to global speaker buffer
 	if not strSpeakerName in g_dSpeakers:
 		g_dSpeakers[strSpeakerName] = dProps
@@ -197,7 +203,7 @@ def writeSpeakerXML(strSpeakerName, rootElem):
 
 #callbacks for buttons
 def addSpeaker(*args):
-	strSpeakerFile = askopenfilename(initialdir="../preprocessor/bcd")
+	strSpeakerFile = askopenfilename(initialdir="../database")
 	tree = ET.parse(strSpeakerFile)
 	strSpeakerName = readSpeakerXML(tree.getroot() )
 	
@@ -647,6 +653,7 @@ def loadDefinition(strFile):
 		if element.tag=="tspset":
 			strSpeakerName = readSpeakerXML(element)
 			
+			print("inserting speaker", strSpeakerName, "to speaker list")
 			speakerListBox.insert(tk.END, strSpeakerName)
 			continue
 	
@@ -693,9 +700,10 @@ def loadDefinition(strFile):
 				#find out visual name of property
 				for iProp in range(len(g_dElements[strElementType]) - 1):
 					propName, propUnit = g_dElements[strElementType][iProp + 1]
-					print("parsing property", propName, "[" + propUnit + "]")
+					
 					#check against input
 					if prop.tag == propName.lower().replace(" ", "_"):
+						print("parsing property", propName, "[" + propUnit + "] =", prop.text)
 						#read value of property
 						#if this is a 'type' property, it will contain a string
 						if propUnit != "":
@@ -809,28 +817,34 @@ def cutRows(aData, fStart, fEnd):
 			aOut.append(aLine)
 	return aOut
 
-def onSimulationButtonClick():
-	#write xml file of setup
-	strFile = "current_simulation"
-	strDir = "../temp/"
-	strFilename = strDir + strFile
+#filenames for intermediate files
 
-	
-	strXMLFile = strFilename + ".xml"
-	
-	saveDefinition(strXMLFile)
+g_strFile = "current_simulation"
+g_strDir = "../temp/"
+g_strFilename = g_strDir + g_strFile
+g_strXMLFile = g_strFilename + ".xml"
+g_strElementListFile = g_strFile + ".txt"
+g_strElementListFilename = g_strDir + g_strElementListFile
+
+g_strImageFile = g_strFilename + ".png"
+g_strResizedFile = g_strFilename + "_resized.png"
+
+g_strSimuInputFile = g_strFile + ".in"
+g_strSimuOutputFile = g_strFile + ".out"
+
+
+def generateElementList():
+	#write xml file of setup
+	saveDefinition(g_strXMLFile)
 
 	#write element list
-	strElementListFile = strFile + ".txt"
-	strElementListFilename = strDir + strElementListFile
-	
-	#writeElementList(strElementListFilename)
-	call(["python3", "../tools/xml2list.py", strXMLFile, strElementListFilename])
-	
-	strImageFile = strFilename + ".png"
-	call(["python3", "../tools/list2img.py", strElementListFilename, strImageFile])
+	call(["python3", "../tools/xml2list.py", g_strXMLFile, g_strElementListFilename])
 	
 	
+	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile])
+	
+def onSimulationButtonClick():
+	generateElementList()
 	config = configparser.ConfigParser()
 	
 	g_fMaxTimeStep = 0.001
@@ -872,14 +886,12 @@ def onSimulationButtonClick():
 	config['speakers'] = dSpeakerFileMapping
 
 	#open simulation input file for writing
-	strSimuInputFile = strFile + ".in"
-	with open(strDir + strSimuInputFile, 'w') as configfile:
+	
+	with open(g_strDir + g_strSimuInputFile, 'w') as configfile:
 		config.write(configfile)
-		
-	strSimuOutputFile = strFile + ".out"
 	
 	#call simulation with all the data
-	call(["../bin/simu", strSimuInputFile, strSimuOutputFile], cwd="../temp")
+	call(["../bin/simu", g_strSimuInputFile, g_strSimuOutputFile], cwd=g_strDir)
 	
 	#collect results
 	#parse simu output file
@@ -932,7 +944,36 @@ def onSimulationButtonClick():
 		for (freq, spl) in daMicSPLs[strMicID]:
 			hOutput.write(str( freq ) + "\t" + str( spl ) + "\n" ) 
 
-ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
+#ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
+ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
+
+simuImageCanvas = tk.Label(simuFrame)
+#simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
+
+simuImageCanvas.pack(expand=1, fill=tk.BOTH)
+
+
+def showSimuImage():
+	generateElementList()
+	
+	print("loading image", g_strImageFile)
+	
+	imageSimu = Image.open(g_strImageFile)
+	
+	canvasWidth = simuImageCanvas.winfo_width()
+	canvasHeight = simuImageCanvas.winfo_height()
+		
+	print("labelWidth", canvasWidth, "labelHeight", canvasHeight)
+	
+	resizedSimu = imageSimu.resize(size = (canvasWidth, canvasHeight) )
+	resizedSimu.save(g_strResizedFile)
+	
+	#tkpi = tk.PhotoImage( image = resizedSimu)
+	tkpi = tk.PhotoImage( file = g_strResizedFile)
+	
+	simuImageCanvas.image = tkpi
+	simuImageCanvas.configure(image=tkpi)
+	
 
 #create frame for mode results
 resultsFrame = ttk.Frame(mainFrame)
@@ -946,9 +987,15 @@ def onChangeMode(*args):
 	for subFrame in dModeFrames.values():
 		subFrame.grid_remove()
 
-	dModeFrames[mode.get()].grid(sticky=tk.N+tk.E+tk.S+tk.W)
+	dModeFrames[mode.get()].grid(sticky = tk.N+tk.E+tk.S+tk.W)
 	
-	acuCanvas.after(100,drawCanvasLines)
+	#update circuit diagram
+	if mode.get() == 'Acoustic Circuit':
+		acuCanvas.after(100, drawCanvasLines)
+	
+	#update image of simulation
+	if mode.get() == 'Simulation':
+		acuCanvas.after(100, showSimuImage)
 
 #initialize to speaker mode
 mode.trace("w", onChangeMode)
