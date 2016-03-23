@@ -642,7 +642,10 @@ def loadDefinition(strFile):
 	tree = ET.parse(strFile)
 	root = tree.getroot()
 
+
 	dx = root.get("dx")
+	g_fDeltaX = float(dx)
+	svSimuElementLength.set(str(g_fDeltaX) )
 
 	#preliminary links
 	#id1 -> (id2, button1)
@@ -736,6 +739,18 @@ def loadDefinition(strFile):
 	print("finished loading")
 
 def saveDefinition(strFile):
+	#parse new element length
+	
+	try:
+		fValue = float(svSimuElementLength.get().replace(",","."))
+		g_fDeltaX = fValue
+	except ValueError:
+		#input was invalid, reset field
+		svSimuElementLength.set(str(g_fDeltaX) )
+
+	print("element length", g_fDeltaX)
+	
+	
 	print("writing to file", strFile ,"...")
 	#create root element for output tree
 	root = ET.Element("horn", dx = str(g_fDeltaX) )
@@ -946,6 +961,14 @@ def onSimulationButtonClick():
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
+
+ttk.Label(simuFrame, text="element length").pack()
+
+svSimuElementLength = tk.StringVar()
+svSimuElementLength.set(str(g_fDeltaX) )
+
+ttk.Entry(simuFrame, width=8, textvariable=svSimuElementLength).pack()
+
 
 simuImageCanvas = tk.Label(simuFrame)
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
