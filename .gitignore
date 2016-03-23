@@ -1,3 +1,5 @@
+/simu/input/processing
+/simu/input/semanticchecking
 /simu/Debug/kernel/core1d.d
 /simu/Debug/kernel/core1d.o
 /simu/Debug/kernel/kernelaux.d
