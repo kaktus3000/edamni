@@ -322,6 +322,9 @@ if g_bVerbose:
 hElemFile=open(outfile, "wt")
 hElemFile.write("dx " + str(dx) + "\n")
 
+def escapeString(strToEscape):
+	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
+
 #neighbors := [(id, area)]
 def writeElem(elID, negNeighbors, posNeighbors, velDamp):
 	#check if this is the special element 0
@@ -375,7 +378,7 @@ for sectionID in hornDict.keys():
 	
 			for (negNeighID, unused) in lPosNeighbors:
 				if negNeighID == 0:
-					hElemFile.write("m " + sectionID + "_" + str(elID) + " " + str(elID) + "\n")
+					hElemFile.write("m \"" + escapeString(sectionID + " " + str(elID)) + "\" " + str(elID) + "\n")
 				
 			writeElem(elID, lNegNeighbors, lPosNeighbors, damping)
 
@@ -402,11 +405,11 @@ for sectionID in hornDict.keys():
 		writeElem(posElID, lNegNeighbors, lPosNeighbors, posDamping)
 		
 		if sectionType == "mic":
-			hElemFile.write("m " + sectionDict["name"] + " " + str(posElID))
+			hElemFile.write("m \"" + escapeString(sectionDict["name"]) + "\" " + str(posElID))
 			hElemFile.write("\n")
 
 	elif sectionType == "speaker":
-		hElemFile.write("s " + sectionDict["type"] + "\n")
+		hElemFile.write("s \"" + escapeString(sectionDict["type"] ) + "\"\n")
 		print("speaker neighbors:", neighborList)
 
 		hElemFile.write("- " + str(getNeighborElemID(neighborList, 1)) + " " + str(sectionDict["a1"]))

@@ -857,14 +857,17 @@ def generateElementList():
 	
 	
 	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile])
-	
+
+def escapeString(strToEscape):
+	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
+
 def onSimulationButtonClick():
 	generateElementList()
 	config = configparser.ConfigParser()
 	
 	g_fMaxTimeStep = 0.001
 	
-	config['general'] = {'element_file': strElementListFile,
+	config['general'] = {'element_file': g_strElementListFile,
 						 'max_timestep': str(g_fMaxTimeStep)}
 
 	strSignalType = "sine"
@@ -885,11 +888,11 @@ def onSimulationButtonClick():
 	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
 		strSpeakerName = speakerListBox.get(iSpeaker)
-		strSpeakerFile = strSpeakerName.replace(" ", "_").replace("/", "_") + ".xml"
+		strSpeakerFile = escapeString(strSpeakerName) + ".xml"
 		
-		strSpeakerFilename = strDir + strSpeakerFile
+		strSpeakerFilename = g_strDir + strSpeakerFile
 		
-		dSpeakerFileMapping[strSpeakerName] = strSpeakerFile
+		dSpeakerFileMapping[escapeString(strSpeakerName)] = strSpeakerFile
 		#create xml data
 		xmlTree = ET.ElementTree(ET.Element("tspset") )
 		rootElem = xmlTree.getroot()
@@ -983,8 +986,14 @@ def showSimuImage():
 	
 	imageSimu = Image.open(g_strImageFile)
 	
+	fImageAspectRatio = 1
+	
 	canvasWidth = simuImageCanvas.winfo_width()
 	canvasHeight = simuImageCanvas.winfo_height()
+	
+	fCanvasAspectRatio = 1
+	
+	#scale according to aspect ratio
 		
 	print("labelWidth", canvasWidth, "labelHeight", canvasHeight)
 	
