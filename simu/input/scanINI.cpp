@@ -47,16 +47,25 @@ ScanINI::ScanINI(std::string strFileName)
 const std::set<std::string>
 ScanINI::getSections()
 {
+	std::set<std::string> sSections;
+	for(auto it = m_mmstrValues.begin(); it != m_mmstrValues.end(); it++)
+		sSections.insert(it->first);
+	return sSections;
 }
 
 const std::set<std::string>
 ScanINI::getKeys(const std::string& strSection)
 {
+	std::set<std::string> sKeys;
+	for(auto it = m_mmstrValues[strSection].begin(); it != m_mmstrValues[strSection].end(); it++)
+		sKeys.insert(it->first);
+	return sKeys;
 }
 
 const std::string
 ScanINI::getKey(const std::string& strSection, const std::string& strKey)
 {
+	return m_mmstrValues[strSection].at(strKey);
 }
 
 bool
