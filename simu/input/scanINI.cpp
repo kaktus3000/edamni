@@ -3,9 +3,8 @@
 #include <fstream>
 #include <iostream>
 
-ScanINI::ScanINI(std::string strFileName)
+ScanINI::ScanINI(std::ifstream& iniFile)
 {
-	std::ifstream iniFile(strFileName);
 
 	std::string strCurrSection("");
 	m_mmstrValues[strCurrSection] = std::map<std::string, std::string>();
@@ -40,7 +39,7 @@ ScanINI::ScanINI(std::string strFileName)
 			m_mmstrValues[strCurrSection][strKey] = strValue;
 			continue;
 		}
-		std::cout << "ERROR parsing INI file " << strFileName << ", line " << nLines << ": \"" << strStripped << "\"\n";
+		std::cout << "ERROR parsing INI file " << ", line " << nLines << ": \"" << strStripped << "\"\n";
 	}
 }
 
@@ -65,6 +64,18 @@ ScanINI::getKeys(const std::string& strSection)
 const std::string
 ScanINI::getKey(const std::string& strSection, const std::string& strKey)
 {
+	if(m_mmstrValues.find(strSection) == m_mmstrValues.end())
+	{
+		std::cout << "ERROR parsing INI file " << ": didn't find section " << strSection << "\"\n";
+		return std::string();
+	}
+
+	if(m_mmstrValues[strSection].find(strKey) == m_mmstrValues[strSection].end())
+	{
+		std::cout << "ERROR parsing INI file " << ": didn't find key " << strKey << " in section " << strSection << "\"\n";
+		return std::string();
+	}
+
 	return m_mmstrValues[strSection].at(strKey);
 }
 

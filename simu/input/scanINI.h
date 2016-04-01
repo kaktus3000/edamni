@@ -20,7 +20,7 @@
 class ScanINI
 {
 public:
-	ScanINI(std::string strFileName);
+	ScanINI(std::ifstream& iniFile);
 
 	const std::set<std::string> getSections();
 	const std::set<std::string> getKeys(const std::string& strSection);

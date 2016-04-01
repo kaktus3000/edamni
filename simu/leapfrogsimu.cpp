@@ -20,12 +20,11 @@
 #include "output/postprocessing.h"
 
 
-
+#include "input/scanINI.h"
 
 int
 main(int argc, char* argv[])
 {
-
 	puts("test");
 	programControl pControl;
 
@@ -36,13 +35,15 @@ main(int argc, char* argv[])
 	char* pcTSP = argv[2];
 	char* pcOutput = argv[3];
 
+	cfData data;
 
+	if(!loadControlFile(pControl.configPath, data))
+	{
+		std::cout<<"ERROR parsing simulation control file. Shutting down.\n";
+		return -1;
+	}
 
 	int error;
-
-
-
-
 
 	f1DCalculationContainer* calculation=new f1DCalculationContainer;
 	calculation->info= new f1DCalculationDescriptor;
