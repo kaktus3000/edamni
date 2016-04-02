@@ -128,12 +128,14 @@ while iLine < len(aLines):
 #for elem in elems:
 #	print(elem, "->", elems[elem])
 
+sVisited = set()
+
 #build directed graph from speaker
 #search positive direction
 def subGraph(elems, elem, currGraph):
 	#there should be only one direction to go
 	currGraph.append(elem)
-	
+		
 	if len(elems[elem].positiveNeighbors) > 0:
 		(elem, area) = elems[elem].positiveNeighbors[0]
 	else:
@@ -141,6 +143,10 @@ def subGraph(elems, elem, currGraph):
 	
 	while(elem > 0):
 #		print("lastElem:", lastElem, "elem:", elem, "neg:", elems[elem].negativeNeighbors, "pos:", elems[elem].positiveNeighbors)
+
+		if elem in sVisited:
+			return currGraph
+		sVisited.add(elem)
 
 		bFound = False
 		for (neighID, area) in elems[elem].positiveNeighbors:

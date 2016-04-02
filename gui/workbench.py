@@ -35,8 +35,8 @@ root.geometry('{}x{}'.format(600, 450) )
 menubar = tk.Menu(root)
 # create a pulldown menu, and add it to the menu bar
 filemenu = tk.Menu(menubar, tearoff=0)
-filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../testcases/")))
-filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../testcases/", defaultextension = ".xml")))
+filemenu.add_command(label="Open", command=lambda:loadDefinition(askopenfilename(initialdir="../testcases/", filetypes=[("XML files","*.xml")])))
+filemenu.add_command(label="Save", command=lambda:saveDefinition(asksaveasfilename(initialdir="../testcases/", defaultextension = ".xml", filetypes=[("XML files","*.xml")])))
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="File", menu=filemenu)
@@ -203,7 +203,7 @@ def writeSpeakerXML(strSpeakerName, rootElem):
 
 #callbacks for buttons
 def addSpeaker(*args):
-	strSpeakerFile = askopenfilename(initialdir="../database")
+	strSpeakerFile = askopenfilename(initialdir="../database", filetypes=[("XML files","*.xml")])
 	tree = ET.parse(strSpeakerFile)
 	strSpeakerName = readSpeakerXML(tree.getroot() )
 	
@@ -292,13 +292,11 @@ g_dElements = dict(
 			('A2', 'm^2'),
 			('type', '')],
 	
-	
 	#TODO: handle forks
-	#Fork = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(0, 2), (0, 0), (2, 0), (2, 2)], [(2, 2), (0, 2), (0, 0), (2, 0)]],
-	#		('A1', 'm^2'),
-	#		('A2', 'm^2'),
-	#		('A3', 'm^2')],
-	#
+	Fork = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(0, 2), (0, 0), (2, 0), (2, 2)], [(2, 2), (0, 2), (0, 0), (2, 0)]],
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('A3', 'm^2')],
 	
 	Mic = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),

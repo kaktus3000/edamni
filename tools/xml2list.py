@@ -11,7 +11,7 @@ e <#ID>				#element ID
 d <#VALUE>			#velocity damping
 
 //speaker
-s					#speaker with left and right adjacent elements, definition file
+s <#ID>				#speaker with left and right adjacent elements, definition file
 - <#REF> <AREA>		#volume id of left adjacent elements and common cross-section
 + <#REF> <AREA>		#same for right
 
@@ -300,10 +300,10 @@ def getNeighborXmlID(neighborList, index):
 	return None
 
 def getNeighborElemID(neighborList, index):
-	print("looking for neighbor at port", index)
+#	print("looking for neighbor at port", index)
 	for (neighID, myPort, neighPort) in neighborList:
 		if myPort==index:
-			print("neighID", neighID, "neighPort", neighPort)
+#			print("neighID", neighID, "neighPort", neighPort)
 			lNeighElems = dElementLists[neighID]
 			if len(lNeighElems) == 0:
 				return None
