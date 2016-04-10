@@ -2,60 +2,8 @@
 //this is a speaker model.
 
 #include <iostream>
-
-//auxilary function for load speaker TSP
-// needs a tsp label and a corrosponding tsp value
-// value is correctly stored in speaker
-// returns if an error occurs
-bool storeData( std::string const &label, const float value,fSpeakerDescriptor &desc)
-{
-	if (value <=0) return false;
-
-	if ((label == "le")||(label=="LE"))
-	{
-		desc.inductance=value;
-		return true;
-	}
-
-
-	if ((label == "rms")||(label=="RMS"))
-	{
-		desc.resitanceMass=value;
-		return true;
-	}
-
-	if ((label == "bl")||(label=="BL"))
-	{
-		desc.bl = value;
-		return true;
-	}
-
-	if ((label == "cms")||(label=="CMS"))
-	{
-		desc.springForce = value;
-		return true;
-	}
-
-	if ((label == "sd")||(label=="SD"))
-	{
-		desc.sd=value;
-		return true;
-	}
-
-	if ((label == "re")||(label=="RE"))
-	{
-		desc.DCResistance=value;
-		return true;
-	}
-
-	if ((label == "mmd")||(label=="MMD"))
-	{
-		desc.mass=value;
-		return true;
-	}
-
-	return true; //there was an undefined label // can be set to return true, if this case shall be ignored
-}
+#include <fstream>
+#include "../input/scanINI.h"
 
 //check if every needed tsp data is there
 bool checkTSPSet(fSpeakerDescriptor &desc)
@@ -83,45 +31,9 @@ bool convertTSP(fSpeakerDescriptor &desc)
 	return true;
 }
 
-
-bool convertLine(std::string const &buffer,std::string &labelDummy,float &value,bool param=false)//param=true => read only the label
-{
-	std::istringstream parsingBuffer; //To get easy access to type converting during parsing the string buffer
-	parsingBuffer.str(buffer);
-
-	//read the label
-	parsingBuffer>>labelDummy;
-	if (parsingBuffer.fail()){ //und testen
-		labelDummy="";
-		value=-1.0f;
-		return false;
-	}
-
-	if (param) return true; //return if value is not needed
-
-	//read value
-	parsingBuffer>>value;
-	if (parsingBuffer.fail()){ //und testen
-		value=-1.0f;
-		return false;
-	}
-	return true;// everything went fine
-}
-
-int f2i(float f)
-{
-  return f<0?f-.5:f+.5;
-}
-
 bool loadTSPSet(const char* filename,fSpeakerDescriptor &desc, const int id)
 {
-	float value = -1.0f;
-	int LineInFile=0; //Gives the current line for debugging reason
-	bool idFound=false;
-	std::string labelDummy;
-	std::string buffer; //to read lines from a file stream
-
-	std::cout<<"Load TSP data..."<<std::endl;
+	std::cout<<"Load speaker file: "<<filename<<std::endl;
 
 	std::ifstream file(filename,std::ios_base::in);
     if (!file.is_open()){
@@ -130,70 +42,42 @@ bool loadTSPSet(const char* filename,fSpeakerDescriptor &desc, const int id)
 		return false; //create file stream and check it
 	}
 
-	if(!std::getline(file,buffer)){
-		std::cout<<"File is Empty!"<<std::endl;
-		return false;
-	}
-	LineInFile++;
+	try
+    {
+		ScanINI speakerConfig(file);
 
+		desc.DCResistance = std::stof(speakerConfig.getKey("tspset", "re") );
+		desc.bl = std::stof(speakerConfig.getKey("tspset", "bl") );
+		desc.inductance = std::stof(speakerConfig.getKey("tspset", "le") );
+		desc.mass = std::stof(speakerConfig.getKey("tspset", "mmd") );
+		desc.resitanceMass = std::stof(speakerConfig.getKey("tspset", "re") );
+		desc.sd = std::stof(speakerConfig.getKey("tspset", "sd") );
+		desc.springForce = std::stof(speakerConfig.getKey("tspset", "cms") );
 
-	convertLine(buffer,labelDummy,value);
-	buffer.clear();
-	if( labelDummy!="TSPSET")
-	{
-		std::cout<<"Unexpected File Found. Label <TSPSET> expected @Line: "<<LineInFile<<std::endl;
-		return false;
+    }
+    catch (std::exception& e) {
+    	std::cout<<"Fehler beim Parsen der TSP-Daten gefunden für ID: "<<id<<"\n";
+    	return false;
 	}
+
 	if (id>=0) //look for tspdata with ID =id
 	{
-		if(f2i(value)!=id)
-		{
-			while (!idFound)
-			{
-				if(!std::getline(file,buffer))
-				{
-					std::cout<<"TSPSet with ID: "<<id<<" could not be found!"<<std::endl;
-					return false;
-				}
-				LineInFile++;
-				convertLine(buffer,labelDummy,value);
-				if ((f2i(value)==id)&&(labelDummy=="TSPSET"))
-				{
-					idFound=true;
-				}
-				buffer.clear();
-			}
-		}
-		labelDummy="";
-		while (labelDummy!="TSPSET")
-		{
-			if(!std::getline(file,buffer))
-			{
-				buffer.clear();
-				break;//Fehler beim Lesen der Datei oder Dateiende
-			}
-			LineInFile++;
-			convertLine(buffer,labelDummy,value);
-			storeData(labelDummy,value,desc);
-		}
 		if (!checkTSPSet(desc))
 		{
-			std::cout<<"Fehlerhafte TSP-Daten gefunden für ID: "<<id<<" @Line: "<<LineInFile<<std::endl;
+			std::cout<<"Fehlerhafte TSP-Daten gefunden für ID: "<<id<<"\n";
 			return false;
 		}
 		if (!convertTSP(desc))
 		{
-			std::cout<<"Fehler beim konvertieren der TSP Daten! @Line: "<<LineInFile<<std::endl;
+			std::cout<<"Fehler beim konvertieren der TSP Daten!\n";
 			return false;
 		}
 		return true;
 
 	}
 
-	std::cout<<"ID muss >=0 sein! ID: "<<id<<" @line: "<<LineInFile<<std::endl;
+	std::cout<<"ID muss >=0 sein! ID: "<<id<<"\n";
 	return false;
-
-
 }
 
 bool initializeSpeakers(const char* filename,std::vector<f1DSpeaker> &speakers,pVelocityFunction testsignal, f1DCalculationDescriptor  const &desc)
