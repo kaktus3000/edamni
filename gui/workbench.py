@@ -886,7 +886,7 @@ def onSimulationButtonClick():
 	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
 		strSpeakerName = speakerListBox.get(iSpeaker)
-		strSpeakerFile = escapeString(strSpeakerName) + ".xml"
+		strSpeakerFile = escapeString(strSpeakerName) + ".cfg"
 		
 		strSpeakerFilename = g_strDir + strSpeakerFile
 		
@@ -896,9 +896,16 @@ def onSimulationButtonClick():
 		rootElem = xmlTree.getroot()
 		writeSpeakerXML(strSpeakerName, rootElem)
 
-		#write xml to disk
-		xmlTree.write(strSpeakerFilename)
-
+		speakerConfig = configparser.ConfigParser()
+		dSpeakerProps = dict()
+		for prop in rootElem:
+			dSpeakerProps[prop.tag] = prop.text
+		
+		speakerConfig['tspset'] = dSpeakerProps
+		
+		with open(strSpeakerFilename, 'w') as speakerFile:
+			speakerConfig.write(speakerFile)
+		
 	config['speakers'] = dSpeakerFileMapping
 
 	#open simulation input file for writing
