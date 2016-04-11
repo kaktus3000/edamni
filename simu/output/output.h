@@ -7,12 +7,12 @@
 
 #include "../kernel/simtyps.h"
 
-bool writeOutput(char* pcOutput,f1DCalculationContainer const *const Calculation,float const* const buffer,int param =1);
+bool writeOutput(const char* pcOutput,f1DCalculationContainer const *const Calculation,float const* const buffer,int param =1);
 
-bool writeOutput(char* pcOutput,f1DMicrophone  &microphone);
+bool writeOutput(const char* pcOutput,f1DMicrophone  &microphone);
 
-bool writeOutput(char* pcOutput,frequencyOutput  &data,int ID=0);
+bool writeOutput(const char* pcOutput,frequencyOutput  &data,std::string& strID);
 
-bool writeRms(char* pcOutput,frequencyOutput  &data,int ID=0);
+bool writeRms(const char* pcOutput,frequencyOutput  &data,int ID=0);
 
 #endif

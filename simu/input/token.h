@@ -5,6 +5,7 @@
 #include <string>
 #include <cctype>
 #include <algorithm>
+#include "../kernel/pre_simtypes.h"
 
 enum TokenType
 {
@@ -16,6 +17,7 @@ enum TokenType
     TT_MINUS,
     TT_INTVALUE,
 	TT_FLOATVALUE,
+	TT_STRING,
 	TT_NIL
 };
 
@@ -29,6 +31,7 @@ static const char *TokenTypeDescription[] =
     "TT_MINUS",
     "TT_INT",
 	"TT_FLOAT",
+	"TT_STRING",
 	"TT_NIL"
 };
 
@@ -41,7 +44,9 @@ static const char *TokenTypeIdentifier[] =
     "+",
     "-",
     "_value_float_",
-	"_value_int_"
+	"_value_int_",
+    "_value_string_",
+    ""
 };
 
 struct TokenDescriptor
@@ -57,23 +62,28 @@ class Token
 		TokenType type_;
 		double fValue_;
 		unsigned int iValue_;
+		std::string sValue_;
 		unsigned int line_;
 		unsigned int pos_;
 	public:
-		Token(TokenType type, double fvalue,unsigned int iValue, unsigned int line, unsigned int pos):
-			type_(type), fValue_(fvalue),iValue_(iValue),line_(line),pos_(pos){}
+		Token(TokenType type, double fvalue,unsigned int iValue,std::string sValue, unsigned int line, unsigned int pos):
+			type_(type), fValue_(fvalue),iValue_(iValue),sValue_(sValue),line_(line),pos_(pos){}
 		Token(const Token& t):
-			type_(t.type_),fValue_(t.fValue_),iValue_(t.iValue_),line_(t.line_),pos_(t.pos_){}
+			type_(t.type_),fValue_(t.fValue_),iValue_(t.iValue_),sValue_(t.sValue_),line_(t.line_),pos_(t.pos_){}
 		Token& operator= (const Token &t)
 		{
 			type_=t.returnType();
 			fValue_=t.getFValue();
 			iValue_=t.getIValue();
+			sValue_=t.getSValue();
 			line_=t.returnLine();
 			pos_=t.returnPos();
 			return *this;
 		}
-
+		std::string getSValue() const
+		{
+			return sValue_;
+		}
 		double getFValue() const
 		{
 			return fValue_;
@@ -96,7 +106,7 @@ class Token
 		}
 };
 
-static Token noToken(TT_NIL,0.0,0,0,0);
+static Token noToken(TT_NIL,0.0,0,"",0,0);
 
 class TokenArray //speichert tokens
 {
@@ -189,30 +199,36 @@ class TokenHandler //�berpr�ft tokens ob sie dem zielbereich entsprechen
 	private:
 		std::map<std::string,TokenType> idents_;
 		TokenArray tokens_;
+		void addTokenIdent (TokenType token)
+		{
+			idents_.insert(std::pair<std::string,TokenType>(TokenTypeIdentifier[token],token));
+		}
 	public:
 		TokenHandler(std::vector<std::string> &idents)
 		{
-			idents_.insert(std::pair<std::string,TokenType>("dx",TT_DX));
-			idents_.insert(std::pair<std::string,TokenType>("e",TT_ELEM));
-			idents_.insert(std::pair<std::string,TokenType>("s",TT_SPEAKER));
-			idents_.insert(std::pair<std::string,TokenType>("m",TT_MIC));
-			idents_.insert(std::pair<std::string,TokenType>("+",TT_PLUS));
-			idents_.insert(std::pair<std::string,TokenType>("-",TT_MINUS));
-			idents_.insert(std::pair<std::string,TokenType>("_value_float_",TT_FLOATVALUE)); //_reserved expression for values
-			idents_.insert(std::pair<std::string,TokenType>("_value_int_",TT_INTVALUE)); //_reserved expression for values
+			addTokenIdent(TT_DX);
+			addTokenIdent(TT_ELEM);
+			addTokenIdent(TT_SPEAKER);
+			addTokenIdent(TT_MIC);
+			addTokenIdent(TT_PLUS);
+			addTokenIdent(TT_MINUS);
+			addTokenIdent(TT_FLOATVALUE); //_reserved expression for float values
+			addTokenIdent(TT_INTVALUE); //_reserved expression for  int values
+			addTokenIdent(TT_STRING); //_reserved expression for string values
 		}
 		TokenHandler()
 		{
-			idents_.insert(std::pair<std::string,TokenType>("dx",TT_DX));
-			idents_.insert(std::pair<std::string,TokenType>("e",TT_ELEM));
-			idents_.insert(std::pair<std::string,TokenType>("s",TT_SPEAKER));
-			idents_.insert(std::pair<std::string,TokenType>("m",TT_MIC));
-			idents_.insert(std::pair<std::string,TokenType>("+",TT_PLUS));
-			idents_.insert(std::pair<std::string,TokenType>("-",TT_MINUS));
-			idents_.insert(std::pair<std::string,TokenType>("_value_float_",TT_FLOATVALUE)); //_reserved expression for values
-			idents_.insert(std::pair<std::string,TokenType>("_value_int_",TT_INTVALUE)); //_reserved expression for values
+			addTokenIdent(TT_DX);
+			addTokenIdent(TT_ELEM);
+			addTokenIdent(TT_SPEAKER);
+			addTokenIdent(TT_MIC);
+			addTokenIdent(TT_PLUS);
+			addTokenIdent(TT_MINUS);
+			addTokenIdent(TT_FLOATVALUE); //_reserved expression for float values
+			addTokenIdent(TT_INTVALUE); //_reserved expression for  int values
+			addTokenIdent(TT_STRING); //_reserved expression for string values
 		}
-		bool storeToken(const std::string & ident,const double & fValue,unsigned int iValue,unsigned int line, unsigned int pos) //returns true if aToken is a validity token
+		bool storeToken(const std::string & ident,const double & fValue,unsigned int iValue,std::string sValue,unsigned int line, unsigned int pos) //returns true if aToken is a validity token
 		{
 			std::string buffer;
 			buffer.resize(ident.size());
@@ -220,7 +236,7 @@ class TokenHandler //�berpr�ft tokens ob sie dem zielbereich entsprechen
 			if (idents_.find(buffer)!=idents_.end()) //valides token
 			{
 
-				Token tBuffer(idents_.find(buffer)->second,fValue,iValue,line,pos);
+				Token tBuffer(idents_.find(buffer)->second,fValue,iValue,sValue,line,pos);
 				return tokens_.addToken(tBuffer);
 			}
 			return false;

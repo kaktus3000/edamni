@@ -32,6 +32,9 @@ bool loadControlFile(char* filename, cfData &data)
 		if(!(data.m_strElementFile = ini.getKey("general", "element_file")).length())
 			return false;
 
+		if(!(data.m_strOutputFile = ini.getKey("general", "output_file")).length())
+			return false;
+
 		data.m_fMaxTimestep = std::stof(ini.getKey("general", "max_timestep"));
 
 		std::string strSignal(ini.getKey("signal", "signal_type"));

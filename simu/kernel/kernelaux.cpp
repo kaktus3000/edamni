@@ -29,8 +29,8 @@ int fullfillDescriptor(f1DCalculationContainer* container){ //calculate dt and d
 
 struct microphoneParser{//struct for buffer unparsed connection data
 	int line;
-	int ID;//p-element ID
 	int ref;//crosssection area
+	std::string strLabel;
 };
 
 struct speakerParser{//struct for buffer unparsed connection data
@@ -72,10 +72,10 @@ bool existsEID(int ref,std::vector<f1DElement> &elements)
 	return true;
 }
 
-bool existsMID(int ref,std::vector<microphoneParser> &unparsedMicrophones)
+bool existsMID(const std::string& ref,std::vector<microphoneParser> &unparsedMicrophones)
 {
 	for (unsigned int i=0;i<unparsedMicrophones.size();i++){ //look if ref= element .ID for all elements
-		if (unparsedMicrophones[i].ID==ref)
+		if (unparsedMicrophones[i].strLabel==ref)
 			return true;
 	}
 	return false;
@@ -346,18 +346,19 @@ int storeFileToBuffers(f1DCalculationContainer* container,
 					return CORRUPTED_FILE;
 				}
 
-				parsingBuffer>>unparsedMicrophoneDummy.ID; //give it a ID
+				parsingBuffer>>unparsedMicrophoneDummy.strLabel;
+
 				if (parsingBuffer.fail()){ //und testen
 					std::cout<<"Corrupted microphone-element. microphone <ID> expected @Line: "<<LineInFile<<std::endl;
 					return CORRUPTED_FILE;
 				}
-				if (unparsedMicrophoneDummy.ID<0){
-					std::cout<<"Error: Microphone reference, ID: "<<unparsedMicrophoneDummy.ID<<" must be greater than zero @Line: "<<LineInFile<<std::endl;
+				if (!unparsedMicrophoneDummy.strLabel.size()){
+					std::cout<<"Error: Microphone reference, ID: "<<unparsedMicrophoneDummy.strLabel<<" must be greater than zero @Line: "<<LineInFile<<std::endl;
 					return FATAL_ERROR;
 				}
 
-				if (existsMID(unparsedMicrophoneDummy.ID,unparsedMicrophones)){
-					std::cout<<"Error: Microphone ID: "<<unparsedMicrophoneDummy.ID<<" exists already! @Line: "<<LineInFile<<std::endl;
+				if (existsMID(unparsedMicrophoneDummy.strLabel,unparsedMicrophones)){
+					std::cout<<"Error: Microphone ID: "<<unparsedMicrophoneDummy.strLabel<<" exists already! @Line: "<<LineInFile<<std::endl;
 					return FATAL_ERROR;
 				}
 				//read the p-element reference
@@ -1064,7 +1065,7 @@ int initializeOpenEnds(f1DCalculationContainer* container){
 int initializeMicrophones(f1DCalculationContainer* container,std::vector<microphoneParser> &unparsedMicrophones){
 	std::cout<<"Create microphones..."<<std::endl;
 	for (unsigned int i=0; i<unparsedMicrophones.size();i++){
-		f1DMicrophone microphonedummy(unparsedMicrophones[i].ID,container->info->numberTimesteps,container->info->dt);
+		f1DMicrophone microphonedummy(container->info->numberTimesteps,container->info->dt, unparsedMicrophones[i].strLabel);
 		microphonedummy.refE=getNeighbourPointer(unparsedMicrophones[i].ref,container->elements);
 		if (!microphonedummy.refE){
 			std::cout<<"Error: Microphone reference, ID: "<<unparsedMicrophones[i].ref<<" @Line: "<<unparsedMicrophones[i].line<<std::endl;

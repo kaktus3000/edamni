@@ -22,6 +22,7 @@ enum ESignals
 struct cfData{
 	//basic info for kernel
 	std::string m_strElementFile;
+	std::string m_strOutputFile;
 	float m_fMaxTimestep;
 
 	//defines signal shape

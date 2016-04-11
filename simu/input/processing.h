@@ -4,7 +4,7 @@
 #include <string>
 #include "scanner.h"
 #include "semanticchecking.h"
-#include ""
+
 
 class Parser
 {
@@ -23,7 +23,7 @@ class Parser
     public:
         Parser(std::string const &filename)
         {
-
+        	fail_=false;
 
         }
         void getErrorMsg(std::string &msg) {msg=errormsg_;}
@@ -32,6 +32,6 @@ class Parser
         bool parse();
 
 
-}
+};
 
 #endif // PROCESSING_H_INCLUDED

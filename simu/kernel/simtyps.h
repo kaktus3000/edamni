@@ -292,12 +292,13 @@ private:
 	std::vector<float> m_values;
 	std::vector<float> m_values2;
 public:
-	int ID;	
+	std::string strLabel;
 	f1DElement* refE; //id of messured element
-	f1DMicrophone(int id,unsigned int size, float dt)
+	f1DMicrophone(unsigned int size, float dt, std::string label)
 	{
-		ID=id;
 		m_dt=dt;
+		strLabel = label;
+
 		m_pos=0;
 		m_values.clear();
 		m_values2.clear();

@@ -213,6 +213,11 @@ def removeSpeaker(*args):
 	lSelections = speakerListBox.curselection()
 	if len(lSelections) == 0:
 		return
+	strSpeaker = speakerListBox.get(lSelections[0] )
+
+	print(strSpeaker)
+	del g_dSpeakers[strSpeaker ]
+
 	speakerListBox.delete(lSelections[0])
 
 def moveSpeakerUp(*args):
@@ -845,6 +850,8 @@ g_strResizedFile = g_strFilename + "_resized.png"
 g_strSimuInputFile = g_strFile + ".in"
 g_strSimuOutputFile = g_strFile + ".out"
 
+g_strSimuCommand = "../bin/simu"
+
 
 def generateElementList():
 	#write xml file of setup
@@ -866,7 +873,8 @@ def onSimulationButtonClick():
 	g_fMaxTimeStep = 0.001
 	
 	config['general'] = {'element_file': g_strElementListFile,
-						 'max_timestep': str(g_fMaxTimeStep)}
+						 'max_timestep': str(g_fMaxTimeStep),
+						 'output_file' : g_strSimuOutputFile}
 
 	strSignalType = "sine"
 
@@ -914,7 +922,7 @@ def onSimulationButtonClick():
 		config.write(configfile)
 	
 	#call simulation with all the data
-	call(["../bin/simu", g_strSimuInputFile, g_strSimuOutputFile], cwd=g_strDir)
+	call([g_strSimuCommand, g_strSimuInputFile], cwd=g_strDir)
 	
 	#collect results
 	#parse simu output file

@@ -5,7 +5,7 @@
 #include <string>
 #include <iostream>
 
-bool writeOutput(char* pcOutput,f1DCalculationContainer const *
+bool writeOutput(const char* pcOutput,f1DCalculationContainer const *
 		const calculation,float const* const buffer, int param)
 {
 	if (param<1) param=1;
@@ -32,10 +32,10 @@ bool writeOutput(char* pcOutput,f1DCalculationContainer const *
 	return true;
 }
 
-bool writeOutput(char* pcOutput,f1DMicrophone &microphone)
+bool writeOutput(const char* pcOutput,f1DMicrophone &microphone)
 {
 	std::ostringstream  ostr;
-	ostr<<pcOutput<<"_mic"<<microphone.ID;
+	ostr<<pcOutput<<"_mic"<<microphone.strLabel;
 	std::string str(ostr.str());
 	std::ofstream output(str.c_str());
 
@@ -51,10 +51,10 @@ bool writeOutput(char* pcOutput,f1DMicrophone &microphone)
 	return true;
 }
 
-bool writeOutput(char* pcOutput,frequencyOutput  &data,int ID)
+bool writeOutput(const char* pcOutput,frequencyOutput  &data,std::string& strID)
 {
 	std::ostringstream  ostr;
-	ostr<<pcOutput<<"_frequency_response"<<ID;
+	ostr<<pcOutput<<"_frequency_response"<<strID;
 	std::string str(ostr.str());
 	std::ofstream output(str.c_str());
 
@@ -70,7 +70,7 @@ bool writeOutput(char* pcOutput,frequencyOutput  &data,int ID)
 	return true;
 }
 
-bool writeRms(char* pcOutput,frequencyOutput  &data,int ID)
+bool writeRms(const char* pcOutput,frequencyOutput  &data,int ID)
 {
 	std::ostringstream  ostr;
 	ostr<<pcOutput<<"_rms"<<ID;

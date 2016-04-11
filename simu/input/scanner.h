@@ -12,6 +12,8 @@
 #define ALPHANUMERIC  std::string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 #define DIRECTIONMARKER std::string("+-")
 #define DIGITSEPARATOR  std::string(".")
+#define STRINGSTART  std::string("\"")
+#define STRINGEND  std::string(STRINGSTART)
 #define SCIENTIFIC  std::string("e")
 #define KEYWORDEND std::string(COMMENTSTART+SPACINGS)
 
@@ -107,12 +109,13 @@ class Scanner
 			return token_.getTokenArray(tArray);
 		}
     private:
-		std::string readUntil(const std::string keys = "",bool invert =false); //zeichen bis zu denen gelesen werden soll
+		std::string readUntil(const std::string keys = "",bool invert =false);
         void skipSpaces();
 		void skipComment();
 		char readNextChar();
 		void increaseLine() {line_++;pos_=0;}
 		void addError();
 		bool keyInString(const std::string &aString, const char key);
-		bool readDouble(double & aDouble,unsigned int &aInt, bool &first);
+		bool readValue(double & aDouble,unsigned int &aInt, bool &first);
+		bool readString(std::string &string);
 };

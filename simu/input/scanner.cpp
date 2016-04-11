@@ -12,7 +12,7 @@ bool Scanner::keyInString(const std::string & aString, const char key)
 }
 
 
-bool Scanner::readDouble(double & aDouble,unsigned int &aInt, bool &first)
+bool Scanner::readValue(double & aDouble,unsigned int &aInt, bool &first)
 {
 	currentKey_+=readUntil(KEYWORDEND); //lese zahlenstring
     if (keyInString(currentKey_,DIGITSEPARATOR[0])||keyInString(currentKey_,SCIENTIFIC[0]))
@@ -55,6 +55,15 @@ bool Scanner::readDouble(double & aDouble,unsigned int &aInt, bool &first)
 	}
 
 }
+bool Scanner::readString(std::string &string)
+{
+	std::string buffer;
+	buffer=readUntil(STRINGEND); //nicht += "-zeichen soll nicht mit in den string
+	char a = readNextChar();
+	if (!keyInString(STRINGEND,a)) return false; //am Dateiende angelangt = abschließendes " nicht gefunden
+	string =buffer;
+	return true;
+}
 
 bool Scanner::scan()
 {
@@ -83,7 +92,7 @@ bool Scanner::scan()
         if (keyInString(DIRECTIONMARKER,key)) //pr�fe auf zahl
         {
             currentKey_ = key;
-            if (!token_.storeToken(currentKey_,0.0,0,lastLine_,lastPos_))// if no knowen token
+            if (!token_.storeToken(currentKey_,0.0,0,"",lastLine_,lastPos_))// if no knowen token
                 addError();
             continue;
         }
@@ -93,16 +102,16 @@ bool Scanner::scan()
 			double double_ = 0.0;
 			unsigned int int_=0;
 			bool first_ =true;
-			if (readDouble(double_,int_,first_))
+			if (readValue(double_,int_,first_))
 			{
 				if (first_)
 				{
-					if (!token_.storeToken("_value_float_",double_,0,lastLine_,lastPos_))// if no knowen token
+					if (!token_.storeToken(TokenTypeIdentifier[TT_FLOATVALUE],double_,0,"",lastLine_,lastPos_))// if no knowen token
 						addError();
 				}
 				else
 				{
-					if (!token_.storeToken("_value_int_",0,int_,lastLine_,lastPos_))// if no knowen token
+					if (!token_.storeToken(TokenTypeIdentifier[TT_INTVALUE],0,int_,"",lastLine_,lastPos_))// if no knowen token
 						addError();
 				}
 			}
@@ -110,10 +119,24 @@ bool Scanner::scan()
 				addError();
 			continue;
 		}
-
+        if (keyInString(STRINGSTART,key)) //pr�fe auf zahl
+        {
+        	if (!readString(currentKey_))
+            {
+            	currentKey_="<\">expected at the end of a string";
+        		lastLine_=line_; //store line and pos at keyword beginning
+        		lastPos_=pos_;
+                addError();
+            }
+            if (!token_.storeToken(TokenTypeIdentifier[TT_STRING],0.0,0,currentKey_,lastLine_,lastPos_))// if no knowen token
+            {
+                addError();
+            }
+            continue;
+        }
 		currentKey_ = key;
 		currentKey_ +=readUntil(KEYWORDEND); //lese token
-		if (!token_.storeToken(currentKey_,0.0,0,lastLine_,lastPos_))// if no knowen token
+		if (!token_.storeToken(currentKey_,0.0,0,"",lastLine_,lastPos_))// if no knowen token
 			addError();
 	}
 	token_.complete();
@@ -136,6 +159,9 @@ char Scanner::readNextChar()
     return 0;
 }
 
+//geht die interne zeichenkette durch bis bedingung erfüllt ist, und liefert die zeichenkette zurück
+// invert = false solange zeichen der zeichenkette in keys ist wird zeichen in string eingelesen gelesen
+//invert = true wenn zeichen der zeichenkette  in keys ist wird aufgehört zu lesen und auch
 std::string Scanner::readUntil(std::string keys,bool invert) //lie�t bis ein zeichen aus keys auftaucht oder das Ende der scannerdaten erreicht wurde
 {
 	std::string string="";
@@ -144,6 +170,8 @@ std::string Scanner::readUntil(std::string keys,bool invert) //lie�t bis ein z
 	{
 		string+=current;
 	}
+		iter--; //set iterator one element back so it points to the first elemt after the returned string
+		pos_--;
 	return string;
 }
 
@@ -157,8 +185,6 @@ void Scanner::skipComment()
 void Scanner::skipSpaces()
 {
 	readUntil(SPACINGS,true);
-	iter--; //set iterator one element back so it points to the first non spacing element
-	pos_--;
 }
 
 void Scanner::addError()
