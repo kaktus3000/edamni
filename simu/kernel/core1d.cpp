@@ -24,7 +24,7 @@ int f1DStartCalculation(f1DCalculationContainer* field,float* buffer, float para
 	for (unsigned int i=0; i< field->info->numberTimesteps;i++) //calculation timeintegration main loop
 	{
 		for (unsigned int j=0;j <field->connectors.size();j++) // calculate new velocitys
-		{
+		{//blblblblbblblblbllblbblblsdfjjjasdfi
 			field->connectors[j].velocity =field->connectors[j].velocity*(1-field->connectors[j].damping*field->info->dt)+
 				field->connectors[j].vfactor*(field->connectors[j].negativeNeighbour->pressure-field->connectors[j].positiveNeighbour->pressure);
 			
