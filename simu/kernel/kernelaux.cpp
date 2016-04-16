@@ -348,6 +348,8 @@ int storeFileToBuffers(f1DCalculationContainer* container,
 
 				parsingBuffer>>unparsedMicrophoneDummy.strLabel;
 
+				unparsedMicrophoneDummy.strLabel = unparsedMicrophoneDummy.strLabel.substr(1, unparsedMicrophoneDummy.strLabel.size()-2);
+
 				if (parsingBuffer.fail()){ //und testen
 					std::cout<<"Corrupted microphone-element. microphone <ID> expected @Line: "<<LineInFile<<std::endl;
 					return CORRUPTED_FILE;

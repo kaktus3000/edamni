@@ -878,7 +878,7 @@ def onSimulationButtonClick():
 
 	strSignalType = "sine"
 
-	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
+	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=128)
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
@@ -926,10 +926,11 @@ def onSimulationButtonClick():
 	
 	#collect results
 	#parse simu output file
-	tree = ET.parse(strSimuOutputFile)
+	tree = ET.parse(g_strDir + g_strSimuOutputFile)
 	root = tree.getroot()
 
 	daMicSPLs = dict()
+	daSpeakerImpedances = dict()
 
 	#periods for measuring spl and phase
 	g_nMeasPeriods = 3
@@ -949,31 +950,54 @@ def onSimulationButtonClick():
 			print("Mic - id =", strMicId, ", file =", strMicFile)
 
 			#load output file
-			hMicSamples = open(strMicFile, 'rb')
-			aMicData = parse2column(hMicSamples)
-
-			#cut the last signal period from the data
-			fPeriodTime = 1.0 / fSsignalFreq
-
-			fMeasPeriodEnd   = g_iSignalPeriods * fPeriodTime
-			fMeasPeriodStart = fMeasPeriodEnd - g_nMeasPeriods * fPeriodTime
-
-			aMeasData = cutRows(aMicData, fMeasPeriodStart, fMeasPeriodEnd)
-
-			fMicSPL = rmsColumn(aMeasData, 1)
+			npaMicOutput = numpy.loadtxt(g_strDir + strMicFile);
+			
+			npaPressures = numpy.transpose(npaMicOutput)[1]
+			
+			fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressures) ) / npaPressures.size)
+			
+			fMicSPL = 20*numpy.log10(fMicRMS/2.0e-5);
 
 			if not strMicId in daMicSPLs:
 				daMicSPLs[strMicId] = []
 
 			daMicSPLs[strMicId].append( (fSsignalFreq, fMicSPL) )
+		
+		for speaker_output in signal.findall("speaker_output"):
+			strSpeakerId = speaker_output.attrib["id"]
+			strSpeakerFile = speaker_output.attrib["file"]
+
+			print("Speaker - id =", strSpeakerId, ", file =", strSpeakerFile)
+
+			#load output file
+			npaSpeakerOutput = numpy.loadtxt(g_strDir + strSpeakerFile);
+			
+			npaVoltage = numpy.transpose(npaSpeakerOutput)[1]
+			fVoltageRMS = numpy.sqrt(numpy.sum(numpy.square(npaVoltage) ) / npaVoltage.size)
+			
+			npaCurrent = numpy.transpose(npaSpeakerOutput)[2]
+			fCurrentRMS = numpy.sqrt(numpy.sum(numpy.square(npaCurrent) ) / npaCurrent.size)
+			
+			fImpedance = fVoltageRMS / fCurrentRMS
+			
+			if not strSpeakerId in daSpeakerImpedances:
+				daSpeakerImpedances[strSpeakerId] = []
+
+			daSpeakerImpedances[strSpeakerId].append( (fSsignalFreq, fImpedance) )
 
 		#video output is per frequency, no iteration needed.
 
 	#write spl files for mics
 	for strMicID in daMicSPLs:
-		hMicFile = open("spl_mic_" + strMicID, 'w')
-		for (freq, spl) in daMicSPLs[strMicID]:
-			hOutput.write(str( freq ) + "\t" + str( spl ) + "\n" ) 
+		with open("spl_mic_" + strMicID, 'w') as hMicFile:
+			for (freq, spl) in daMicSPLs[strMicID]:
+				hMicFile.write(str( freq ) + "\t" + str( spl ) + "\n" )
+			
+	#write impedance files for speakers
+	for strSpeakerId in daSpeakerImpedances:
+		with open("impedance_speaker_" + strSpeakerId, 'w') as hSpeakerFile:
+			for (freq, impedance) in daSpeakerImpedances[strSpeakerId]:
+				hSpeakerFile.write(str( freq ) + "\t" + str( impedance ) + "\n" )
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()

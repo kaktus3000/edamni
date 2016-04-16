@@ -239,7 +239,7 @@ public:
 		//os<<ID<<'\n';
 		for (unsigned int i=0;i<m_u.size();i++)
 		{
-			os<<i*m_dt<<'\t'<<m_u[i]<<'\n'<<m_i[i]<<'\n'<<m_v[i]<<'\n'<<m_x[i]<<'\n';
+			os<<i*m_dt<<'\t'<<m_u[i]<<'\t'<<m_i[i]<<'\t'<<m_v[i]<<'\t'<<m_x[i]<<'\n';
 		}
 		return os;
 	}
@@ -371,7 +371,7 @@ public:
 		//os<<ID<<'\n';
 		for (unsigned int i=0;i<m_values.size();i++)
 		{
-			os<<i*m_dt<<'\t'<<m_values[i]<<'\n'<<m_values2[i]<<'\n';
+			os<<i*m_dt<<'\t'<<m_values[i]<<'\n';//<<m_values2[i]<<'\n';
 		}
 		return os;
 	}

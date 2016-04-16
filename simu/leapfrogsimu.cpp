@@ -67,15 +67,16 @@ main(int argc, char* argv[])
 	//do calculation
 	std::cout<<"Start calculation... "<<std::endl;
 
-	frequencyOutput* frequencyData= new frequencyOutput[calculation->microphones.size()];
+	std::ofstream outfile(data.m_strOutputFile);
+	outfile<<"<simu_output>\n";
 
-
-	frequencyOutput* frequencyRmsData= new frequencyOutput[calculation->speakers.size()];
 
  	for (unsigned int iFreq=0; iFreq<data.m_vfFrequencies.size() ; iFreq++)
  	{
  		float fFreq = data.m_vfFrequencies[iFreq];
  		std::cout << fFreq << " Hz\n";
+
+ 		outfile<<"<signal freq = \"" << fFreq << "\" type=\"sin\" >\n";
 
  		for (unsigned int j=0;j<calculation->microphones.size();j++)
  		{
@@ -83,42 +84,52 @@ main(int argc, char* argv[])
  		}
  		resetspeakers(calculation->speakers,csin);
 
+ 		for (unsigned int j=0;j<calculation->elements.size();j++)
+ 			calculation->elements[j].pressure = 0;
+
+ 		for (unsigned int j=0;j<calculation->connectors.size();j++)
+			calculation->connectors[j].velocity = 0;
+
+ 		for (unsigned int j=0;j<calculation->openElements.size();j++)
+ 		{
+ 			calculation->openElements[j].element.pressure = 0;
+ 			calculation->openElements[j].connector->velocity = 0;
+ 		}
+
+
  		f1DStartCalculation(calculation,buffer, fFreq);
- 		float k1,k2,k3;
+
  		for (unsigned int j=0;j<calculation->microphones.size();j++)
  		{
- 			frequencyData[j].storeData(fFreq , getAmplitude(calculation->microphones[j],k1,k2,k3,STEPSTOIGNORE));
- 			//calculation->microphones[j].resetBuffer();
+ 			std::string strOutFileName = data.m_strOutputFile + calculation->microphones[j].strLabel + std::to_string(iFreq);
+ 			std::ofstream outFile(strOutFileName);
+ 			calculation->microphones[j].writeToStream(outFile);
+
+ 			outfile<<"<mic_output id = \"" << calculation->microphones[j].strLabel << "\" file = \"" << strOutFileName << "\"/>\n";
  		}
 
  		for (unsigned int j=0;j<calculation->speakers.size();j++)
  		{
- 			frequencyRmsData[j].storeData(fFreq, getRMS(calculation->speakers[j].monitor,STEPSTOIGNORE));
+ 			std::string strOutFileName = data.m_strOutputFile + std::to_string(calculation->speakers[j].ID) + std::string("_") + std::to_string(iFreq);
+			std::ofstream outFile(strOutFileName);
+			calculation->speakers[j].monitor.writeToStream(outFile);
+
+			outfile<<"<speaker_output id = \"" << calculation->speakers[j].ID << "\" file = \"" << strOutFileName << "\"/>\n";
  		}
+
+ 		outfile<<"</signal>\n";
 
  	}
 
  	std::string strOut = std::string(pControl.configPath) + std::string("out");
 
-	for (unsigned int j=0;j<calculation->microphones.size();j++)
-	{
-		writeOutput(strOut.c_str(),frequencyData[j],calculation->microphones[j].strLabel);
-	}
-	for (unsigned int j=0;j<calculation->speakers.size();j++)
-	{
-		writeRms(strOut.c_str(),frequencyRmsData[j],calculation->speakers[j].ID);
-	}
 	std::cout<<"Finish calculation... "<<std::endl;	
-	std::cout<<"Storing results... "<<std::endl;
-
-	std::ofstream outfile(data.m_strOutputFile);
 
 
-
+	outfile<<"</simu_output>\n";
 
 	writeOutput(strOut.c_str(),calculation,buffer,20);
 
-	delete[] frequencyData;
 	delete[] buffer;
 	delete calculation->info;
 	delete calculation;
