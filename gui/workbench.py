@@ -424,7 +424,7 @@ class MovableHandler:
 
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
 
-			gridRow += 1;
+			gridRow += 1
 		#add button to delete element
 		def deleteMe():
 			print("deleting ID", self.strID)
@@ -847,8 +847,8 @@ g_strElementListFilename = g_strDir + g_strElementListFile
 g_strImageFile = g_strFilename + ".png"
 g_strResizedFile = g_strFilename + "_resized.png"
 
-g_strSimuInputFile = g_strFile + ".in"
-g_strSimuOutputFile = g_strFile + ".out"
+g_strSimuOutputFile = g_strFilename + ".out"
+g_strSimuInputFile = g_strFilename + ".in"
 
 g_strSimuCommand = "../bin/simu"
 
@@ -868,136 +868,54 @@ def escapeString(strToEscape):
 
 def onSimulationButtonClick():
 	generateElementList()
+	
 	config = configparser.ConfigParser()
-	
+
 	g_fMaxTimeStep = 0.001
-	
+
 	config['general'] = {'element_file': g_strElementListFile,
 						 'max_timestep': str(g_fMaxTimeStep),
-						 'output_file' : g_strSimuOutputFile}
-
+						 'output_file' : g_strFile + ".out"}
+	 
 	strSignalType = "sine"
-
-	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=128)
+	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
-
 	g_iSignalPeriods = 15
 	g_iTrailingPeriods = 15
-
 	config['signal'] = {'signal_type': strSignalType,
 						'frequencies': strFreqs,
 						'signal_periods': str(g_iSignalPeriods),
 						'trailing_periods': str(g_iTrailingPeriods)}
-
 	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
 		strSpeakerName = speakerListBox.get(iSpeaker)
 		strSpeakerFile = escapeString(strSpeakerName) + ".cfg"
-		
+	
 		strSpeakerFilename = g_strDir + strSpeakerFile
-		
+	
 		dSpeakerFileMapping[escapeString(strSpeakerName)] = strSpeakerFile
 		#create xml data
 		xmlTree = ET.ElementTree(ET.Element("tspset") )
 		rootElem = xmlTree.getroot()
 		writeSpeakerXML(strSpeakerName, rootElem)
-
 		speakerConfig = configparser.ConfigParser()
 		dSpeakerProps = dict()
 		for prop in rootElem:
 			dSpeakerProps[prop.tag] = prop.text
-		
+	
 		speakerConfig['tspset'] = dSpeakerProps
-		
+	
 		with open(strSpeakerFilename, 'w') as speakerFile:
 			speakerConfig.write(speakerFile)
-		
-	config['speakers'] = dSpeakerFileMapping
-
-	#open simulation input file for writing
 	
+	config['speakers'] = dSpeakerFileMapping
+	#open simulation input file for writing
+
 	with open(g_strDir + g_strSimuInputFile, 'w') as configfile:
 		config.write(configfile)
-	
-	#call simulation with all the data
-	call([g_strSimuCommand, g_strSimuInputFile], cwd=g_strDir)
-	
-	#collect results
-	#parse simu output file
-	tree = ET.parse(g_strDir + g_strSimuOutputFile)
-	root = tree.getroot()
 
-	daMicSPLs = dict()
-	daSpeakerImpedances = dict()
-
-	#periods for measuring spl and phase
-	g_nMeasPeriods = 3
-
-	#process signals
-	for signal in root.findall("signal"):
-		strSignalType = signal.attrib["type"]
-		fSsignalFreq = float(signal.attrib["freq"])
-
-		print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
-
-		#process outputs
-		for mic_output in signal.findall("mic_output"):
-			strMicId = mic_output.attrib["id"]
-			strMicFile = mic_output.attrib["file"]
-
-			print("Mic - id =", strMicId, ", file =", strMicFile)
-
-			#load output file
-			npaMicOutput = numpy.loadtxt(g_strDir + strMicFile);
-			
-			npaPressures = numpy.transpose(npaMicOutput)[1]
-			
-			fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressures) ) / npaPressures.size)
-			
-			fMicSPL = 20*numpy.log10(fMicRMS/2.0e-5);
-
-			if not strMicId in daMicSPLs:
-				daMicSPLs[strMicId] = []
-
-			daMicSPLs[strMicId].append( (fSsignalFreq, fMicSPL) )
-		
-		for speaker_output in signal.findall("speaker_output"):
-			strSpeakerId = speaker_output.attrib["id"]
-			strSpeakerFile = speaker_output.attrib["file"]
-
-			print("Speaker - id =", strSpeakerId, ", file =", strSpeakerFile)
-
-			#load output file
-			npaSpeakerOutput = numpy.loadtxt(g_strDir + strSpeakerFile);
-			
-			npaVoltage = numpy.transpose(npaSpeakerOutput)[1]
-			fVoltageRMS = numpy.sqrt(numpy.sum(numpy.square(npaVoltage) ) / npaVoltage.size)
-			
-			npaCurrent = numpy.transpose(npaSpeakerOutput)[2]
-			fCurrentRMS = numpy.sqrt(numpy.sum(numpy.square(npaCurrent) ) / npaCurrent.size)
-			
-			fImpedance = fVoltageRMS / fCurrentRMS
-			
-			if not strSpeakerId in daSpeakerImpedances:
-				daSpeakerImpedances[strSpeakerId] = []
-
-			daSpeakerImpedances[strSpeakerId].append( (fSsignalFreq, fImpedance) )
-
-		#video output is per frequency, no iteration needed.
-
-	#write spl files for mics
-	for strMicID in daMicSPLs:
-		with open("spl_mic_" + strMicID, 'w') as hMicFile:
-			for (freq, spl) in daMicSPLs[strMicID]:
-				hMicFile.write(str( freq ) + "\t" + str( spl ) + "\n" )
-			
-	#write impedance files for speakers
-	for strSpeakerId in daSpeakerImpedances:
-		with open("impedance_speaker_" + strSpeakerId, 'w') as hSpeakerFile:
-			for (freq, impedance) in daSpeakerImpedances[strSpeakerId]:
-				hSpeakerFile.write(str( freq ) + "\t" + str( impedance ) + "\n" )
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
