@@ -117,18 +117,20 @@ main(int argc, char* argv[])
 			outfile<<"<speaker_output id = \"" << calculation->speakers[j].ID << "\" file = \"" << strOutFileName << "\"/>\n";
  		}
 
+ 		std::string strOutFileName = data.m_strOutputFile + std::string("_element") + std::to_string(iFreq);
+
+ 		writeOutput(strOutFileName.c_str(),calculation,buffer,20);
+ 		outfile<<"<element_output file = \"" << strOutFileName << "\"/>\n";
+
  		outfile<<"</signal>\n";
+
+ 		exit(0);
 
  	}
 
- 	std::string strOut = std::string(pControl.configPath) + std::string("out");
-
 	std::cout<<"Finish calculation... "<<std::endl;	
 
-
 	outfile<<"</simu_output>\n";
-
-	writeOutput(strOut.c_str(),calculation,buffer,20);
 
 	delete[] buffer;
 	delete calculation->info;

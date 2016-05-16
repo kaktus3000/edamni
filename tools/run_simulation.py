@@ -97,8 +97,6 @@ for strSpeakerId in daSpeakerImpedances:
 #calculate costs for this design
 dMatCosts = material_costs.get_material_costs(g_strElementFile)
 
-#specific cost for one dB of non-linearity
-k_spec_linearity = 100
 #specific cost for missing one decade
 k_spec_decade = 2000
 #specific cost for spl deviation
@@ -108,7 +106,13 @@ k_spec_spl = 90
 t_spl = 110
 t_edge_low = 20
 t_edge_high = 400
-t_mic = "Space8_143"
+
+
+t_mic = None
+
+for mic in daMicSPLs.keys():
+	if "Space" in mic:
+		t_mic = mic
 
 #calculate cost for a linear response fit
 def linearResponseCost(npaSPL, fSPL, fLowEdge, fHighEdge):
