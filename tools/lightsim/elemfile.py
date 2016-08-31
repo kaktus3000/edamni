@@ -64,6 +64,8 @@ def scanElemFile(strFilename):
 				positiveNeighbors.append( (conn, area) )
 			elif attribType == "d":
 				damping = float(currLine[2:])
+			elif attribType == "#":
+				pass
 			else:
 				break
 			iLine += 1
@@ -90,7 +92,7 @@ def scanElemFile(strFilename):
 			iLine = line
 		elif linetype == "s":
 #			print("speaker!")
-			speakerID = currLine[2:]
+			speakerID = currLine[3:-2]
 			(negN, posN, damp, line) = scanAttribs(aLines, iLine + 1)
 
 			spkr = Speaker()
@@ -104,7 +106,7 @@ def scanElemFile(strFilename):
 		elif linetype == "m":
 			astrTemp = currLine.split(" ")
 			micElem = int(astrTemp[-1])
-			micID = astrTemp[-2]
+			micID = astrTemp[-2][1:-1]
 			
 			elem = Microphone()
 			elem.m_iElemID = micElem
@@ -115,6 +117,10 @@ def scanElemFile(strFilename):
 			#HACK: this is the 'dx' element
 			dx = float(currLine[3:])
 #			print("element length is", dx)
+		elif linetype == "#":
+			pass
+		elif currLine == "\n":
+			pass
 		else:
 			print("type of line not recognized!", currLine)
 		iLine += 1

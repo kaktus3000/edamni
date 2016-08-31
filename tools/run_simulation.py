@@ -25,6 +25,8 @@ if strOSDir=="":
 
 g_strDir = strOSDir + "/"
 
+print("run directory", g_strDir)
+
 print("calling", g_strSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
 #call simulation with all the data
 call([g_strSimuCommand, g_strSimuInputFile], cwd=g_strDir)
@@ -38,7 +40,7 @@ g_strElementFile = g_strDir + config.get("general", "element_file")
 
 #collect results
 #parse simu output file
-tree = ET.parse(g_strDir + g_strSimuOutputFile)
+tree = ET.parse(g_strSimuOutputFile)
 root = tree.getroot()
 daMicSPLs = dict()
 daSpeakerImpedances = dict()

@@ -1,33 +1,27 @@
 #!/usr/python3
 
-#track chains of elements in the input file and draw a pretty image
-
 import numpy
 import sys
+import elemfile
 
 def get_material_costs(infile):
-
-	f = open(infile, 'r')
-
-	aLines = f.readlines()
-
-	f.close()
-
-	g_dx = 0
-
+	dElems, dMics, dSpeakers, dx = elemfile.scanElemFile(infile)
+	
 	aCrossSections = []
 	aDampened = []
-
-	for line in aLines:
-		if line[0] == '+':
-			substrings = line.split(" ")
-			aCrossSections.append(float(substrings[2]) )
+			
+	for iID in dElems:
+		fTotalArea = 0
+		for target, area in dElems[iID].negativeNeighbors:
+			fTotalArea += area
 		
-		if line[0] == 'd':
-			aDampened.append(len(aCrossSections) - 1)
-	
-		if line[0:2] == "dx":
-			g_dx = float(line[2:])
+		for target, area in dElems[iID].positiveNeighbors:
+			fTotalArea += area
+
+		if dElems[iID].damping > 0:
+			aDampened.append(len(aCrossSections))
+
+		aCrossSections.append(fTotalArea * 0.5)
 
 	#read design parameters and specific costs
 
@@ -39,13 +33,13 @@ def get_material_costs(infile):
 	k_spec_damper = 1200
 
 	#calculate volume of horn
-	vol = numpy.sum(aCrossSections) * g_dx 
+	vol = numpy.sum(aCrossSections) * dx 
 	#calculate surface area of square horn geometry
-	surface = numpy.sum(numpy.sqrt(aCrossSections) ) * g_dx * 4
+	surface = numpy.sum(numpy.sqrt(aCrossSections) ) * dx * 4
 	#calculate side length of cube enclosure
 	length = numpy.power(vol, 1/3.0)
 	#calculate dampened volume
-	volDampened = numpy.sum(numpy.asarray(aCrossSections)[aDampened] ) * g_dx
+	volDampened = numpy.sum(numpy.asarray(aCrossSections)[aDampened] ) * dx
 
 
 	#thickness of panels
