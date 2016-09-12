@@ -41,6 +41,7 @@ g_strSignalType = config.get("signal", "signal_type")
 			data.m_SignalType = SIG_SQUARE;
 '''
 
+g_bSaveTimeSeries = False
 
 g_strFreqs = config.get("signal", "frequencies")
 
@@ -96,7 +97,7 @@ aVelocity2ndAreas   = []
 dConnections = dict()
 dVolumes = dict()
 
-g_fTimeStep = 0.3 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
+g_fTimeStep = 0.2 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
 
 print("using time step", g_fTimeStep, "s")
 
@@ -166,7 +167,7 @@ for iID in dElems.keys():
 			dVolumes[target] = fVolume
 			
 			# infinity is a half space (infinite baffle)
-			fInfinitySpaceRatio = 0.25
+			fInfinitySpaceRatio = 0.5
 			
 			fRadius0 = numpy.sqrt(area / (4*numpy.pi*fInfinitySpaceRatio))
 			fLastArea = area
@@ -177,24 +178,19 @@ for iID in dElems.keys():
 				aInfiniteVelocityIndices.append(len(aVelocity1stIndices))
 				
 				aVelocity1stIndices.append(iInfiniteElem - 1)
-				aVelocity1stFactors.append(fFactor * area)
-				#aVelocity1stFactors.append(fFactor * fLastArea)
-				aVelocity1stAreas.append(area)
-				#aVelocity1stAreas.append(fLastArea)
+				aVelocity1stFactors.append(fFactor * fLastArea)
+				aVelocity1stAreas.append(fLastArea)
 				
 				fSphereRadius = fRadius0 + iElement * g_dx
-				fSphereArea = fInfinitySpaceRatio * 4 * numpy.pi * fSphereRadius * fSphereRadius
+				fSphereArea = fInfinitySpaceRatio * 4 * numpy.pi * fSphereRadius ** 2
 				
-				dVolumes[iInfiniteElem] = fVolume #(fLastArea + fSphereArea) * 0.5 * g_dx
-				#dVolumes[iInfiniteElem] = (fLastArea + fSphereArea) * 0.5 * g_dx
+				dVolumes[iInfiniteElem] = (fLastArea + fSphereArea) * 0.5 * g_dx
 		
 				fLastArea = fSphereArea
 				
 				aVelocity2ndIndices.append(iInfiniteElem)
-				aVelocity2ndFactors.append(- fFactor * area)
-				#aVelocity2ndFactors.append(- fFactor * fLastArea)
-				aVelocity2ndAreas.append(area)
-				#aVelocity2ndAreas.append(fLastArea)
+				aVelocity2ndFactors.append(- fFactor * fLastArea)
+				aVelocity2ndAreas.append(fLastArea)
 				
 			nPressureElems += g_nInfinteElements
 		
@@ -364,6 +360,17 @@ ax2 = ax1.twinx()
 
 n = 1000000
 
+dlSPLs = dict()
+dlImpedances = dict()
+
+for speaker in dSpeakers.keys():
+	dlImpedances[speaker] = []
+
+for mic in dMics.keys():
+	dlSPLs[mic] = []
+	
+#lfPhase = []
+
 #read parameters needed
 for fFreq in g_afFreqs:
 	print(fFreq)
@@ -419,22 +426,17 @@ for fFreq in g_afFreqs:
 		#invoke speaker input function
 		fU = fnInput(2.0 * numpy.pi * fFreq * fTime) * fSignalNormalizer
 		
+		# process speakers
 		for strSpeaker in dSpeakers:
-			#route speaker velocity elem to correct pressure elem
 			speaker = dSpeakers[strSpeaker]
-				
 			dOptions = speaker.m_dOptions
 		
 			#calculate current
-			#print(fU, speaker.m_fV, speaker.m_fI)
-			
 			fCurrentSlope = (fU - dOptions["bl"]*speaker.m_fV - dOptions["re"] * speaker.m_fI)/dOptions["le"]
 			speaker.m_fI = speaker.m_fI + fCurrentSlope * g_fTimeStep
 			
 			fForceMembrane = dOptions["bl"] * speaker.m_fI
 			fPressureDiff = npaPressures[speaker.positiveElem] - npaPressures[speaker.negativeElem]
-			
-			#fPressureDiff = 0
 			
 			#calculate speaker acceleration
 			fAcceleration = (fForceMembrane - fPressureDiff * dOptions["sd"] - speaker.m_fX * speaker.m_fStiffness - dOptions["rms"] * speaker.m_fV)/(dOptions["mmd"] + speaker.m_fAirmass)
@@ -445,11 +447,8 @@ for fFreq in g_afFreqs:
 			#calculate speaker position
 			speaker.m_fX = speaker.m_fX + speaker.m_fV * g_fTimeStep
 			
-			#print(fForceMembrane, fPressureDiff * dOptions["sd"], speaker.m_fX * dOptions["cms"])
-			
 			#overwrite updates made by pressure step
 			npaVelocities[speaker.m_iVelocityIndex] = speaker.m_fV
-			#npaVelocities[speaker.m_iVelocityIndex] = fU
 			
 			#print(npaVelocities[speaker.m_iVelocityIndex])
 			
@@ -477,39 +476,77 @@ for fFreq in g_afFreqs:
 			ax1.set_ylabel('velocity', color='b')
 			ax2.plot(npaPressures, "g-")
 			ax2.set_ylabel('pressure', color='g')
-			#plt.show()
 			
 			plt.savefig(str(iStep) + ".png")
-			
-			#print(astext(npaPressures))
 			#print(iStep)
 	
-	#read microphone measurements
+	#save microphone measurements
 	for strMic in dMics:
-		micElem = ET.SubElement(signalElem, "mic_output")
-		micElem.attrib["id"] = strMic
+		# get pressure
+		npaPressure = numpy.transpose(dMicMeasurements[strMic])[1]
 		
-		strFile = strMic + "_" + str(fFreq) + ".dat"
-		micElem.attrib["file"] = strFile
+		#calculate SPL
+		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressure) ) / npaPressure.size)
+		fMicSPL = 20.0 * numpy.log10(fMicRMS/g_fReferencePressure);
 		
-		numpy.savetxt(g_strDir + strFile, dMicMeasurements[strMic] )
-
+		dlSPLs[strMic].append(fMicSPL)
+		
+		if g_bSaveTimeSeries:
+			micElem = ET.SubElement(signalElem, "mic_output")
+			micElem.attrib["id"] = strMic
+			
+			strFile = strMic + "_" + str(fFreq) + ".dat"
+			micElem.attrib["file"] = strFile
+			
+			numpy.savetxt(g_strDir + strFile, dMicMeasurements[strMic] )
+			
 	#save speaker measurements
 	for strSpeaker in dSpeakers:
-		speakerElem = ET.SubElement(signalElem, "speaker_output")
-		speakerElem.attrib["id"] = strSpeaker
+		# get voltage and current
+		npaVoltage = numpy.transpose(dSpeakerMeasurements[strSpeaker])[1]
+		npaCurrent = numpy.transpose(dSpeakerMeasurements[strSpeaker])[2]
 		
-		strFile = strSpeaker + "_" + str(fFreq) + ".dat"
-		speakerElem.attrib["file"] = strFile
+		# calculate RMS current
+		fRMSVoltage = numpy.sqrt(numpy.sum(numpy.square(npaVoltage) ) / npaVoltage.size)
+		fRMSCurrent = numpy.sqrt(numpy.sum(numpy.square(npaCurrent) ) / npaCurrent.size)
 		
-		numpy.savetxt(g_strDir + strFile, dSpeakerMeasurements[strSpeaker] )
+		dlImpedances[strSpeaker].append(fRMSVoltage / fRMSCurrent)
 		
+		if g_bSaveTimeSeries:
+			speakerElem = ET.SubElement(signalElem, "speaker_output")
+			speakerElem.attrib["id"] = strSpeaker
+			
+			strFile = strSpeaker + "_" + str(fFreq) + ".dat"
+			speakerElem.attrib["file"] = strFile
+			
+			numpy.savetxt(g_strDir + strFile, dSpeakerMeasurements[strSpeaker] )
 	
 '''
 	#save element measurements
 	signalElem = ET.SubElement(signalElem, "element_output")
 	signalElem.attrib["file"] = g_strPath +
 '''
+			
+# save microphone SPL measurements
+for mic in dMics.keys():
+	micElem = ET.SubElement(rootElem, "mic_spl")
+	micElem.attrib["id"] = strMic
+	
+	strFile = "spl_mic_" + mic + ".dat"
+	micElem.attrib["file"] = strFile
+	
+	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlSPLs[mic]] ) )
+	
+# save speaker impedance
+for speaker in dSpeakers.keys():
+	micElem = ET.SubElement(rootElem, "speaker_impedance")
+	micElem.attrib["id"] = speaker
+	
+	strFile = "impedance_speaker_" + speaker + ".dat"
+	micElem.attrib["file"] = strFile
+	
+	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlImpedances[speaker]]) )
+			
 print("writing output XML to", g_strSimuOutputFile)
 
 with open(g_strSimuOutputFile, 'wb') as f:
