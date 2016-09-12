@@ -27,6 +27,8 @@ g_strElementFile = g_strDir + config.get("general", "element_file")
 
 dElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
 
+print("speakers:", dSpeakers)
+
 g_fMaxTimestep = float(config.get("general", "max_timestep"))
 g_strSignalType = config.get("signal", "signal_type")
 
@@ -135,7 +137,7 @@ for iID in dElems.keys():
 		if not target in dConnections:
 			dConnections[target] = set()
 	
-		fFactor = g_fTimeStep / (g_fDensity * g_dx)
+		fFactor = g_fTimeStep / (g_fDensity * fVolume)
 
 		bCreateInfinity = False
 
@@ -164,7 +166,7 @@ for iID in dElems.keys():
 			dVolumes[target] = fVolume
 			
 			# infinity is a half space (infinite baffle)
-			fInfinitySpaceRatio = 0.5
+			fInfinitySpaceRatio = 0.25
 			
 			fRadius0 = numpy.sqrt(area / (4*numpy.pi*fInfinitySpaceRatio))
 			fLastArea = area
@@ -175,19 +177,24 @@ for iID in dElems.keys():
 				aInfiniteVelocityIndices.append(len(aVelocity1stIndices))
 				
 				aVelocity1stIndices.append(iInfiniteElem - 1)
-				aVelocity1stFactors.append(fFactor * area) #fLastArea)
-				aVelocity1stAreas.append(area) #fLastArea)
+				aVelocity1stFactors.append(fFactor * area)
+				#aVelocity1stFactors.append(fFactor * fLastArea)
+				aVelocity1stAreas.append(area)
+				#aVelocity1stAreas.append(fLastArea)
 				
 				fSphereRadius = fRadius0 + iElement * g_dx
 				fSphereArea = fInfinitySpaceRatio * 4 * numpy.pi * fSphereRadius * fSphereRadius
 				
 				dVolumes[iInfiniteElem] = fVolume #(fLastArea + fSphereArea) * 0.5 * g_dx
+				#dVolumes[iInfiniteElem] = (fLastArea + fSphereArea) * 0.5 * g_dx
 		
 				fLastArea = fSphereArea
 				
 				aVelocity2ndIndices.append(iInfiniteElem)
-				aVelocity2ndFactors.append(- fFactor * area) #fLastArea)
-				aVelocity2ndAreas.append(area) #fLastArea)
+				aVelocity2ndFactors.append(- fFactor * area)
+				#aVelocity2ndFactors.append(- fFactor * fLastArea)
+				aVelocity2ndAreas.append(area)
+				#aVelocity2ndAreas.append(fLastArea)
 				
 			nPressureElems += g_nInfinteElements
 		
@@ -268,7 +275,7 @@ for strSpeaker in dSpeakers:
 		speaker.m_dOptions[opt] = float(speaker_config.get("tspset", opt))
 	
 	fRadius = numpy.sqrt(speaker.m_dOptions["sd"] / numpy.pi)
-	speaker.m_fAirmass = 8.0 * fRadius * fRadius * fRadius * g_fDensity / g_fSpeed
+	speaker.m_fAirmass = (8.0/3.0) * g_fDensity * fRadius**3
 	speaker.m_fStiffness = 1.0 / speaker.m_dOptions["cms"]
 	
 	for elem, sign in [(speaker.negativeElem, -1), (speaker.positiveElem, 1)]:
@@ -303,8 +310,6 @@ npaVelocity2ndFactors = numpy.asarray(aVelocity2ndFactors)
 #list of infinity elements
 npaPressureInfinityIndices = numpy.asarray(aInfinitePressureIndices)
 npaVelocityInfinityIndices = numpy.asarray(aInfiniteVelocityIndices)
-
-g_fInfiniteDampingFactor
 
 npaSpeakerIndices = numpy.asarray(aSpeakerIndices)
 
@@ -357,7 +362,7 @@ plt.clf()
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
-n = 10
+n = 1000000
 
 #read parameters needed
 for fFreq in g_afFreqs:
