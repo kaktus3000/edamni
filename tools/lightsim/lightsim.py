@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 
 import elemfile
+import infinitySection
 
 g_strSimuInputFile = sys.argv[1]
 
@@ -75,12 +76,20 @@ g_fReferencePressure = 0.00002
 #g_ = config.get("constants", "speed")
 #g_strElementFile = g_strDir + config.get("general", "element_file")
 
+# infinity is a half space (infinite baffle)
+g_fInfinitySpaceRatio = 0.5
+
 # get max element ID
 aIDs = []
 
-#look for links to element 0, this will be the infinite element
+# check for links to element 0, this will be the infinite element
 g_nInfinteElements = 100
-g_fInfiniteDampingFactor = 0.96 # 0.95
+# meters of expansion prior to damped elements
+g_fInfinityPreExpansion = 1.0
+g_fInfinityTransition = 2.0
+
+# damping factor for infinity
+g_fInfiniteDampingFactor = 0.97
 
 aInfinitePressureIndices = []
 aInfiniteVelocityIndices = []
@@ -97,7 +106,7 @@ aVelocity2ndAreas   = []
 dConnections = dict()
 dVolumes = dict()
 
-g_fTimeStep = 0.2 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
+g_fTimeStep = 0.4 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
 
 print("using time step", g_fTimeStep, "s")
 
@@ -163,36 +172,43 @@ for iID in dElems.keys():
 		dConnections[iID].add(target)
 		
 		if bCreateInfinity:
-			aInfinitePressureIndices.append(target)
 			dVolumes[target] = fVolume
 			
-			# infinity is a half space (infinite baffle)
-			fInfinitySpaceRatio = 0.5
-			
-			fRadius0 = numpy.sqrt(area / (4*numpy.pi*fInfinitySpaceRatio))
+			fRadius0 = numpy.sqrt(area / (4.0 * numpy.pi * g_fInfinitySpaceRatio))
 			fLastArea = area
 			
-			for iElement in range(g_nInfinteElements - 1):
+			lfInfinityAreas = infinitySection.infinitySection(area, g_fInfinitySpaceRatio, g_fInfinityPreExpansion, g_fInfinityTransition, g_dx)
+			
+			for iElement in range(len(lfInfinityAreas) + g_nInfinteElements - 1):
 				iInfiniteElem = target + iElement + 1
-				aInfinitePressureIndices.append(iInfiniteElem)
-				aInfiniteVelocityIndices.append(len(aVelocity1stIndices))
+				
+				fInfinityArea = lfInfinityAreas[-1]
+				
+				# if we are in the pre expansion, do not add a damping factor to these elements
+				if iElement >= len(lfInfinityAreas):
+					aInfinitePressureIndices.append(iInfiniteElem)
+					aInfiniteVelocityIndices.append(len(aVelocity1stIndices))
+				else:
+					fInfinityArea = lfInfinityAreas[iElement]
+				
+				fVolume = (fLastArea + fInfinityArea) * 0.5 * g_dx
+				dVolumes[iInfiniteElem] = fVolume
+				
+				fFactor = g_fTimeStep / (g_fDensity * fVolume)
+				
+				fLastArea = fInfinityArea
 				
 				aVelocity1stIndices.append(iInfiniteElem - 1)
 				aVelocity1stFactors.append(fFactor * fLastArea)
 				aVelocity1stAreas.append(fLastArea)
 				
-				fSphereRadius = fRadius0 + iElement * g_dx
-				fSphereArea = fInfinitySpaceRatio * 4 * numpy.pi * fSphereRadius ** 2
-				
-				dVolumes[iInfiniteElem] = (fLastArea + fSphereArea) * 0.5 * g_dx
-		
-				fLastArea = fSphereArea
-				
 				aVelocity2ndIndices.append(iInfiniteElem)
 				aVelocity2ndFactors.append(- fFactor * fLastArea)
 				aVelocity2ndAreas.append(fLastArea)
 				
-			nPressureElems += g_nInfinteElements
+				
+				
+			nPressureElems += g_nInfinteElements + len(lfInfinityAreas)
 		
 print("volumes", dVolumes)
 #exit(0)		
@@ -358,7 +374,7 @@ plt.clf()
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
-n = 1000000
+n = 10000000
 
 dlSPLs = dict()
 dlImpedances = dict()
@@ -373,7 +389,7 @@ for mic in dMics.keys():
 
 #read parameters needed
 for fFreq in g_afFreqs:
-	print(fFreq)
+	print("frequency:", fFreq)
 	fSimulationDuration = g_fLeadTime + 1.0 / fFreq * g_nSignalPeriods
 	print("simulating period of", fSimulationDuration, "s")
 	
@@ -485,6 +501,9 @@ for fFreq in g_afFreqs:
 		# get pressure
 		npaPressure = numpy.transpose(dMicMeasurements[strMic])[1]
 		
+		fPmax = numpy.amax(npaPressure)
+		print("pmax:", fPmax)
+		
 		#calculate SPL
 		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressure) ) / npaPressure.size)
 		fMicSPL = 20.0 * numpy.log10(fMicRMS/g_fReferencePressure);
@@ -511,6 +530,15 @@ for fFreq in g_afFreqs:
 		fRMSCurrent = numpy.sqrt(numpy.sum(numpy.square(npaCurrent) ) / npaCurrent.size)
 		
 		dlImpedances[strSpeaker].append(fRMSVoltage / fRMSCurrent)
+		
+		# calculate x_max
+		npaV = numpy.transpose(dSpeakerMeasurements[strSpeaker])[3]
+		fVmax = numpy.amax(npaV)
+		
+		npaX = numpy.transpose(dSpeakerMeasurements[strSpeaker])[4]
+		fXmax = numpy.amax(npaX)
+		
+		print("xmax:", fXmax, "vmax:", fVmax)
 		
 		if g_bSaveTimeSeries:
 			speakerElem = ET.SubElement(signalElem, "speaker_output")
