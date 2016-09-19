@@ -1,11 +1,9 @@
 #!/usr/python3
-
-#track chains of elements in the input file and draw a pretty image
-
 import numpy
 import sys
 import os
 import configparser
+import matplotlib.pyplot as plt
 
 #xml support
 import xml.etree.ElementTree as ET
@@ -50,51 +48,57 @@ g_nMeasPeriods = 3
 for signal in root.findall("signal"):
 	strSignalType = signal.attrib["type"]
 	fSsignalFreq = float(signal.attrib["freq"])
-	print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
+	#print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
 	#process outputs
 	for mic_output in signal.findall("mic_output"):
 		strMicId = mic_output.attrib["id"]
 		strMicFile = mic_output.attrib["file"]
-		print("Mic - id =", strMicId, ", file =", strMicFile)
-		#load output file
-		npaMicOutput = numpy.loadtxt(g_strDir + strMicFile);
 		
-		npaPressures = numpy.transpose(npaMicOutput)[1]
-		
-		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressures) ) / npaPressures.size)
-		
-		fMicSPL = 20*numpy.log10(fMicRMS/2.0e-5);
-		if not strMicId in daMicSPLs:
-			daMicSPLs[strMicId] = []
-		daMicSPLs[strMicId].append( [fSsignalFreq, fMicSPL] )
 	
 	for speaker_output in signal.findall("speaker_output"):
 		strSpeakerId = speaker_output.attrib["id"]
 		strSpeakerFile = speaker_output.attrib["file"]
-		print("Speaker - id =", strSpeakerId, ", file =", strSpeakerFile)
-		#load output file
-		npaSpeakerOutput = numpy.loadtxt(g_strDir + strSpeakerFile);
-		
-		npaVoltage = numpy.transpose(npaSpeakerOutput)[1]
-		fVoltageRMS = numpy.sqrt(numpy.sum(numpy.square(npaVoltage) ) / npaVoltage.size)
-		
-		npaCurrent = numpy.transpose(npaSpeakerOutput)[2]
-		fCurrentRMS = numpy.sqrt(numpy.sum(numpy.square(npaCurrent) ) / npaCurrent.size)
-		
-		fImpedance = fVoltageRMS / fCurrentRMS
-		
-		if not strSpeakerId in daSpeakerImpedances:
-			daSpeakerImpedances[strSpeakerId] = []
-		daSpeakerImpedances[strSpeakerId].append( [fSsignalFreq, fImpedance] )
-	#video output is per frequency, no iteration needed.
 	
-#write spl files for mics
-for strMicID in daMicSPLs:
-	numpy.savetxt(g_strDir + "spl_mic_" + strMicID + ".txt", daMicSPLs[strMicID])
+	#video output is per frequency, no iteration needed.
 
-#write impedance files for speakers
-for strSpeakerId in daSpeakerImpedances:
-	numpy.savetxt(g_strDir + "impedance_speaker_" + strSpeakerId + ".txt", daSpeakerImpedances[strSpeakerId] )
+# plot spl and impedance
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+plt.suptitle("Frequency Response Plot")
+
+ax1.set_xscale("log", nonposx='clip')
+ax2.set_xscale("log", nonposx='clip')
+
+for micSPL in root.findall("mic_spl"):
+	strMicSPLFile = micSPL.attrib["file"]
+	strMicID = micSPL.attrib["id"]
+
+	print("SPL for", strMicID, ", file =", strMicSPLFile)
+	
+	daMicSPLs[strMicID] = numpy.loadtxt(g_strDir + strMicSPLFile)
+	
+	npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
+	npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
+	
+	ax1.plot(npaFreqs, npaSPLs, "b-")
+
+for speakerImpedance in root.findall("speaker_impedance"):
+	strSpeakerImpedanceFile = speakerImpedance.attrib["file"]
+	strSpeakerImpedanceID = speakerImpedance.attrib["id"]
+
+	print("SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
+	
+	daSpeakerImpedances[strSpeakerImpedanceID] = numpy.loadtxt(g_strDir + strSpeakerImpedanceFile)
+	
+	npaFreqs = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[0]
+	npaImpedances = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[1]
+	
+	ax2.plot(npaFreqs, npaImpedances, "g-")
+
+ax1.set_ylabel('SPL [dB]', color='b')
+ax2.set_ylabel('Impedance [ohms]', color='g')
+
+plt.savefig(g_strDir + "spl.png")
 
 #calculate costs for this design
 dMatCosts = material_costs.get_material_costs(g_strElementFile)
