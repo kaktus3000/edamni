@@ -867,8 +867,10 @@ def escapeString(strToEscape):
 	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
 
 def onSimulationButtonClick():
+	print("run simulation: generating element list")
 	generateElementList()
 	
+	print("run simulation: creating simulation configuration")
 	config = configparser.ConfigParser()
 
 	g_fMaxTimeStep = 0.001
@@ -878,16 +880,16 @@ def onSimulationButtonClick():
 						 'output_file' : g_strFile + ".out"}
 	 
 	strSignalType = "sine"
-	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
+	lfFreqs = numpy.logspace(numpy.log10(10), numpy.log10(1000), num=32)
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
-	g_iSignalPeriods = 15
-	g_iTrailingPeriods = 15
+	g_iSignalPeriods = 8
+	g_fLeadTime = 0.1
 	config['signal'] = {'signal_type': strSignalType,
 						'frequencies': strFreqs,
 						'signal_periods': str(g_iSignalPeriods),
-						'trailing_periods': str(g_iTrailingPeriods)}
+						'lead_time': str(g_fLeadTime)}
 	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
 		strSpeakerName = speakerListBox.get(iSpeaker)
@@ -913,8 +915,12 @@ def onSimulationButtonClick():
 	config['speakers'] = dSpeakerFileMapping
 	#open simulation input file for writing
 
-	with open(g_strDir + g_strSimuInputFile, 'w') as configfile:
+	print("run simulation: writing simulation input file")
+	strSimuInput = g_strSimuInputFile
+	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
+		
+	call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim/lightsim.py"])
 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()

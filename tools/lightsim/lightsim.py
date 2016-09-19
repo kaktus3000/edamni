@@ -1,4 +1,4 @@
-#!/usr/python3cu
+#!/usr/python3
 
 import numpy
 import sys
@@ -96,10 +96,8 @@ aInfiniteVelocityIndices = []
 
 #factors will first be filled with areas
 aVelocity1stIndices = []
-aVelocity1stFactors = []
 aVelocity1stAreas   = []
 aVelocity2ndIndices = []
-aVelocity2ndFactors = []
 aVelocity2ndAreas   = []
 
 # [id] -> set(id1, id2, ...)
@@ -107,6 +105,8 @@ dConnections = dict()
 dVolumes = dict()
 
 g_fTimeStep = 0.4 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
+
+g_fVelocityFactor = g_fTimeStep / (g_fDensity * g_dx)
 
 print("using time step", g_fTimeStep, "s")
 
@@ -147,8 +147,6 @@ for iID in dElems.keys():
 		if not target in dConnections:
 			dConnections[target] = set()
 	
-		fFactor = g_fTimeStep / (g_fDensity * fVolume)
-
 		bCreateInfinity = False
 
 		if target == 0:
@@ -162,11 +160,9 @@ for iID in dElems.keys():
 		#print("velocity element", len(aVelocity1stIndices),":", iID, "->", target, "area", area)
 
 		aVelocity1stIndices.append(iID)
-		aVelocity1stFactors.append(area * fFactor)
 		aVelocity1stAreas.append(area)
 		
 		aVelocity2ndIndices.append(target)
-		aVelocity2ndFactors.append(- area * fFactor)
 		aVelocity2ndAreas.append(area)
 		
 		dConnections[iID].add(target)
@@ -194,19 +190,13 @@ for iID in dElems.keys():
 				fVolume = (fLastArea + fInfinityArea) * 0.5 * g_dx
 				dVolumes[iInfiniteElem] = fVolume
 				
-				fFactor = g_fTimeStep / (g_fDensity * fVolume)
-				
 				fLastArea = fInfinityArea
 				
 				aVelocity1stIndices.append(iInfiniteElem - 1)
-				aVelocity1stFactors.append(fFactor * fLastArea)
 				aVelocity1stAreas.append(fLastArea)
 				
 				aVelocity2ndIndices.append(iInfiniteElem)
-				aVelocity2ndFactors.append(- fFactor * fLastArea)
 				aVelocity2ndAreas.append(fLastArea)
-				
-				
 				
 			nPressureElems += g_nInfinteElements + len(lfInfinityAreas)
 		
@@ -236,7 +226,7 @@ for index in range(len(aVelocity1stIndices)):
 	for (iID, area, sign) in aConnections:
 		fVolume = aVolumes[iID]
 		#print("pressure elem", iID, "-> velocity elem", index, "area", area, "volume", fVolume)
-		fFactor = sign * area * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+		fFactor = g_fVelocityFactor * sign * area * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
 
 		if aPressure1stIndices[iID] == -1:
 			aPressure1stIndices[iID] = index
@@ -265,7 +255,7 @@ nTotalVelocityElems = nVelocityElems
 nSpeakers = len(dSpeakers)
 nTotalVelocityElems += nSpeakers
 
-for arr in [aVelocity1stFactors, aVelocity1stIndices, aVelocity2ndFactors, aVelocity2ndIndices]:
+for arr in [aVelocity1stIndices, aVelocity2ndIndices]:
 	arr += [0] * nSpeakers
 
 #pointing to velocity indices
@@ -300,7 +290,7 @@ for strSpeaker in dSpeakers:
 		aPressure2ndIndices[elem] = iSpeakerIndex
 		#calculate factor to match membrane area, no matter what size the actual element is
 		fVolume = aVolumes[elem]
-		fFactor = speaker.m_dOptions["sd"] * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+		fFactor = g_fVelocityFactor * speaker.m_dOptions["sd"] * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
 		aPressure2ndFactors[elem] = sign * fFactor
 	
 	iSpeakerIndex += 1
@@ -315,9 +305,7 @@ npaPressure3rdFactors = numpy.asarray(aPressure3rdFactors)
 
 #create velocity vectors for simulation
 npaVelocity1stIndices = numpy.asarray(aVelocity1stIndices)
-npaVelocity1stFactors = numpy.asarray(aVelocity1stFactors)
 npaVelocity2ndIndices = numpy.asarray(aVelocity2ndIndices)
-npaVelocity2ndFactors = numpy.asarray(aVelocity2ndFactors)
 
 #list of infinity elements
 npaPressureInfinityIndices = numpy.asarray(aInfinitePressureIndices)
@@ -390,7 +378,7 @@ for mic in dMics.keys():
 #read parameters needed
 for fFreq in g_afFreqs:
 	print("frequency:", fFreq)
-	fSimulationDuration = g_fLeadTime + 1.0 / fFreq * g_nSignalPeriods
+	fSimulationDuration = g_fLeadTime + nPressureElems * g_dx / g_fSpeed  + 1.0 / fFreq * g_nSignalPeriods
 	print("simulating period of", fSimulationDuration, "s")
 	
 	signalElem = ET.SubElement(rootElem, "signal")
@@ -399,7 +387,7 @@ for fFreq in g_afFreqs:
 
 	#create vectors for simulation
 	npaPressures = numpy.asarray([0] * nPressureElems)
-	npaVelocities = numpy.asarray([0] * nTotalVelocityElems)
+	npaPressureDifference = numpy.asarray([0] * nTotalVelocityElems)
 	
 	iStep = 0
 	bBreak = False
@@ -427,17 +415,17 @@ for fFreq in g_afFreqs:
 	
 		#print(npaPressures)
 		#explicit integration for pressure elements
-		npaPressures = npaPressures + npaPressure1stFactors * npaVelocities[npaPressure1stIndices] + npaPressure2ndFactors * npaVelocities[npaPressure2ndIndices] + npaPressure3rdFactors * npaVelocities[npaPressure3rdIndices]
+		npaPressures = npaPressures + npaPressure1stFactors * npaPressureDifference[npaPressure1stIndices] + npaPressure2ndFactors * npaPressureDifference[npaPressure2ndIndices] + npaPressure3rdFactors * npaPressureDifference[npaPressure3rdIndices]
 		#print(npaPressures)
 		
 		npaPressures[npaPressureInfinityIndices] *= g_fInfiniteDampingFactor
 	
 		#second half-step (basis are p-elements)
 		#explicit integration for velocity elements
-		npaVelocities = npaVelocities + npaVelocity1stFactors * npaPressures[npaVelocity1stIndices] + npaVelocity2ndFactors * npaPressures[npaVelocity2ndIndices]
+		npaPressureDifference = npaPressureDifference + npaPressures[npaVelocity1stIndices] - npaPressures[npaVelocity2ndIndices]
 	
 		#apply damping to "infinity" elements
-		npaVelocities[npaVelocityInfinityIndices] *= g_fInfiniteDampingFactor
+		npaPressureDifference[npaVelocityInfinityIndices] *= g_fInfiniteDampingFactor
 		
 		#invoke speaker input function
 		fU = fnInput(2.0 * numpy.pi * fFreq * fTime) * fSignalNormalizer
@@ -464,9 +452,9 @@ for fFreq in g_afFreqs:
 			speaker.m_fX = speaker.m_fX + speaker.m_fV * g_fTimeStep
 			
 			#overwrite updates made by pressure step
-			npaVelocities[speaker.m_iVelocityIndex] = speaker.m_fV
+			npaPressureDifference[speaker.m_iVelocityIndex] = speaker.m_fV / g_fVelocityFactor
 			
-			#print(npaVelocities[speaker.m_iVelocityIndex])
+			#print(npaPressureDifference[speaker.m_iVelocityIndex])
 			
 			if fTime > g_fLeadTime:
 				#save speaker measurements			
@@ -488,7 +476,7 @@ for fFreq in g_afFreqs:
 			ax1.cla()
 			
 			plt.suptitle("velocity")
-			ax1.plot(npaVelocities, "b-")
+			ax1.plot(npaPressureDifference, "b-")
 			ax1.set_ylabel('velocity', color='b')
 			ax2.plot(npaPressures, "g-")
 			ax2.set_ylabel('pressure', color='g')

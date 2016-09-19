@@ -5,6 +5,7 @@
 from PIL import Image
 import math
 import sys
+import elemfile
 
 g_lSpeakerVectorGraphics = [[(0.0, 0.0),
 							 (1.0, 0.0),
@@ -22,7 +23,7 @@ g_lSpeakerVectorGraphics = [[(0.0, 0.0),
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
-dElems, dMics, dSpeakers, dx = elemfile.scanElemFile(infile)
+dElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(infile)
 		
 sVisited = set()
 
@@ -78,9 +79,13 @@ def subGraph(dElems, elem, currGraph):
 	
 	return currGraph
 
-print(speakers[0])
-negGraph = subGraph(dElems, speakers[0].negativeElem, [])
-posGraph = subGraph(dElems, speakers[0].positiveElem, [])
+speaker = None
+for strSpeaker in dSpeakers:
+	speaker = dSpeakers[strSpeaker]
+
+print(speaker)
+negGraph = subGraph(dElems, speaker.negativeElem, [])
+posGraph = subGraph(dElems, speaker.positiveElem, [])
 
 negGraph.reverse()
 

@@ -16,7 +16,7 @@ from subprocess import call
 import material_costs
 
 g_strSimuInputFile = sys.argv[1]
-g_strSimuCommand = sys.argv[2]
+g_lstrSimuCommand = sys.argv[2:]
 
 strOSDir = os.path.dirname(g_strSimuInputFile)
 
@@ -27,9 +27,9 @@ g_strDir = strOSDir + "/"
 
 print("run directory", g_strDir)
 
-print("calling", g_strSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
+print("calling", g_lstrSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
 #call simulation with all the data
-call([g_strSimuCommand, g_strSimuInputFile], cwd=g_strDir)
+call(g_lstrSimuCommand + [g_strSimuInputFile], cwd=g_strDir)
 
 #find out where the output went
 config = configparser.ConfigParser()
