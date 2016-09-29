@@ -26,7 +26,7 @@ config.read(g_strSimuInputFile)
 g_strSimuOutputFile = g_strDir + config.get("general", "output_file")
 g_strElementFile = g_strDir + config.get("general", "element_file")
 
-dElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
+aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
 
 print("speakers:", dSpeakers)
 
@@ -79,30 +79,16 @@ g_fReferencePressure = 0.00002
 # infinity is a half space (infinite baffle)
 g_fInfinitySpaceRatio = 0.5
 
-# get max element ID
-aIDs = []
-
 # check for links to element 0, this will be the infinite element
-g_nInfinteElements = 100
+g_nInfinteElements = 200
 # meters of expansion prior to damped elements
 g_fInfinityPreExpansion = 1.0
 g_fInfinityTransition = 2.0
 
 # damping factor for infinity
-g_fInfiniteDampingFactor = 0.97
+g_fInfiniteDampingFactor = 0.98
 
-aInfinitePressureIndices = []
-aInfiniteVelocityIndices = []
-
-#factors will first be filled with areas
-aVelocity1stIndices = []
-aVelocity1stAreas   = []
-aVelocity2ndIndices = []
-aVelocity2ndAreas   = []
-
-# [id] -> set(id1, id2, ...)
-dConnections = dict()
-dVolumes = dict()
+aInfiniteElementIndices = [0]
 
 g_fTimeStep = 0.4 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
 
@@ -110,157 +96,107 @@ g_fVelocityFactor = g_fTimeStep / (g_fDensity * g_dx)
 
 print("using time step", g_fTimeStep, "s")
 
-for iID in dElems.keys():
-	aIDs.append(iID)
-	
-nPressureElems = numpy.max(aIDs) + 1
-
-nInfinityElems = 0
-
-for iID in dElems.keys():
-	neighbors = []
-	fTotalArea = 0
-	
-	for neighborList, sign in [(dElems[iID].positiveNeighbors, 1), (dElems[iID].negativeNeighbors, -1)]:
-		for target, area in neighborList:
-			neighbors.append( (target, area, sign) )
-			fTotalArea += area
-	
-	#check whether just one neighbor
-	for neighborList in [dElems[iID].positiveNeighbors, dElems[iID].negativeNeighbors]:
-		if len(neighborList) == 0:
-			fTotalArea *= 2.0
-	
-	fVolume = fTotalArea * 0.5 * g_dx
-	dVolumes[iID] = fVolume
-	#print("pressure elem", iID, "volume", fVolume)
-	
-	aVelocityElements = []
-	
-	for target, area, sign in neighbors:
-		if iID in dConnections:
-			if target in dConnections[iID]:
-				#this connection has already been processed
-				continue
-		else:
-			dConnections[iID] = set()
-		if not target in dConnections:
-			dConnections[target] = set()
-	
-		bCreateInfinity = False
-
-		if target == 0:
-			#redirect target to newly created element
-			target = nPressureElems
-			bCreateInfinity = True
-		else:
-			#add connection to list of implemented ones
-			dConnections[target].add(iID)
-
-		#print("velocity element", len(aVelocity1stIndices),":", iID, "->", target, "area", area)
-
-		aVelocity1stIndices.append(iID)
-		aVelocity1stAreas.append(area)
-		
-		aVelocity2ndIndices.append(target)
-		aVelocity2ndAreas.append(area)
-		
-		dConnections[iID].add(target)
-		
-		if bCreateInfinity:
-			dVolumes[target] = fVolume
-			
-			fRadius0 = numpy.sqrt(area / (4.0 * numpy.pi * g_fInfinitySpaceRatio))
-			fLastArea = area
-			
-			lfInfinityAreas = infinitySection.infinitySection(area, g_fInfinitySpaceRatio, g_fInfinityPreExpansion, g_fInfinityTransition, g_dx)
-			
-			for iElement in range(len(lfInfinityAreas) + g_nInfinteElements - 1):
-				iInfiniteElem = target + iElement + 1
-				
-				fInfinityArea = lfInfinityAreas[-1]
-				
-				# if we are in the pre expansion, do not add a damping factor to these elements
-				if iElement >= len(lfInfinityAreas):
-					aInfinitePressureIndices.append(iInfiniteElem)
-					aInfiniteVelocityIndices.append(len(aVelocity1stIndices))
-				else:
-					fInfinityArea = lfInfinityAreas[iElement]
-				
-				fVolume = (fLastArea + fInfinityArea) * 0.5 * g_dx
-				dVolumes[iInfiniteElem] = fVolume
-				
-				fLastArea = fInfinityArea
-				
-				aVelocity1stIndices.append(iInfiniteElem - 1)
-				aVelocity1stAreas.append(fLastArea)
-				
-				aVelocity2ndIndices.append(iInfiniteElem)
-				aVelocity2ndAreas.append(fLastArea)
-				
-			nPressureElems += g_nInfinteElements + len(lfInfinityAreas)
-		
-print("volumes", dVolumes)
-#exit(0)		
-
-nVelocityElems = len(aVelocity1stIndices)
-
-print("number of elements:", nPressureElems - 1)
-
 #element index 0 is the infinite element.
-aPressure1stIndices = [-1] * nPressureElems
-aPressure1stFactors = [0.0] * nPressureElems
-aPressure2ndIndices = [-1] * nPressureElems
-aPressure2ndFactors = [0.0] * nPressureElems
-aPressure3rdIndices = [-1] * nPressureElems
-aPressure3rdFactors = [0.0] * nPressureElems
+aPressureFactorsNeg = [0]
+aPressureFactorsPos = [0]
 
-aVolumes = [0] * nPressureElems
-for iID in dVolumes:
-	aVolumes[iID] = dVolumes[iID]
+# tuples of linked elements:
+# (master, slave)
+aPressureLinks = []
 
-#iterate velocity elements to fill pressure factors
-for index in range(len(aVelocity1stIndices)):
-	aConnections =  [(aVelocity1stIndices[index], aVelocity1stAreas[index], -1), (aVelocity2ndIndices[index], aVelocity2ndAreas[index], 1)]
+# list of pressure differences to delete
+# just for tidiness, these elements are write-only
+aUnusedPressureDifferences = [0]
+
+for iElem in list(range(len(aElems)))[1:]:
+	#print("iElem", iElem)
+	elem = aElems[iElem]
 	
-	for (iID, area, sign) in aConnections:
-		fVolume = aVolumes[iID]
-		#print("pressure elem", iID, "-> velocity elem", index, "area", area, "volume", fVolume)
-		fFactor = g_fVelocityFactor * sign * area * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+	# set up areas and factors to neighboring elements
+	fLastArea = - elem.m_fArea
+	if iElem > 1:
+		fLastArea = aElems[iElem - 1].m_fArea
+		
+	fNextArea = - elem.m_fArea
+	if iElem < len(aElems) - 1:
+		fNextArea = aElems[iElem + 1].m_fArea
+	
+	fNegArea = (elem.m_fArea + fLastArea) * 0.5
+	fPosArea = (elem.m_fArea + fNextArea) * 0.5
+	
+	fVolume = 0.5 * (fNegArea + fPosArea) * g_dx
+	
+	if fNegArea == 0 or fPosArea == 0:
+		fVolume += fVolume
+	#fVolume = elem.m_fArea * g_dx
+	
+	fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+	
+	aPressureFactorsNeg.append(fNegArea * fFactor)
+	aPressureFactorsPos.append( -fPosArea * fFactor)
+	
+	# take care of links
+	if elem.m_iLink == 0:
+		print("infinity section from element", iElem)
+	elif elem.m_iLink != -1:
+		if elem.m_fArea != aElems[elem.m_iLink].m_fArea:
+			print("ERROR: linked element areas do not match!", iElem, elem.m_iLink)
+		
+		aPressureLinks.append( (elem.m_iLink, iElem) )
 
-		if aPressure1stIndices[iID] == -1:
-			aPressure1stIndices[iID] = index
-			aPressure1stFactors[iID] = fFactor
-		elif aPressure2ndIndices[iID] == -1:
-			aPressure2ndIndices[iID] = index
-			aPressure2ndFactors[iID] = fFactor
-		elif aPressure3rdIndices[iID] == -1:
-			print("setting 3rd connection to element", iID, "connecting to velocity elem", index)
-			aPressure3rdIndices[iID] = index
-			aPressure3rdFactors[iID] = fFactor
-		else:
-			print("ERROR: more than three connections for element", iID)
+for iElem in list(range(len(aElems)))[1:]:
+	elem = aElems[iElem]
+	
+	# implement breaks
+	if elem.m_bBreakConnection:
+		aPressureFactorsPos[iElem] = 0
+		aPressureFactorsNeg[iElem + 1] = 0
+		
+		aUnusedPressureDifferences.append(iElem)
 
-'''
-print(aPressure1stIndices)
-print(aPressure2ndIndices)
-print(aPressure3rdIndices)
-'''
+	# collect infinity elements
+	if elem.m_iLink == 0:
+		# create a link to end of element list
+		iBaseElement = len(aPressureFactorsNeg)
+		aPressureLinks.append( (iElem, iBaseElement) )
+		
+		# add pressure difference to unused ones
+		aUnusedPressureDifferences.append(iBaseElement - 1)
+		
+		#create linked to element as a copy
+		aPressureFactorsNeg.append(0)
+		
+		# this is the factor for constant cross section
+		fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / g_dx
+		aPressureFactorsPos.append(- fFactor)
+		
+		fLastArea = elem.m_fArea
+			
+		lfInfinityAreas = infinitySection.infinitySection(elem.m_fArea, g_fInfinitySpaceRatio, g_fInfinityPreExpansion, g_fInfinityTransition, g_dx)
+		
+		for iElement in range(len(lfInfinityAreas) + g_nInfinteElements - 1):
+			# initialize with maximum
+			fInfinityArea = lfInfinityAreas[-1]
+				
+			# if we are in the pre expansion, do not add a damping factor to these elements
+			if iElement >= len(lfInfinityAreas):
+				aInfiniteElementIndices.append(len(aPressureFactorsNeg) )
+			else:
+				fInfinityArea = lfInfinityAreas[iElement]
+				
+			fVolume = (fLastArea + fInfinityArea) * 0.5 * g_dx
+			fLastArea = fInfinityArea
+			fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+			
+			aPressureFactorsNeg.append(fLastArea * fFactor)
+			aPressureFactorsPos.append( - fInfinityArea * fFactor)
+			
+		# arrest last factor to zero
+		aPressureFactorsPos[-1] = 0			
 
-#each element is a pressure element
-#each link between the elements is a velocity element
-
-nTotalVelocityElems = nVelocityElems
-#create speaker elements as fake velocity elements
-nSpeakers = len(dSpeakers)
-nTotalVelocityElems += nSpeakers
-
-for arr in [aVelocity1stIndices, aVelocity2ndIndices]:
-	arr += [0] * nSpeakers
+print("number of elements:", len(aPressureFactorsNeg) - 1)
 
 #pointing to velocity indices
-aSpeakerIndices = list(range(nVelocityElems, nTotalVelocityElems))
-iSpeakerIndex = nVelocityElems
 for strSpeaker in dSpeakers:
 	#route speaker velocity elem to correct pressure elem
 	speaker = dSpeakers[strSpeaker]
@@ -271,8 +207,6 @@ for strSpeaker in dSpeakers:
 	
 	speaker.m_dOptions = dict()
 	
-	speaker.m_iVelocityIndex = iSpeakerIndex
-	
 	for opt in ["bl", "cms", "le", "mmd", "re", "rms", "sd"]:
 		speaker.m_dOptions[opt] = float(speaker_config.get("tspset", opt))
 	
@@ -280,38 +214,18 @@ for strSpeaker in dSpeakers:
 	speaker.m_fAirmass = (8.0/3.0) * g_fDensity * fRadius**3
 	speaker.m_fStiffness = 1.0 / speaker.m_dOptions["cms"]
 	
-	for elem, sign in [(speaker.negativeElem, -1), (speaker.positiveElem, 1)]:
-		#assert that element doen't have a false connection there
-		if aPressure2ndIndices[elem] != -1:
-			print("error implanting speaker: element", elem, "already has connection")
+	aPressureFactorsPos[speaker.m_iElemID]     *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID].m_fArea
+	aPressureFactorsNeg[speaker.m_iElemID + 1] *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID + 1].m_fArea
 
-		#implant speaker
-		print("implanting speaker: element", elem, "to speaker index", iSpeakerIndex)
-		aPressure2ndIndices[elem] = iSpeakerIndex
-		#calculate factor to match membrane area, no matter what size the actual element is
-		fVolume = aVolumes[elem]
-		fFactor = g_fVelocityFactor * speaker.m_dOptions["sd"] * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
-		aPressure2ndFactors[elem] = sign * fFactor
-	
-	iSpeakerIndex += 1
-	
+print(aPressureFactorsNeg)
+print(aPressureFactorsPos)
+
 #create pressure indexing vectors for simulation
-npaPressure1stIndices = numpy.asarray(aPressure1stIndices)
-npaPressure1stFactors = numpy.asarray(aPressure1stFactors)
-npaPressure2ndIndices = numpy.asarray(aPressure2ndIndices)
-npaPressure2ndFactors = numpy.asarray(aPressure2ndFactors)
-npaPressure3rdIndices = numpy.asarray(aPressure3rdIndices)
-npaPressure3rdFactors = numpy.asarray(aPressure3rdFactors)
-
-#create velocity vectors for simulation
-npaVelocity1stIndices = numpy.asarray(aVelocity1stIndices)
-npaVelocity2ndIndices = numpy.asarray(aVelocity2ndIndices)
+npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg)
+npaPressureFactorsPos = numpy.asarray(aPressureFactorsPos)
 
 #list of infinity elements
-npaPressureInfinityIndices = numpy.asarray(aInfinitePressureIndices)
-npaVelocityInfinityIndices = numpy.asarray(aInfiniteVelocityIndices)
-
-npaSpeakerIndices = numpy.asarray(aSpeakerIndices)
+npaInfinityElementIndices = numpy.asarray(aInfiniteElementIndices)
 
 def astext(a):
 	strText = ""
@@ -320,27 +234,18 @@ def astext(a):
 	return strText
 
 '''
-print("pressure element", astext(range(len(npaPressure1stIndices))))
-print("1st indices", astext(npaPressure1stIndices))
-print("1st factors", astext(npaPressure1stFactors))
-print("2nd indices", astext(npaPressure2ndIndices))
-print("2nd factors", astext(npaPressure2ndFactors))
-print("3rd indices", astext(npaPressure3rdIndices))
-print("3rd factors", astext(npaPressure3rdFactors))
-
-print()
-print("velocity element", astext(range(len(npaVelocity1stIndices))))
-print("1st indices", astext(npaVelocity1stIndices))
-print("1st factors", astext(npaVelocity1stFactors))
-print("2nd indices", astext(npaVelocity2ndIndices))
-print("2nd factors", astext(npaVelocity2ndFactors))
+print("pressure element", astext(range(len(npaPressureFactorsNeg))))
+print("1st indices", astext(npaPressureFactorsNeg))
+print("1st factors", astext(npaPressureFactorsPos))
 
 exit(0)
 '''
 
+print("pressure links", aPressureLinks)
+
 #will be called with omega*t
-def sinInput(t):
-	return numpy.sin(t)
+def sinInput(omega_t):
+	return numpy.sin(omega_t)
 
 fSignalNormalizer = 4.0 # for 8 ohms
 	
@@ -349,19 +254,15 @@ fnInput = sinInput
 xmlTree = ET.ElementTree(ET.Element("simu_output") )
 rootElem = xmlTree.getroot()
 
-#rootElem.attrib["id"] = config["Chassis"]["manufactor"] + " " + config["Chassis"]["name"]
-
-#valueElem = ET.SubElement(rootElem, key)
-#valueElem.text = str(dReadValues[key])
 for strSpeaker in dSpeakers:
 	print(strSpeaker, ":")
 	print(dSpeakers[strSpeaker].m_dOptions)
-
 
 plt.clf()
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
+n = 50
 n = 10000000
 
 dlSPLs = dict()
@@ -378,7 +279,7 @@ for mic in dMics.keys():
 #read parameters needed
 for fFreq in g_afFreqs:
 	print("frequency:", fFreq)
-	fSimulationDuration = g_fLeadTime + nPressureElems * g_dx / g_fSpeed  + 1.0 / fFreq * g_nSignalPeriods
+	fSimulationDuration = g_fLeadTime + len(aElems) * g_dx / g_fSpeed  + 1.0 / fFreq * g_nSignalPeriods
 	print("simulating period of", fSimulationDuration, "s")
 	
 	signalElem = ET.SubElement(rootElem, "signal")
@@ -386,8 +287,8 @@ for fFreq in g_afFreqs:
 	signalElem.attrib["type"] = g_strSignalType
 
 	#create vectors for simulation
-	npaPressures = numpy.asarray([0] * nPressureElems)
-	npaPressureDifference = numpy.asarray([0] * nTotalVelocityElems)
+	npaPressures = numpy.asarray([0] * len(aPressureFactorsNeg))
+	npaPressureDifference = numpy.asarray([0] * (len(aPressureFactorsNeg)-1) )
 	
 	iStep = 0
 	bBreak = False
@@ -404,8 +305,10 @@ for fFreq in g_afFreqs:
 		speaker.m_fI = 0.0
 		speaker.m_fX = 0.0
 		speaker.m_fV = 0.0
-
 		
+	# array for linked elements
+	afLinkedPressures = [0] * len(aPressureLinks)
+
 	while(not bBreak):
 		fTime = g_fTimeStep * iStep
 		if fTime > fSimulationDuration:
@@ -413,22 +316,44 @@ for fFreq in g_afFreqs:
 		
 		# first half-step (basis are v-elements)
 	
-		#print(npaPressures)
 		#explicit integration for pressure elements
-		npaPressures = npaPressures + npaPressure1stFactors * npaPressureDifference[npaPressure1stIndices] + npaPressure2ndFactors * npaPressureDifference[npaPressure2ndIndices] + npaPressure3rdFactors * npaPressureDifference[npaPressure3rdIndices]
-		#print(npaPressures)
+		npaPressures = npaPressures + (
+			npaPressureFactorsPos * numpy.append(npaPressureDifference, 0) +
+			npaPressureFactorsNeg * numpy.append(0, npaPressureDifference)
+			)
 		
-		npaPressures[npaPressureInfinityIndices] *= g_fInfiniteDampingFactor
+		# process linked elements
+		
+		# first iteration: collect slave pressures and apply to master
+		for iPressureLink in range(len(aPressureLinks)):
+			(iMaster, iSlave) = aPressureLinks[iPressureLink]
+			npaPressures[iMaster] += npaPressures[iSlave] - afLinkedPressures[iPressureLink]
+			
+		# second iteration: distribute to slaves and update history
+		for iPressureLink in range(len(aPressureLinks)):
+			(iMaster, iSlave) = aPressureLinks[iPressureLink]
+			npaPressures[iSlave] = npaPressures[iMaster] 
+			
+			afLinkedPressures[iPressureLink] = npaPressures[iMaster]
+		
+		npaPressures[npaInfinityElementIndices] *= g_fInfiniteDampingFactor
 	
 		#second half-step (basis are p-elements)
 		#explicit integration for velocity elements
-		npaPressureDifference = npaPressureDifference + npaPressures[npaVelocity1stIndices] - npaPressures[npaVelocity2ndIndices]
+		npaPressureDifference = npaPressureDifference + (
+			npaPressures[:-1] - npaPressures[1:]
+			)
+	
+		# clear unused elements (just for tidiness)
+		npaPressureDifference[aUnusedPressureDifferences] = 0
 	
 		#apply damping to "infinity" elements
-		npaPressureDifference[npaVelocityInfinityIndices] *= g_fInfiniteDampingFactor
+		npaPressureDifference[npaInfinityElementIndices[:-1]] *= g_fInfiniteDampingFactor
 		
 		#invoke speaker input function
 		fU = fnInput(2.0 * numpy.pi * fFreq * fTime) * fSignalNormalizer
+		
+		#print(numpy.argmax(npaPressureDifference))
 		
 		# process speakers
 		for strSpeaker in dSpeakers:
@@ -440,7 +365,7 @@ for fFreq in g_afFreqs:
 			speaker.m_fI = speaker.m_fI + fCurrentSlope * g_fTimeStep
 			
 			fForceMembrane = dOptions["bl"] * speaker.m_fI
-			fPressureDiff = npaPressures[speaker.positiveElem] - npaPressures[speaker.negativeElem]
+			fPressureDiff = npaPressures[speaker.m_iElemID + 1] - npaPressures[speaker.m_iElemID]
 			
 			#calculate speaker acceleration
 			fAcceleration = (fForceMembrane - fPressureDiff * dOptions["sd"] - speaker.m_fX * speaker.m_fStiffness - dOptions["rms"] * speaker.m_fV)/(dOptions["mmd"] + speaker.m_fAirmass)
@@ -452,9 +377,7 @@ for fFreq in g_afFreqs:
 			speaker.m_fX = speaker.m_fX + speaker.m_fV * g_fTimeStep
 			
 			#overwrite updates made by pressure step
-			npaPressureDifference[speaker.m_iVelocityIndex] = speaker.m_fV / g_fVelocityFactor
-			
-			#print(npaPressureDifference[speaker.m_iVelocityIndex])
+			npaPressureDifference[speaker.m_iElemID] = speaker.m_fV / g_fVelocityFactor
 			
 			if fTime > g_fLeadTime:
 				#save speaker measurements			
@@ -471,18 +394,16 @@ for fFreq in g_afFreqs:
 		iStep += 1
 		
 		if iStep % n == 0:
-			
 			ax2.cla()
 			ax1.cla()
 			
 			plt.suptitle("velocity")
-			ax1.plot(npaPressureDifference, "b-")
+			ax1.plot(g_fVelocityFactor * npaPressureDifference, "b-")
 			ax1.set_ylabel('velocity', color='b')
 			ax2.plot(npaPressures, "g-")
 			ax2.set_ylabel('pressure', color='g')
 			
 			plt.savefig(str(iStep) + ".png")
-			#print(iStep)
 	
 	#save microphone measurements
 	for strMic in dMics:
@@ -568,4 +489,3 @@ print("writing output XML to", g_strSimuOutputFile)
 with open(g_strSimuOutputFile, 'wb') as f:
 	f.write(bytes('<?xml version="1.0" encoding="UTF-8" ?>', 'utf-8'))
 	xmlTree.write(f, 'utf-8')
-

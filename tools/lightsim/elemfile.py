@@ -5,14 +5,13 @@
 import math
 import sys
 
-#
-
 class Elem:
-	negativeNeighbors = []; #tuple: id, area
-	positiveNeighbors = [];
-	damping = 0;
+	m_fDamping = 0;
+	m_fArea = 0;
+	m_bBreakConnection = False;
+	m_iLink = -1;
 	def __str__(self):
-		return "{element; neg:" + str(self.negativeNeighbors) + "; pos:" + str(self.positiveNeighbors) + "; damp:" + str(self.damping) + "}"
+		return "{element; area:" + str(self.m_fArea) + "; damping:" + str(self.m_fDamping) + "}"
 
 class Microphone:
 	m_iElemID = 0
@@ -20,16 +19,15 @@ class Microphone:
 		return "{microphone; element:" + str(self.m_iElemID) + "}"
 
 class Speaker:
-	positiveElem = -1;
-	negativeElem = -1;
+	m_iElemID = 0
 	def __str__(self):
-		return "{speaker; neg:" + str(self.negativeElem) + "; pos:" + str(self.positiveElem) + "}"
+		return "{speaker; element:" + str(self.m_iElemID) + "}"
 
 # returns dictionaries of objects
 # return (dElems, dMics, dSpeakers, dx)
 
 def scanElemFile(strFilename):
-	dElems = dict()
+	aElems = [None]
 	dMics = dict()
 	dSpeakers = dict()
 
@@ -40,81 +38,51 @@ def scanElemFile(strFilename):
 #	delta X of the elements (length)
 	dx = float("nan")
 
-	def scanAttribs(aLines, iLine):
-		negativeNeighbors = []
-		positiveNeighbors = []
-		damping = 0
+	iElem = 0
+	
+	elem = None
 
-		bLineForElem = True
-		while(iLine < len(aLines)):
-			currLine = aLines[iLine]
-			attribType = currLine[0]
-#			print("attribute type is", attribType)
-			if attribType == "-":
-				substrings = currLine.split(" ")
-#				print("substrings are:", substrings)
-				conn = int(substrings[1])
-				area = float(substrings[2])
-				negativeNeighbors.append( (conn, area) )
-			elif attribType == "+":
-				substrings = currLine.split(" ")
-#				print("substrings are:", substrings)
-				conn = int(substrings[1])
-				area = float(substrings[2])
-				positiveNeighbors.append( (conn, area) )
-			elif attribType == "d":
-				damping = float(currLine[2:])
-			elif attribType == "#":
-				pass
-			else:
-				break
-			iLine += 1
-		return (negativeNeighbors, positiveNeighbors, damping, iLine -1)
-
-	iLine = 0
-
-	while iLine < len(aLines):
-		currLine = aLines[iLine]
+	for currLine in aLines:
 		linetype = currLine[0]
 
 #		print ("type of line", iLine, "is", linetype)
 
 		if linetype == "e":
+			iElem += 1
 			elID = int(currLine[2:])
+			
+			if iElem != elID:
+					print("ERROR: expected element ID to be", iElem, "not", elID)
 #			print("element ID is", elID)
-			(negN, posN, damp, line) = scanAttribs(aLines, iLine + 1)
-
 			elem = Elem()
-			elem.negativeNeighbors = negN
-			elem.positiveNeighbors = posN
-			elem.damping = damp
-			dElems[elID] = elem
-			iLine = line
+			aElems.append( elem )
+		elif linetype == "d":
+			fDamping = float(currLine[2:])
+			aElems[-1].m_fDamping = fDamping
+		elif linetype == "A":
+			fArea = float(currLine[2:])
+			aElems[-1].m_fArea = fArea
+		elif linetype == "b":	
+			aElems[-1].m_bBreakConnection = True
+		elif linetype == "l":
+			iLinkTo = int(currLine[2:])
+			aElems[-1].m_iLink = iLinkTo
 		elif linetype == "s":
 #			print("speaker!")
 			speakerID = currLine[3:-2]
-			(negN, posN, damp, line) = scanAttribs(aLines, iLine + 1)
-
 			spkr = Speaker()
-			(spkr.positiveElem, unused) = posN[0]
-			(spkr.negativeElem, unused) = negN[0]
-#			spkr.positiveElem = posN[0]
-#			spkr.negativeElem = negN[0]
-
-			dSpeakers[speakerID] = spkr
-			iLine = line
-		elif linetype == "m":
-			astrTemp = currLine.split(" ")
-			micElem = int(astrTemp[-1])
-			micID = astrTemp[-2][1:-1]
 			
-			elem = Microphone()
-			elem.m_iElemID = micElem
-			dMics[micID] = elem
+			spkr.m_iElemID = iElem
+			dSpeakers[speakerID] = spkr
+		elif linetype == "m":
+			micID = currLine[3:-2]
+			
+			mic = Microphone()
+			mic.m_iElemID = iElem
+			dMics[micID] = mic
 			
 #			print("mic ID", micID)
-		elif linetype == "d":
-			#HACK: this is the 'dx' element
+		elif linetype == "x":
 			dx = float(currLine[3:])
 #			print("element length is", dx)
 		elif linetype == "#":
@@ -123,14 +91,13 @@ def scanElemFile(strFilename):
 			pass
 		else:
 			print("type of line not recognized!", currLine)
-		iLine += 1
-	return (dElems, dMics, dSpeakers, dx)
+	return (aElems, dMics, dSpeakers, dx)
 
 if __name__ == "__main__":
 	infile = sys.argv[1]
 	dElems, dMics, dSpeakers, dx = scanElemFile(infile)
 
-	for elem in dElems.keys():
+	for elem in aElems:
 		print("elem", elem, dElems[elem])
 	
 	for mic in dMics.keys():
