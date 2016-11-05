@@ -5,20 +5,15 @@ import sys
 import elemfile
 
 def get_material_costs(infile):
-	dElems, dMics, dSpeakers, dx = elemfile.scanElemFile(infile)
+	aElems, dMics, dSpeakers, dx = elemfile.scanElemFile(infile)
 	
 	aCrossSections = []
 	aDampened = []
 			
-	for iID in dElems:
-		fTotalArea = 0
-		for target, area in dElems[iID].negativeNeighbors:
-			fTotalArea += area
+	for elem in aElems:
+		fTotalArea = elem.m_fArea
 		
-		for target, area in dElems[iID].positiveNeighbors:
-			fTotalArea += area
-
-		if dElems[iID].damping > 0:
+		if elem.m_fDamping > 0:
 			aDampened.append(len(aCrossSections))
 
 		aCrossSections.append(fTotalArea * 0.5)
@@ -40,7 +35,6 @@ def get_material_costs(infile):
 	length = numpy.power(vol, 1/3.0)
 	#calculate dampened volume
 	volDampened = numpy.sum(numpy.asarray(aCrossSections)[aDampened] ) * dx
-
 
 	#thickness of panels
 	panel = length * d_panel_scale
@@ -73,7 +67,6 @@ if __name__ == "__main__":
 	outfile = sys.argv[2]
 
 	dResult = get_material_costs(infile)
-
 
 	f = open(outfile , "wt")
 

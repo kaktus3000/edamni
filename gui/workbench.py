@@ -920,7 +920,7 @@ def onSimulationButtonClick():
 	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
 		
-	call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim/lightsim.py"])
+	call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim.py"])
 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()

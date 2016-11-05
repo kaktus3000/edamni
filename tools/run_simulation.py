@@ -97,8 +97,11 @@ for speakerImpedance in root.findall("speaker_impedance"):
 
 ax1.set_ylabel('SPL [dB]', color='b')
 ax2.set_ylabel('Impedance [ohms]', color='g')
+plt.set_xlabel('Frequency [Hz]')
 
-plt.savefig(g_strDir + "spl.png")
+strPlotPath = g_strDir + "spl.png"
+print("run simulation: creating plot", strPlotPath)
+plt.savefig(strPlotPath)
 
 #calculate costs for this design
 dMatCosts = material_costs.get_material_costs(g_strElementFile)
@@ -117,6 +120,8 @@ t_edge_high = 400
 t_mic = None
 
 for mic in daMicSPLs.keys():
+	if t_mic == None:
+		t_mic = mic
 	if "Space" in mic:
 		t_mic = mic
 

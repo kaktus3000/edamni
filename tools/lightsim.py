@@ -108,27 +108,15 @@ aPressureLinks = []
 # just for tidiness, these elements are write-only
 aUnusedPressureDifferences = [0]
 
-for iElem in list(range(len(aElems)))[1:]:
+for iElem in range(1, len(aElems)):
 	#print("iElem", iElem)
 	elem = aElems[iElem]
 	
-	# set up areas and factors to neighboring elements
-	fLastArea = - elem.m_fArea
-	if iElem > 1:
-		fLastArea = aElems[iElem - 1].m_fArea
-		
-	fNextArea = - elem.m_fArea
-	if iElem < len(aElems) - 1:
-		fNextArea = aElems[iElem + 1].m_fArea
+	fNegArea = aElems[iElem - 1].m_fArea
+	fPosArea = elem.m_fArea
 	
-	fNegArea = (elem.m_fArea + fLastArea) * 0.5
-	fPosArea = (elem.m_fArea + fNextArea) * 0.5
-	
+	# append volume to list
 	fVolume = 0.5 * (fNegArea + fPosArea) * g_dx
-	
-	if fNegArea == 0 or fPosArea == 0:
-		fVolume += fVolume
-	#fVolume = elem.m_fArea * g_dx
 	
 	fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
 	
@@ -148,7 +136,7 @@ for iElem in list(range(len(aElems)))[1:]:
 	elem = aElems[iElem]
 	
 	# implement breaks
-	if elem.m_bBreakConnection:
+	if elem.m_bBreak:
 		aPressureFactorsPos[iElem] = 0
 		aPressureFactorsNeg[iElem + 1] = 0
 		
@@ -214,11 +202,12 @@ for strSpeaker in dSpeakers:
 	speaker.m_fAirmass = (8.0/3.0) * g_fDensity * fRadius**3
 	speaker.m_fStiffness = 1.0 / speaker.m_dOptions["cms"]
 	
+	# element cross section is given for right side (where the speaker is implemented)
 	aPressureFactorsPos[speaker.m_iElemID]     *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID].m_fArea
-	aPressureFactorsNeg[speaker.m_iElemID + 1] *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID + 1].m_fArea
+	aPressureFactorsNeg[speaker.m_iElemID + 1] *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID].m_fArea
 
-print(aPressureFactorsNeg)
-print(aPressureFactorsPos)
+#print(aPressureFactorsNeg)
+#print(aPressureFactorsPos)
 
 #create pressure indexing vectors for simulation
 npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg)

@@ -6,12 +6,34 @@ import math
 import sys
 
 class Elem:
-	m_fDamping = 0;
-	m_fArea = 0;
-	m_bBreakConnection = False;
-	m_iLink = -1;
+	def __init__(self):
+		self.m_fDamping = 0;
+		self.m_fArea = 0;
+		self.m_bBreak = False
+	
+		# link syntax:
+		#   -1: no link
+		#   0: link to "infinity"
+		#   >0: link to actual element
+		self.m_iLink = -1;
+	
+		# speaker will be inserted on the velocity link to the previous pressure element
+		self.m_strSpeaker = ""
+	
+		# microphone definition. measures pressure of this pressure element
+		self.m_strMic = ""
+		
+	
 	def __str__(self):
-		return "{element; area:" + str(self.m_fArea) + "; damping:" + str(self.m_fDamping) + "}"
+		strDesc = "{element; area:" + str(self.m_fArea) + "; damping:" + str(self.m_fDamping)
+		
+		if self.m_strMic != "":
+			strDesc += "; microphone \"" + self.m_strMic + "\""
+		
+		if self.m_strSpeaker != "":
+			strDesc += "; speaker \"" + self.m_strSpeaker + "\""
+		
+		return strDesc + "}"
 
 class Microphone:
 	m_iElemID = 0
@@ -27,7 +49,7 @@ class Speaker:
 # return (dElems, dMics, dSpeakers, dx)
 
 def scanElemFile(strFilename):
-	aElems = [None]
+	aElems = []
 	dMics = dict()
 	dSpeakers = dict()
 
@@ -38,9 +60,7 @@ def scanElemFile(strFilename):
 #	delta X of the elements (length)
 	dx = float("nan")
 
-	iElem = 0
-	
-	elem = None
+	iElem = -1
 
 	for currLine in aLines:
 		linetype = currLine[0]
@@ -63,7 +83,7 @@ def scanElemFile(strFilename):
 			fArea = float(currLine[2:])
 			aElems[-1].m_fArea = fArea
 		elif linetype == "b":	
-			aElems[-1].m_bBreakConnection = True
+			aElems[-1].m_bBreak = True
 		elif linetype == "l":
 			iLinkTo = int(currLine[2:])
 			aElems[-1].m_iLink = iLinkTo
@@ -92,6 +112,34 @@ def scanElemFile(strFilename):
 		else:
 			print("type of line not recognized!", currLine)
 	return (aElems, dMics, dSpeakers, dx)
+
+def writeElemFile(strFilename, aElements, fDx):
+	strFileContents = "# set global element length\n"
+	strFileContents += "x " + str(fDx) + "\n"
+	
+	strFileContents += "# define elements\n"
+	
+	for iElem in range(len(aElements)):
+		strFileContents += "e " + str(iElem) + "\n"
+		elem = aElements[iElem]
+		
+		strFileContents += "A " + str(elem.m_fArea) + "\n"
+		
+		if elem.m_fDamping != 0:
+			strFileContents += "d " + str(elem.m_fDamping) + "\n"
+		if elem.m_iLink != -1:
+			strFileContents += "l " + str(elem.m_iLink) + "\n"
+		if elem.m_bBreak != 0:
+			strFileContents += "b\n"
+		if elem.m_strSpeaker != "":
+			strFileContents += "s \"" + elem.m_strSpeaker + "\"\n"
+		if elem.m_strMic != "":
+			strFileContents += "m \"" + elem.m_strMic + "\"\n"
+		
+	f = open(strFilename, 'w')
+	f.write(strFileContents)
+	f.close()
+		
 
 if __name__ == "__main__":
 	infile = sys.argv[1]
