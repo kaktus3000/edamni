@@ -4,6 +4,7 @@ import sys
 import os
 import configparser
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 #xml support
 import xml.etree.ElementTree as ET
@@ -69,6 +70,11 @@ plt.suptitle("Frequency Response Plot")
 ax1.set_xscale("log", nonposx='clip')
 ax2.set_xscale("log", nonposx='clip')
 
+nMics = len(root.findall("mic_spl") )
+
+colors = cm.rainbow(numpy.linspace(0, 1, nMics))
+iMic = 0
+
 for micSPL in root.findall("mic_spl"):
 	strMicSPLFile = micSPL.attrib["file"]
 	strMicID = micSPL.attrib["id"]
@@ -80,7 +86,9 @@ for micSPL in root.findall("mic_spl"):
 	npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
 	npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
 	
-	ax1.plot(npaFreqs, npaSPLs, "b-")
+	ax1.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
+	
+	iMic += 1
 
 for speakerImpedance in root.findall("speaker_impedance"):
 	strSpeakerImpedanceFile = speakerImpedance.attrib["file"]
@@ -97,7 +105,9 @@ for speakerImpedance in root.findall("speaker_impedance"):
 
 ax1.set_ylabel('SPL [dB]', color='b')
 ax2.set_ylabel('Impedance [ohms]', color='g')
-plt.set_xlabel('Frequency [Hz]')
+ax1.set_xlabel('Frequency [Hz]')
+
+ax1.legend()
 
 strPlotPath = g_strDir + "spl.png"
 print("run simulation: creating plot", strPlotPath)
@@ -122,7 +132,7 @@ t_mic = None
 for mic in daMicSPLs.keys():
 	if t_mic == None:
 		t_mic = mic
-	if "Space" in mic:
+	if "spl_mic" in mic:
 		t_mic = mic
 
 #calculate cost for a linear response fit
@@ -177,6 +187,11 @@ for spl in range(t_spl - 10, t_spl + 10):
 
 k_total = fBest + dMatCosts["cost_total"]
 
-print("costs: material", dMatCosts["cost_total"], "frequency response:", fBest, "total cost", k_total)
+print("run simulation: material cost", dMatCosts["cost_total"], "; panel thickness", dMatCosts["panel_thickness"], "cube edge length", dMatCosts["edge_length"])
+
+print("run simulation: frequency response cost", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
+
+
+print("run simulation: total cost", k_total)
 
 

@@ -11,12 +11,12 @@ def get_material_costs(infile):
 	aDampened = []
 			
 	for elem in aElems:
-		fTotalArea = elem.m_fArea
-		
+		if elem.m_bSpace:
+			continue
 		if elem.m_fDamping > 0:
 			aDampened.append(len(aCrossSections))
 
-		aCrossSections.append(fTotalArea * 0.5)
+		aCrossSections.append(elem.m_fArea)
 
 	#read design parameters and specific costs
 

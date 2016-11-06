@@ -456,7 +456,7 @@ for fFreq in g_afFreqs:
 # save microphone SPL measurements
 for mic in dMics.keys():
 	micElem = ET.SubElement(rootElem, "mic_spl")
-	micElem.attrib["id"] = strMic
+	micElem.attrib["id"] = mic
 	
 	strFile = "spl_mic_" + mic + ".dat"
 	micElem.attrib["file"] = strFile
