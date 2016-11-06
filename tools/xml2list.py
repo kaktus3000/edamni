@@ -311,6 +311,7 @@ def space_section(dx, params):
 		
 		elem = elemfile.Elem()
 		elem.m_fArea = Ax
+		elem.m_bSpace = False
 		
 		outList.append(elem)
 
@@ -319,6 +320,7 @@ def space_section(dx, params):
 	elem = elemfile.Elem()
 	elem.m_fArea = outList[-1].m_fArea
 	elem.m_iLink = 0
+	elem.m_bSpace = False
 	outList.append(elem)
 
 	return outList

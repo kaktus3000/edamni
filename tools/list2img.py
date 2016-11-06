@@ -8,19 +8,45 @@ import sys
 import elemfile
 
 g_lSpeakerVectorGraphics = [[(0.0, 0.0),
-							 (1.0, 0.0),
-							 (0.6, 0.4),
-							 (0.0, 0.4)],
-							[(0.3, 0.4),
-							 (0.3, 0.5)],
-							[(0.0, 0.5),
-							 (0.4, 0.5),
-							 (0.4, 0.8),
-							 (0.0, 0.8)]
+							 (0.0, 1.0),
+							 (-0.2, 0.8),
+							 (-0.2, 0.2)],
+							[(-0.2, 0.6),
+							 (-0.25, 0.6),
+							 (-0.25, 0.4),
+							 (-0.2, 0.4)],
+							[(-0.25, 0.7),
+							 (-0.25, 0.3),
+							 (-0.4, 0.3),
+							 (-0.4, 0.7)]
 							]
+
+def rasterizeLine(pixMap, vStart, vEnd, color):
+	fSample = .5
+	(x1, y1) = vStart
+	(x2, y2) = vEnd
+	
+	fDx = x2 - x1
+	fDy = y2 - y1
+	
+	fLength = math.sqrt(fDx * fDx + fDy * fDy)
+	
+	if fLength < 0.5:
+		return
+	
+	fScan = fSample * 1.0 / fLength
+	
+	for iSample in range(int( 1.0 / fScan) ):
+		x = x1 + fDx * iSample * fScan
+		y = y1 + fDy * iSample * fScan 
+		
+		if pixMap[x, y] == (255, 255, 255):
+			pixMap[x, y] = color
 
 infile = sys.argv[1]
 outfile = sys.argv[2]
+iWidth  = int(sys.argv[3])
+iHeight = int(sys.argv[4])
 
 aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(infile)
 
@@ -36,52 +62,93 @@ def toDiam(area):
 	else:
 		return 0
 
-maxDia = toDiam(fMaxArea)
-print("max area is", fMaxArea, "diam", maxDia)
-
 nGraphElems = len(aElems)
+maxDia = toDiam(fMaxArea)
+print("list2img: number of elements:", nGraphElems, "; max area:", fMaxArea, "; diam:", maxDia)
 
-imgWidth = (int(maxDia/g_dx+2)//2)*2 + 2
+image = Image.new("RGB", (iWidth, iHeight), "white")
 
-image = Image.new("RGB", (imgWidth, (int(nGraphElems)//2)*2 + 2), "black")
-
-hMappingFile=open(outfile + ".txt", "wt")
+#hMappingFile=open(outfile + ".txt", "wt")
 
 pixMap = image.load()
 
-for pixel in range(nGraphElems):
-	elem = aElems[pixel]
+fRelativeHeight = maxDia / (nGraphElems * g_dx) * iWidth
 
-	hMappingFile.write(str(elem) + "\t" +  str(imgWidth // 2) + "\t" + str(pixel) + "\t" + str(imgWidth // 2) + "\n")
+print("list2img: relative height:", fRelativeHeight)
+
+if fRelativeHeight > iHeight:
+	iWidth *= iHeight / fRelativeHeight
+	
+	print("list2img: scaling width to:", iWidth)
+else:
+	iHeight = fRelativeHeight
+	print("list2img: scaling height to:", iHeight)
+
+fWidthNormalizer  = 1.0 / nGraphElems * (iWidth - 1)
+fHeightNormalizer = 1.0 / maxDia * (iHeight - 1)
+
+for iElem in range(nGraphElems):
+
+	#hMappingFile.write(str(elem) + "\t" +  str(imgWidth // 2) + "\t" + str(pixel) + "\t" + str(imgWidth // 2) + "\n")
 #	print(pixel, elem)
+
+	xEnd   = iElem  * fWidthNormalizer
+	yEnd   = toDiam(aElems[iElem].m_fArea) * fHeightNormalizer
 	
-	area = elem.m_fArea
+	#mark speaker
+	if aElems[iElem].m_strSpeaker != "":
+		for chain in g_lSpeakerVectorGraphics:
+			for iLine in range(len(chain)):
+				(x0, y0) = chain[iLine - 1]
+				xLine0 = x0 * yEnd
+				yLine0 = (y0 - 0.5) * yEnd
+			
+				(x1, y1) = chain[iLine]
+				xLine1 = x1 * yEnd
+				yLine1 = (y1 - 0.5) * yEnd
+			
+				# clamp graphics
+				xLine0 = max(-xEnd, xLine0)
+				xLine1 = max(-xEnd, xLine1)
+				
+				rasterizeLine(pixMap, (xLine0 + xEnd, yLine0 + iHeight * 0.5), (xLine1 + xEnd, yLine1 + iHeight * 0.5), (255,0,0))
+		
+	#mark links
+	if aElems[iElem].m_iLink != -1:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (255,0,255) )
+		
+	#mark mic
+	if aElems[iElem].m_strMic != "":
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (0,127,255) )
 	
-	x = toDiam(area)
-	drawX = int(x/g_dx)
-#	print(elem, elemID, area, x)
-	pixMap[drawX, pixel] = (255,255,255)
-	#mark infinite element
-	'''
-	if len(dElems[elem].positiveNeighbors) > 0:
-		(neighID, unused) = dElems[elem].positiveNeighbors[0]
-		if neighID == 0:
-			for x in range(drawX):
-				pixMap[x, pixel] = (255,0,255)
-			continue
+	#mark not geometry
+	if aElems[iElem].m_bSpace:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (224, 224, 224) )
 	
-	#mark walls
-	if len(dElems[elem].positiveNeighbors) == 0 or len(dElems[elem].negativeNeighbors) == 0:
-		for x in range(drawX):
-			pixMap[x, pixel] = (255,255,255)
-		continue
-	'''
+	# draw outline
+	if iElem > 1:
+	
+		xStart = (iElem-1) * fWidthNormalizer
+		yStart = toDiam(aElems[iElem-1].m_fArea) * fHeightNormalizer
+
+		rasterizeLine(pixMap, (xStart, (yStart + iHeight) * 0.5), (xEnd, (yEnd + iHeight) * 0.5), (0,0,0) )
+		rasterizeLine(pixMap, (xStart, (-yStart + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (0,0,0) )
+
 	#mark damped elements
-	if elem.m_fDamping != 0:
-		for x in range(drawX):
-			pixMap[x, pixel] = (0,127,0)
+	fDamping = aElems[iElem].m_fDamping
+	if fDamping != 0:
+		fRelativeDamping = min (fDamping / 17100, 1)
+	
+		color = (int(255 * (1.0 - fRelativeDamping)), int(127 + (1.0 - fRelativeDamping) * 128), int(255 * (1.0 - fRelativeDamping)) )
+
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), color)
+
+
+print("list2img: writing image", outfile)
+
+#draw center line
+rasterizeLine(pixMap, (0, iHeight / 2), (iWidth - 1, iHeight / 2), (0,0,0) )
 
 image.save(outfile)
-hMappingFile.close()
+#hMappingFile.close()
 
-print("fin.")

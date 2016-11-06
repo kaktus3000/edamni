@@ -857,11 +857,12 @@ def generateElementList():
 	#write xml file of setup
 	saveDefinition(g_strXMLFile)
 
+	
 	#write element list
 	call(["python3", "../tools/xml2list.py", g_strXMLFile, g_strElementListFilename])
 	
 	
-	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile])
+	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile, str(simuImageCanvas.winfo_width()), str(simuImageCanvas.winfo_height())])
 
 def escapeString(strToEscape):
 	return "".join([c if c.isalnum() else '_' for c in strToEscape ])

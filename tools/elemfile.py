@@ -10,6 +10,7 @@ class Elem:
 		self.m_fDamping = 0;
 		self.m_fArea = 0;
 		self.m_bBreak = False
+		self.m_bSpace = True
 	
 		# link syntax:
 		#   -1: no link
@@ -88,8 +89,9 @@ def scanElemFile(strFilename):
 			iLinkTo = int(currLine[2:])
 			aElems[-1].m_iLink = iLinkTo
 		elif linetype == "s":
-#			print("speaker!")
 			speakerID = currLine[3:-2]
+			
+			aElems[-1].m_strSpeaker = speakerID
 			spkr = Speaker()
 			
 			spkr.m_iElemID = iElem
@@ -100,11 +102,12 @@ def scanElemFile(strFilename):
 			mic = Microphone()
 			mic.m_iElemID = iElem
 			dMics[micID] = mic
+			aElems[-1].m_strMic = micID
+		elif linetype == "g":
+			aElems[-1].m_bSpace = False
 			
-#			print("mic ID", micID)
 		elif linetype == "x":
 			dx = float(currLine[3:])
-#			print("element length is", dx)
 		elif linetype == "#":
 			pass
 		elif currLine == "\n":
@@ -129,8 +132,10 @@ def writeElemFile(strFilename, aElements, fDx):
 			strFileContents += "d " + str(elem.m_fDamping) + "\n"
 		if elem.m_iLink != -1:
 			strFileContents += "l " + str(elem.m_iLink) + "\n"
-		if elem.m_bBreak != 0:
+		if elem.m_bBreak:
 			strFileContents += "b\n"
+		if elem.m_bSpace:
+			strFileContents += "g\n"
 		if elem.m_strSpeaker != "":
 			strFileContents += "s \"" + elem.m_strSpeaker + "\"\n"
 		if elem.m_strMic != "":
