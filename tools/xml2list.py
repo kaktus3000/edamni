@@ -136,7 +136,7 @@ def reverseChain(chain):
 	
 # unravel neighbor dictionary
 # find strings of linked sections
-def unravelNeighbors(neighborDict):
+def unravelNeighbors(hornDict, neighborDict):
 	# result vector
 	aaChains = []
 	
@@ -169,12 +169,25 @@ def unravelNeighbors(neighborDict):
 		aChain1 = traceChain(sUsed, neighborDict, sectionID, 1)
 		# find string in positive direction
 		aChain2 = traceChain(sUsed, neighborDict, sectionID, 2)
-		print("chain 1:", aChain1)
-		print("chain 1 reversesd:", reverseChain(aChain1))
-		aaChains.append(reverseChain(aChain1) + [ (sectionID, True) ] + aChain2)
+		
+		if g_bVerbose:
+			print("chain 1:", aChain1)
+			print("chain 1 reversesd:", reverseChain(aChain1))
+		
+		aChain = reverseChain(aChain1) + [ (sectionID, True) ] + aChain2
+		
+		# check for a speaker section
+		for (section, bOrientation) in aChain:
+			tag, sectionDict = hornDict[section]
+			if tag == "speaker" and bOrientation == False:
+				# reverse chain to create correct orientation for speaker
+				aChain = reverseChain(aChain)
+		
+		aaChains.append(aChain)
 		
 		if g_bVerbose:
 			print("trace result", aaChains[-1])
+		
 
 	#return result vector
 	return aaChains
@@ -399,7 +412,7 @@ for section in horn:
 
 #check whether the cross-sections given are discontinuous
 neighborDict = checkCrossSections(hornDict)
-sectionStrings = unravelNeighbors(neighborDict)
+sectionStrings = unravelNeighbors(hornDict, neighborDict)
 
 # create empty element list (of class Element)
 lElements = []
@@ -449,7 +462,7 @@ for sectionString in sectionStrings:
 		begElem.m_fArea = lStringElems[0].m_fArea
 		begElem.m_bBreak = True
 		
-		lPaddedElems = lPaddedElems + [begElem]
+		lPaddedElems = [begElem] + lPaddedElems
 
 	# add dummy element to the end if there is no link yet
 	if lStringElems[-1].m_iLink == -1:
@@ -605,6 +618,6 @@ for sectionID in hornDict.keys():
 hElemFile.close();
 '''
 
-print("fin.")
+print("xml2list: finished!")
 
 
