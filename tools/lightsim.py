@@ -132,21 +132,22 @@ for iElem in range(1, len(aElems)):
 		
 		aPressureLinks.append( (elem.m_iLink, iElem) )
 
-for iElem in list(range(len(aElems)))[1:]:
+for iElem in range(1, len(aElems)):
 	elem = aElems[iElem]
 	
-	# implement breaks
-	if elem.m_bBreak:
-		aPressureFactorsPos[iElem] = 0
-		aPressureFactorsNeg[iElem + 1] = 0
+	# implement breaks on the left side of the element
+	if elem.m_bBreak and iElem > 0:
+		aPressureFactorsPos[iElem - 1] = 0
+		aPressureFactorsNeg[iElem] = 0
 		
-		aUnusedPressureDifferences.append(iElem)
+		aUnusedPressureDifferences.append(iElem - 1)
 
 	# collect infinity elements
 	if elem.m_iLink == 0:
 		# create a link to end of element list
 		iBaseElement = len(aPressureFactorsNeg)
 		aPressureLinks.append( (iElem, iBaseElement) )
+		print("light sim: implementing link from element", iElem, "to infinity element", iBaseElement)
 		
 		# add pressure difference to unused ones
 		aUnusedPressureDifferences.append(iBaseElement - 1)
@@ -179,7 +180,7 @@ for iElem in list(range(len(aElems)))[1:]:
 			aPressureFactorsNeg.append(fLastArea * fFactor)
 			aPressureFactorsPos.append( - fInfinityArea * fFactor)
 			
-		# arrest last factor to zero
+		# set last factor to zero
 		aPressureFactorsPos[-1] = 0			
 
 print("number of elements:", len(aPressureFactorsNeg) - 1)
@@ -191,7 +192,9 @@ for strSpeaker in dSpeakers:
 	strSpeakerConfig = config.get("speakers", strSpeaker)
 	
 	speaker_config = configparser.ConfigParser()
-	speaker_config.read(g_strDir + strSpeakerConfig)
+	strSpeakerConfig = g_strDir + strSpeakerConfig
+	if len(speaker_config.read(strSpeakerConfig) ) == 0:
+		print("light sim: ERROR reading speaker config", strSpeakerConfig)
 	
 	speaker.m_dOptions = dict()
 	
@@ -262,6 +265,8 @@ for speaker in dSpeakers.keys():
 
 for mic in dMics.keys():
 	dlSPLs[mic] = []
+	
+dlSPLs["spl_sum"] = []
 	
 #lfPhase = []
 
@@ -394,17 +399,29 @@ for fFreq in g_afFreqs:
 			
 			plt.savefig(str(iStep) + ".png")
 	
+	def calcSPL(npaPressure):
+		#calculate SPL
+		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressure) ) / npaPressure.size)
+		return 20.0 * numpy.log10(fMicRMS/g_fReferencePressure);
+	
+	# virtual mic data for sum output
+	npaSumPressure = []
+	
 	#save microphone measurements
 	for strMic in dMics:
 		# get pressure
 		npaPressure = numpy.transpose(dMicMeasurements[strMic])[1]
 		
+		if "spl_mic" in strMic:
+			if len(npaSumPressure) == 0:
+				npaSumPressure = npaPressure
+			else:
+				npaSumPressure += npaPressure
+		
 		fPmax = numpy.amax(npaPressure)
 		print("pmax:", fPmax)
 		
-		#calculate SPL
-		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressure) ) / npaPressure.size)
-		fMicSPL = 20.0 * numpy.log10(fMicRMS/g_fReferencePressure);
+		fMicSPL = calcSPL(npaPressure)
 		
 		dlSPLs[strMic].append(fMicSPL)
 		
@@ -416,6 +433,9 @@ for fFreq in g_afFreqs:
 			micElem.attrib["file"] = strFile
 			
 			numpy.savetxt(g_strDir + strFile, dMicMeasurements[strMic] )
+	
+	# create a virtual mic capturing the sum output
+	dlSPLs["spl_sum"].append( calcSPL(npaSumPressure) )
 			
 	#save speaker measurements
 	for strSpeaker in dSpeakers:
@@ -454,11 +474,11 @@ for fFreq in g_afFreqs:
 '''
 			
 # save microphone SPL measurements
-for mic in dMics.keys():
+for mic in dlSPLs.keys():
 	micElem = ET.SubElement(rootElem, "mic_spl")
 	micElem.attrib["id"] = mic
 	
-	strFile = "spl_mic_" + mic + ".dat"
+	strFile = "spl_" + mic + ".dat"
 	micElem.attrib["file"] = strFile
 	
 	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlSPLs[mic]] ) )

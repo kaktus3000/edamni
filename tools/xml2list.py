@@ -328,7 +328,7 @@ def space_section(dx, params):
 		
 		outList.append(elem)
 
-	outList[-1].m_strMic = "spl_mic"
+	outList[-1].m_strMic = "spl_mic_" + params["id"]
 
 	elem = elemfile.Elem()
 	elem.m_fArea = outList[-1].m_fArea
@@ -407,7 +407,9 @@ for section in horn:
 				pass
 #		print(elem.tag, "=", elemText)
 		sectionDict[elem.tag] = elemText
-		
+	
+	sectionDict["id"] = sectionID
+	
 	hornDict[sectionID] = (section.tag, sectionDict)
 
 #check whether the cross-sections given are discontinuous
@@ -457,17 +459,19 @@ for sectionString in sectionStrings:
 	lPaddedElems = lStringElems
 	
 	# create dummy element for first cross section
-	if lStringElems[0].m_iLink == -1:
-		begElem = elemfile.Elem()
-		begElem.m_fArea = lStringElems[0].m_fArea
-		begElem.m_bBreak = True
-		
-		lPaddedElems = [begElem] + lPaddedElems
+	begElem = elemfile.Elem()
+	begElem.m_fArea = lStringElems[0].m_fArea
+	begElem.m_bBreak = True
+	begElem.m_bSpace = False
+	
+	lPaddedElems = [begElem] + lPaddedElems
 
 	# add dummy element to the end if there is no link yet
 	if lStringElems[-1].m_iLink == -1:
 		endElem = elemfile.Elem()
 		endElem.m_fArea = lStringElems[-1].m_fArea
+		
+		endElem.m_bSpace = False
 	
 		lPaddedElems += [endElem]
 	
