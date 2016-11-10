@@ -1,6 +1,6 @@
 #include <xmmintrin.h>
 #include <stdlib.h>
-#include "../common.h"
+#include "common.h"
 #include "kernel.h"
 
 #define OFFSET 4

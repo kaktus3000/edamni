@@ -1,7 +1,7 @@
 #ifndef KERNEL_KERNEL_H_
 #define KERNEL_KERNEL_H_
 
-#include "../common.h"
+#include "common.h"
 
 typedef struct
 {
@@ -37,5 +37,8 @@ typedef struct
 	float m_fRho;
 	float m_fDeltaX;
 } SSimuSettings;
+
+void prepareArrays(SKernelArray* pArray, SSimuSettings settings);
+void simulate(SKernelArray* pArray, float fFrequency);
 
 #endif /* KERNEL_KERNEL_H_ */
