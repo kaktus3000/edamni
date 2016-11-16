@@ -308,10 +308,15 @@ def space_section(dx, params):
 	#params should all be float
 	A1 = params["a1"]
 	
-	length = params["length"]
+	# lengths of geometry sections
+	micdist = params["length"]
+	free = .5
+	transition = .5
+	sink = 1.0
+	
 	fraction = params["fraction"]
 	
-	nFreeElems = int((length / dx) + 1);
+	nFreeElems = int( ((micdist + free) / dx) + 1);
 
 	outList = []
 	
@@ -319,7 +324,7 @@ def space_section(dx, params):
 	
 	for iElem in range(nFreeElems):
 		r = iElem * dx
-		surf = math.pi * r * (math.pi*r0 + 2 * r)
+		surf = 2.0 * math.pi * r * (math.pi*r0 + 2 * r)
 		Ax = A1 + surf * fraction
 		
 		elem = elemfile.Elem()
@@ -327,14 +332,34 @@ def space_section(dx, params):
 		elem.m_bSpace = False
 		
 		outList.append(elem)
+	
+	outList[-int(free / dx)].m_strMic = "spl_mic_" + params["id"]
+	
+	fSpaceSlope = fraction * math.pi * 8.0 * (r0 + r)
 
-	outList[-1].m_strMic = "spl_mic_" + params["id"]
+	fTransParameter = 0.5 * fSpaceSlope / transition
+	
+	fTransEndArea = fTransParameter * transition ** 2 + outList[-1].m_fArea
+	
+	for i in range(int(transition / dx)):
+		x = (i+1) * dx
+		l = transition - x
+		
+		fTransArea = fTransParameter * l * l
 
-	elem = elemfile.Elem()
-	elem.m_fArea = outList[-1].m_fArea
-	elem.m_iLink = 0
-	elem.m_bSpace = False
-	outList.append(elem)
+		elem = elemfile.Elem()
+		elem.m_fArea = fTransEndArea - fTransArea
+		elem.m_bSpace = False
+		
+		outList.append(elem)
+
+	for i in range(int(sink / dx)):
+		elem = elemfile.Elem()
+		elem.m_fArea = fTransEndArea
+		elem.m_bSpace = False
+		elem.m_bSink = True
+
+		outList.append(elem)
 
 	return outList
 

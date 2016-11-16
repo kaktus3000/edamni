@@ -7,16 +7,17 @@ import sys
 
 class Elem:
 	def __init__(self):
-		self.m_fDamping = 0;
-		self.m_fArea = 0;
+		self.m_fDamping = 0
+		self.m_fArea = 0
 		self.m_bBreak = False
-		self.m_bSpace = True
+		self.m_bGeom = True
+		self.m_bSink = False
 	
 		# link syntax:
 		#   -1: no link
 		#   0: link to "infinity"
 		#   >0: link to actual element
-		self.m_iLink = -1;
+		self.m_iLink = -1
 	
 		# speaker will be inserted on the velocity link to the previous pressure element
 		self.m_strSpeaker = ""
@@ -104,7 +105,9 @@ def scanElemFile(strFilename):
 			dMics[micID] = mic
 			aElems[-1].m_strMic = micID
 		elif linetype == "g":
-			aElems[-1].m_bSpace = False
+			aElems[-1].m_bGeom = True
+		elif linetype == "i":
+			aElems[-1].m_bSink = True
 			
 		elif linetype == "x":
 			dx = float(currLine[3:])
@@ -134,8 +137,10 @@ def writeElemFile(strFilename, aElements, fDx):
 			strFileContents += "l " + str(elem.m_iLink) + "\n"
 		if elem.m_bBreak:
 			strFileContents += "b\n"
-		if elem.m_bSpace:
+		if elem.m_bGeom:
 			strFileContents += "g\n"
+		if elem.m_bSink:
+			strFileContents += "i\n"
 		if elem.m_strSpeaker != "":
 			strFileContents += "s \"" + elem.m_strSpeaker + "\"\n"
 		if elem.m_strMic != "":

@@ -122,8 +122,12 @@ for iElem in range(nGraphElems):
 		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (0,127,255) )
 	
 	#mark not geometry
-	if aElems[iElem].m_bSpace:
+	if not aElems[iElem].m_bGeom:
 		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (224, 224, 224) )
+		
+	#mark sink elements
+	if aElems[iElem].m_bSink:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (127,0,255) )
 	
 	# draw outline
 	if iElem > 1:

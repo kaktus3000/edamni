@@ -120,68 +120,27 @@ for iElem in range(1, len(aElems)):
 	
 	fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
 	
+	# implement breaks on the left side of the element
+	if elem.m_bBreak and iElem > 0:
+		aPressureFactorsPos[-1] = 0
+		fNegArea = 0
+
+		aUnusedPressureDifferences.append(iElem - 1)
+	
 	aPressureFactorsNeg.append(fNegArea * fFactor)
 	aPressureFactorsPos.append( -fPosArea * fFactor)
 	
 	# take care of links
-	if elem.m_iLink == 0:
-		print("infinity section from element", iElem)
-	elif elem.m_iLink != -1:
+	if elem.m_iLink != -1:
 		if elem.m_fArea != aElems[elem.m_iLink].m_fArea:
 			print("ERROR: linked element areas do not match!", iElem, elem.m_iLink)
 		
 		aPressureLinks.append( (elem.m_iLink, iElem) )
 
-for iElem in range(1, len(aElems)):
-	elem = aElems[iElem]
-	
-	# implement breaks on the left side of the element
-	if elem.m_bBreak and iElem > 0:
-		aPressureFactorsPos[iElem - 1] = 0
-		aPressureFactorsNeg[iElem] = 0
-		
-		aUnusedPressureDifferences.append(iElem - 1)
-
 	# collect infinity elements
-	if elem.m_iLink == 0:
-		# create a link to end of element list
-		iBaseElement = len(aPressureFactorsNeg)
-		aPressureLinks.append( (iElem, iBaseElement) )
-		print("light sim: implementing link from element", iElem, "to infinity element", iBaseElement)
-		
-		# add pressure difference to unused ones
-		aUnusedPressureDifferences.append(iBaseElement - 1)
-		
-		#create linked to element as a copy
-		aPressureFactorsNeg.append(0)
-		
-		# this is the factor for constant cross section
-		fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / g_dx
-		aPressureFactorsPos.append(- fFactor)
-		
-		fLastArea = elem.m_fArea
-			
-		lfInfinityAreas = infinitySection.infinitySection(elem.m_fArea, g_fInfinitySpaceRatio, g_fInfinityPreExpansion, g_fInfinityTransition, g_dx)
-		
-		for iElement in range(len(lfInfinityAreas) + g_nInfinteElements - 1):
-			# initialize with maximum
-			fInfinityArea = lfInfinityAreas[-1]
-				
-			# if we are in the pre expansion, do not add a damping factor to these elements
-			if iElement >= len(lfInfinityAreas):
-				aInfiniteElementIndices.append(len(aPressureFactorsNeg) )
-			else:
-				fInfinityArea = lfInfinityAreas[iElement]
-				
-			fVolume = (fLastArea + fInfinityArea) * 0.5 * g_dx
-			fLastArea = fInfinityArea
-			fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
-			
-			aPressureFactorsNeg.append(fLastArea * fFactor)
-			aPressureFactorsPos.append( - fInfinityArea * fFactor)
-			
-		# set last factor to zero
-		aPressureFactorsPos[-1] = 0			
+	if elem.m_bSink:
+		aInfiniteElementIndices.append(iElem)
+	
 
 print("number of elements:", len(aPressureFactorsNeg) - 1)
 
