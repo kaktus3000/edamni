@@ -312,7 +312,7 @@ def space_section(dx, params):
 	micdist = params["length"]
 	free = .5
 	transition = .5
-	sink = 1.0
+	nSinkElements = 100
 	
 	fraction = params["fraction"]
 	
@@ -329,7 +329,7 @@ def space_section(dx, params):
 		
 		elem = elemfile.Elem()
 		elem.m_fArea = Ax
-		elem.m_bSpace = False
+		elem.m_bGeom = False
 		
 		outList.append(elem)
 	
@@ -349,15 +349,15 @@ def space_section(dx, params):
 
 		elem = elemfile.Elem()
 		elem.m_fArea = fTransEndArea - fTransArea
-		elem.m_bSpace = False
+		elem.m_bGeom = False
 		
 		outList.append(elem)
 
-	for i in range(int(sink / dx)):
+	for i in range(nSinkElements):
 		elem = elemfile.Elem()
 		elem.m_fArea = fTransEndArea
-		elem.m_bSpace = False
-		elem.m_bSink = True
+		elem.m_bGeom = False
+		elem.m_fSink = 1.0 - 0.02 * i / nSinkElements
 
 		outList.append(elem)
 
@@ -487,7 +487,7 @@ for sectionString in sectionStrings:
 	begElem = elemfile.Elem()
 	begElem.m_fArea = lStringElems[0].m_fArea
 	begElem.m_bBreak = True
-	begElem.m_bSpace = False
+	begElem.m_bGeom = False
 	
 	lPaddedElems = [begElem] + lPaddedElems
 
@@ -496,7 +496,7 @@ for sectionString in sectionStrings:
 		endElem = elemfile.Elem()
 		endElem.m_fArea = lStringElems[-1].m_fArea
 		
-		endElem.m_bSpace = False
+		endElem.m_bGeom = False
 	
 		lPaddedElems += [endElem]
 	

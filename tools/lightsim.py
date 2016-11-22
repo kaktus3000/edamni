@@ -85,10 +85,7 @@ g_nInfinteElements = 200
 g_fInfinityPreExpansion = 1.0
 g_fInfinityTransition = 2.0
 
-# damping factor for infinity
-g_fInfiniteDampingFactor = 0.98
-
-aInfiniteElementIndices = [0]
+afInfinityDamping = [1.0] * len(aElems)
 
 g_fTimeStep = 0.4 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
 
@@ -112,6 +109,9 @@ for iElem in range(1, len(aElems)):
 	#print("iElem", iElem)
 	elem = aElems[iElem]
 	
+	# collect infinity elements
+	afInfinityDamping[iElem] = elem.m_fSink
+
 	fNegArea = aElems[iElem - 1].m_fArea
 	fPosArea = elem.m_fArea
 	
@@ -136,11 +136,6 @@ for iElem in range(1, len(aElems)):
 			print("ERROR: linked element areas do not match!", iElem, elem.m_iLink)
 		
 		aPressureLinks.append( (elem.m_iLink, iElem) )
-
-	# collect infinity elements
-	if elem.m_bSink:
-		aInfiniteElementIndices.append(iElem)
-	
 
 print("number of elements:", len(aPressureFactorsNeg) - 1)
 
@@ -176,7 +171,7 @@ npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg)
 npaPressureFactorsPos = numpy.asarray(aPressureFactorsPos)
 
 #list of infinity elements
-npaInfinityElementIndices = numpy.asarray(aInfiniteElementIndices)
+npaInfinityDamping = numpy.asarray(afInfinityDamping)
 
 def astext(a):
 	strText = ""
@@ -289,7 +284,7 @@ for fFreq in g_afFreqs:
 			
 			afLinkedPressures[iPressureLink] = npaPressures[iMaster]
 		
-		npaPressures[npaInfinityElementIndices] *= g_fInfiniteDampingFactor
+		npaPressures *= npaInfinityDamping
 	
 		#second half-step (basis are p-elements)
 		#explicit integration for velocity elements
@@ -301,7 +296,7 @@ for fFreq in g_afFreqs:
 		npaPressureDifference[aUnusedPressureDifferences] = 0
 	
 		#apply damping to "infinity" elements
-		npaPressureDifference[npaInfinityElementIndices[:-1]] *= g_fInfiniteDampingFactor
+		npaPressureDifference *= npaInfinityDamping[:-1]
 		
 		#invoke speaker input function
 		fU = fnInput(2.0 * numpy.pi * fFreq * fTime) * fSignalNormalizer
@@ -350,13 +345,16 @@ for fFreq in g_afFreqs:
 			ax2.cla()
 			ax1.cla()
 			
-			plt.suptitle("velocity")
+			plt.suptitle("velocity and pressure")
 			ax1.plot(g_fVelocityFactor * npaPressureDifference, "b-")
 			ax1.set_ylabel('velocity', color='b')
 			ax2.plot(npaPressures, "g-")
 			ax2.set_ylabel('pressure', color='g')
 			
-			plt.savefig(str(iStep) + ".png")
+			strPlotFile = str(iStep) + ".png"
+			print("saving plot file", strPlotFile)
+			
+			plt.savefig(strPlotFile)
 	
 	def calcSPL(npaPressure):
 		#calculate SPL

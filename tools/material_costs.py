@@ -11,7 +11,7 @@ def get_material_costs(infile):
 	aDampened = []
 			
 	for elem in aElems:
-		if elem.m_bSpace:
+		if not elem.m_bGeom:
 			continue
 		if elem.m_fDamping > 0:
 			aDampened.append(len(aCrossSections))

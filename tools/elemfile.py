@@ -11,7 +11,7 @@ class Elem:
 		self.m_fArea = 0
 		self.m_bBreak = False
 		self.m_bGeom = True
-		self.m_bSink = False
+		self.m_fSink = 1.0
 	
 		# link syntax:
 		#   -1: no link
@@ -77,6 +77,7 @@ def scanElemFile(strFilename):
 					print("ERROR: expected element ID to be", iElem, "not", elID)
 #			print("element ID is", elID)
 			elem = Elem()
+			elem.m_bGeom = False
 			aElems.append( elem )
 		elif linetype == "d":
 			fDamping = float(currLine[2:])
@@ -107,7 +108,8 @@ def scanElemFile(strFilename):
 		elif linetype == "g":
 			aElems[-1].m_bGeom = True
 		elif linetype == "i":
-			aElems[-1].m_bSink = True
+			fSink = float(currLine[2:])
+			aElems[-1].m_fSink = fSink
 			
 		elif linetype == "x":
 			dx = float(currLine[3:])
@@ -139,8 +141,8 @@ def writeElemFile(strFilename, aElements, fDx):
 			strFileContents += "b\n"
 		if elem.m_bGeom:
 			strFileContents += "g\n"
-		if elem.m_bSink:
-			strFileContents += "i\n"
+		if elem.m_fSink != 1.0:
+			strFileContents += "i " + str(elem.m_fSink) + "\n"
 		if elem.m_strSpeaker != "":
 			strFileContents += "s \"" + elem.m_strSpeaker + "\"\n"
 		if elem.m_strMic != "":
