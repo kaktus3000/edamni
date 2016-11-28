@@ -30,7 +30,7 @@ aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
 
 print("speakers:", dSpeakers)
 
-g_fMaxTimestep = float(config.get("general", "max_timestep"))
+g_fMaxTimeStep = float(config.get("general", "max_timestep"))
 g_strSignalType = config.get("signal", "signal_type")
 
 '''
@@ -87,12 +87,6 @@ g_fInfinityTransition = 2.0
 
 afInfinityDamping = [1.0] * len(aElems)
 
-g_fTimeStep = 0.4 * g_dx/numpy.sqrt(g_fGasConstant* g_fTemperature)
-
-g_fVelocityFactor = g_fTimeStep / (g_fDensity * g_dx)
-
-print("using time step", g_fTimeStep, "s")
-
 #element index 0 is the infinite element.
 aPressureFactorsNeg = [0]
 aPressureFactorsPos = [0]
@@ -118,7 +112,8 @@ for iElem in range(1, len(aElems)):
 	# append volume to list
 	fVolume = 0.5 * (fNegArea + fPosArea) * g_dx
 	
-	fFactor = g_fVelocityFactor * g_fDensity * g_fGasConstant * g_fTemperature * g_fTimeStep / fVolume
+	# this factor is missing time step and velocity factor
+	fFactor = g_fDensity * g_fGasConstant * g_fTemperature/ fVolume
 	
 	# implement breaks on the left side of the element
 	if elem.m_bBreak and iElem > 0:
@@ -163,12 +158,34 @@ for strSpeaker in dSpeakers:
 	aPressureFactorsPos[speaker.m_iElemID]     *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID].m_fArea
 	aPressureFactorsNeg[speaker.m_iElemID + 1] *= speaker.m_dOptions["sd"] / aElems[speaker.m_iElemID].m_fArea
 
+# time constraints
+# speed of sound
+lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
+# acoustic damping
+#lfTimeConstraints.append(g_fDensity / max(aDamping) )
+for strSpeaker in dSpeakers.keys():
+	speaker = dSpeakers[strSpeaker]
+	# speaker electric
+	lfTimeConstraints.append(speaker.m_dOptions["le"] / speaker.m_dOptions["re"] )
+	# mechanical damping speaker
+	lfTimeConstraints.append(speaker.m_dOptions["mmd"] * speaker.m_dOptions["rms"] )
+	# mechanical spring speaker
+	lfTimeConstraints.append(numpy.sqrt(speaker.m_dOptions["mmd"] * speaker.m_dOptions["cms"]) )
+
+lfTimeConstraints.append(g_fMaxTimeStep)
+
+g_fTimeStep = numpy.amin(lfTimeConstraints)
+
+g_fVelocityFactor = g_fTimeStep / (g_fDensity * g_dx)
+
+print("using time step", g_fTimeStep, "s")
+
 #print(aPressureFactorsNeg)
 #print(aPressureFactorsPos)
 
 #create pressure indexing vectors for simulation
-npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg)
-npaPressureFactorsPos = numpy.asarray(aPressureFactorsPos)
+npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg) * g_fVelocityFactor * g_fTimeStep
+npaPressureFactorsPos = numpy.asarray(aPressureFactorsPos) * g_fVelocityFactor * g_fTimeStep
 
 #list of infinity elements
 npaInfinityDamping = numpy.asarray(afInfinityDamping)
