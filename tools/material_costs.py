@@ -3,6 +3,7 @@
 import numpy
 import sys
 import elemfile
+import configparser
 
 def get_material_costs(infile):
 	aElems, dMics, dSpeakers, dx = elemfile.scanElemFile(infile)
@@ -19,13 +20,15 @@ def get_material_costs(infile):
 		aCrossSections.append(elem.m_fArea)
 
 	#read design parameters and specific costs
+	config = configparser.ConfigParser()
 
+	config.read("material_cost.ini")
 	#panel thickness relative to enclosure edge length
-	d_panel_scale = 0.03
+	d_panel_scale = float(config.get("material_costs", "d_panel_scale"))
 	#specific cost of panel material per volume
-	k_spec_panel = 900
+	k_spec_panel = float(config.get("material_costs", "k_spec_panel"))
 	#specific cost of damping material per volume
-	k_spec_damper = 1200
+	k_spec_damper = float(config.get("material_costs", "k_spec_damper"))
 
 	#calculate volume of horn
 	vol = numpy.sum(aCrossSections) * dx 

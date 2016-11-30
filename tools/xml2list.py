@@ -311,8 +311,9 @@ def space_section(dx, params):
 	# lengths of geometry sections
 	micdist = params["length"]
 	free = .5
-	transition = .5
-	nSinkElements = 100
+	transition = .75
+	nSinkElements = 150
+	fInfinityDamping = 0.02
 	
 	fraction = params["fraction"]
 	
@@ -357,7 +358,7 @@ def space_section(dx, params):
 		elem = elemfile.Elem()
 		elem.m_fArea = fTransEndArea
 		elem.m_bGeom = False
-		elem.m_fSink = 1.0 - 0.02 * i / nSinkElements
+		elem.m_fSink = 1.0 - fInfinityDamping * i / nSinkElements
 
 		outList.append(elem)
 

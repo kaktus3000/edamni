@@ -91,6 +91,9 @@ afInfinityDamping = [1.0] * len(aElems)
 aPressureFactorsNeg = [0]
 aPressureFactorsPos = [0]
 
+# map for damped elements
+afVelocityDamping = [0.0] * len(aElems)
+
 # tuples of linked elements:
 # (master, slave)
 aPressureLinks = []
@@ -105,6 +108,8 @@ for iElem in range(1, len(aElems)):
 	
 	# collect infinity elements
 	afInfinityDamping[iElem] = elem.m_fSink
+	
+	afVelocityDamping[iElem] = elem.m_fDamping
 
 	fNegArea = aElems[iElem - 1].m_fArea
 	fPosArea = elem.m_fArea
@@ -162,7 +167,9 @@ for strSpeaker in dSpeakers:
 # speed of sound
 lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
 # acoustic damping
-#lfTimeConstraints.append(g_fDensity / max(aDamping) )
+lfTimeConstraints.append(g_fDensity / numpy.amax(afVelocityDamping) )
+
+# iterate speakers
 for strSpeaker in dSpeakers.keys():
 	speaker = dSpeakers[strSpeaker]
 	# speaker electric

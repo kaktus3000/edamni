@@ -14,6 +14,8 @@ from subprocess import call
 
 import material_costs
 
+print("run simulation: os dir", os.getcwd() )
+
 g_strSimuInputFile = sys.argv[1]
 g_lstrSimuCommand = sys.argv[2:]
 
@@ -26,16 +28,38 @@ g_strDir = strOSDir + "/"
 
 print("run directory", g_strDir)
 
-print("calling", g_lstrSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
-#call simulation with all the data
-call(g_lstrSimuCommand + [g_strSimuInputFile], cwd=g_strDir)
-
-#find out where the output went
+#get job data
 config = configparser.ConfigParser()
 
 config.read(g_strSimuInputFile)
 g_strSimuOutputFile = g_strDir + config.get("general", "output_file")
 g_strElementFile = g_strDir + config.get("general", "element_file")
+
+# calculate costs for this design
+dMatCosts = material_costs.get_material_costs(g_strElementFile)
+
+# get cost for optimization
+spl_cost_config = configparser.ConfigParser()
+
+spl_cost_config.read("spl_cost.ini")
+
+# specific cost for missing one decade
+k_spec_decade = float(spl_cost_config.get("spl_costs", "k_spec_decade"))
+# specific cost for one dB lower flat response
+k_spec_spl = float(spl_cost_config.get("spl_costs", "k_spec_spl"))
+# specific cost for one dB spl deviation
+k_spec_linearity = float(spl_cost_config.get("spl_costs", "k_spec_linearity"))
+
+# optimization targets
+# target spl in transmission range
+t_spl = int(spl_cost_config.get("spl_targets", "t_spl"))
+# upper and lower edge frequencies [Hz]
+t_edge_low = float(spl_cost_config.get("spl_targets", "t_edge_low"))
+t_edge_high = float(spl_cost_config.get("spl_targets", "t_edge_high"))
+
+print("calling", g_lstrSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
+#call simulation with all the data
+#call(g_lstrSimuCommand + [g_strSimuInputFile], cwd=g_strDir)
 
 #collect results
 #parse simu output file
@@ -107,25 +131,12 @@ ax1.set_ylabel('SPL [dB]', color='b')
 ax2.set_ylabel('Impedance [ohms]', color='g')
 ax1.set_xlabel('Frequency [Hz]')
 
-ax1.legend()
+ax1.legend(loc=2)
+ax1.grid(which='both')
 
 strPlotPath = g_strDir + "spl.png"
 print("run simulation: creating plot", strPlotPath)
 plt.savefig(strPlotPath)
-
-#calculate costs for this design
-dMatCosts = material_costs.get_material_costs(g_strElementFile)
-
-#specific cost for missing one decade
-k_spec_decade = 2000
-#specific cost for spl deviation
-k_spec_spl = 90
-
-#optimization targets
-t_spl = 110
-t_edge_low = 20
-t_edge_high = 400
-
 
 t_mic = None
 
@@ -139,7 +150,7 @@ for mic in daMicSPLs.keys():
 def linearResponseCost(npaSPL, fSPL, fLowEdge, fHighEdge):
 	#edge cost is easy
 	k_high = numpy.log10(t_edge_high / fHighEdge) * k_spec_decade
-	k_low = numpy.log10(t_edge_low / fLowEdge) * k_spec_decade
+	k_low = numpy.log10(fLowEdge / t_edge_low) * k_spec_decade
 
 	k_high = max(0, k_high)
 	k_low = max(0, k_low)
@@ -153,14 +164,16 @@ def linearResponseCost(npaSPL, fSPL, fLowEdge, fHighEdge):
 	
 	npaTestSPLs = npaSPLs[numpy.flatnonzero(npaFreqMask)]
 	
-	fMaxSPL = numpy.max(npaTestSPLs)
-	fMinSPL = numpy.min(npaTestSPLs)
+	fMaxSPL = numpy.amax(npaTestSPLs)
+	fMinSPL = numpy.amin(npaTestSPLs)
 	
-	fMaxDeviation = max( fMaxSPL - fSPL, fSPL - fMinSPL)
+	fMaxDeviation = max( abs(fMaxSPL - fSPL), abs(fSPL - fMinSPL) )
 	
-	k_spl = fMaxDeviation * k_spec_spl
+	k_linearity = fMaxDeviation * k_spec_linearity
 	
-	return k_spl + k_high + k_low
+	k_spl = abs(fSPL - t_spl) * k_spec_spl
+	
+	return k_spl + k_high + k_low + k_linearity
 
 #calculate optimal fit of linear response
 
@@ -176,7 +189,7 @@ for spl in range(t_spl - 10, t_spl + 10):
 	for lower in npaLower:
 		for higher in npaHigher:
 			fCost = linearResponseCost(daMicSPLs[t_mic], spl, lower, higher)
-			if fCost < fBest:
+			if fCost <= fBest:
 				fBest = fCost
 				fBestSPL = spl
 				fBestLower = lower
