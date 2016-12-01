@@ -109,6 +109,7 @@ for iElem in range(1, len(aElems)):
 	# collect infinity elements
 	afInfinityDamping[iElem] = elem.m_fSink
 	
+	# collect damping coefficients
 	afVelocityDamping[iElem] = elem.m_fDamping
 
 	fNegArea = aElems[iElem - 1].m_fArea
@@ -193,6 +194,8 @@ print("using time step", g_fTimeStep, "s")
 #create pressure indexing vectors for simulation
 npaPressureFactorsNeg = numpy.asarray(aPressureFactorsNeg) * g_fVelocityFactor * g_fTimeStep
 npaPressureFactorsPos = numpy.asarray(aPressureFactorsPos) * g_fVelocityFactor * g_fTimeStep
+
+npaDampingFactors = numpy.asarray(afVelocityDamping[1:]) * g_dx * g_fVelocityFactor
 
 #list of infinity elements
 npaInfinityDamping = numpy.asarray(afInfinityDamping)
@@ -315,6 +318,9 @@ for fFreq in g_afFreqs:
 		npaPressureDifference = npaPressureDifference + (
 			npaPressures[:-1] - npaPressures[1:]
 			)
+		
+		# apply damping to the velocities (in the form of pressure differences)
+		npaPressureDifference = npaPressureDifference - npaPressureDifference * npaDampingFactors
 	
 		# clear unused elements (just for tidiness)
 		npaPressureDifference[aUnusedPressureDifferences] = 0

@@ -59,7 +59,7 @@ t_edge_high = float(spl_cost_config.get("spl_targets", "t_edge_high"))
 
 print("calling", g_lstrSimuCommand, "with", g_strSimuInputFile, "in", g_strDir)
 #call simulation with all the data
-#call(g_lstrSimuCommand + [g_strSimuInputFile], cwd=g_strDir)
+call(g_lstrSimuCommand + [g_strSimuInputFile], cwd=g_strDir)
 
 #collect results
 #parse simu output file
@@ -143,8 +143,9 @@ t_mic = None
 for mic in daMicSPLs.keys():
 	if t_mic == None:
 		t_mic = mic
-	if "spl_mic" in mic:
+	if "spl_sum" in mic:
 		t_mic = mic
+		break
 
 #calculate cost for a linear response fit
 def linearResponseCost(npaSPL, fSPL, fLowEdge, fHighEdge):
@@ -202,7 +203,7 @@ k_total = fBest + dMatCosts["cost_total"]
 
 print("run simulation: material cost", dMatCosts["cost_total"], "; panel thickness", dMatCosts["panel_thickness"], "cube edge length", dMatCosts["edge_length"])
 
-print("run simulation: frequency response cost", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
+print("run simulation: frequency response cost (", t_mic, ")", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
 
 
 print("run simulation: total cost", k_total)
