@@ -2,6 +2,7 @@
 import configparser
 import xml.etree.ElementTree as ET
 import sys
+import run_simulation
 
 # optimize horn geometry with regard to objective function
 
