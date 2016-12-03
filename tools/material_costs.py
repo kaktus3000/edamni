@@ -45,7 +45,7 @@ def get_material_costs(infile):
 	#enclosure costs scale with volume (l^3)
 	#area of panels in l^2 and thickness of panels in l
 
-	k_enclosure = length * length * 6 * panel * k_spec_panel
+	k_enclosure = ((length+panel) ** 2) * 6 * panel * k_spec_panel
 
 	#costs for horn surface scale with thickness of panel (in l)
 	k_surface = surface * panel * k_spec_panel
