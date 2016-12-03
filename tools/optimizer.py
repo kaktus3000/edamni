@@ -2,13 +2,17 @@
 import configparser
 import xml.etree.ElementTree as ET
 import sys
-import run_simulation
 import os
+
+# import modules
+import run_simulation
+import xml2list
 
 # optimize horn geometry with regard to objective function
 
 #read optimizer input file
 strOptimizeInput = sys.argv[1]
+
 
 strOSDir = os.path.dirname(strOptimizeInput)
 
@@ -17,14 +21,29 @@ if strOSDir=="":
 
 g_strDir = strOSDir + "/"
 
-config = configparser.ConfigParser()
-config.read(strOptimizeInput)
+optimizerInputConfig = configparser.ConfigParser()
+optimizerInputConfig.read(strOptimizeInput)
 
-g_strOptimizerIni = config.get("optimize_input", "optimizer_ini")
-g_strMaterialCostIni = config.get("optimize_input", "material_cost_ini")
-g_strSPLCostIni = config.get("optimize_input", "spl_cost_ini")
-g_strHornFile = config.get("optimize_input", "horn_file")
-#g_strHornOptimizerFile = config.get("optimize_input", "horn_optimizer_file")
+g_strOptimizerIni = optimizerInputConfig.get("optimize_input", "optimizer_ini")
+g_strMaterialCostIni = optimizerInputConfig.get("optimize_input", "material_cost_ini")
+g_strSPLCostIni = optimizerInputConfig.get("optimize_input", "spl_cost_ini")
+g_strSimulationInput = optimizerInputConfig.get("optimize_input", "simulation_input")
+g_strHornFile = optimizerInputConfig.get("optimize_input", "horn_file")
+
+simulationConfig = configparser.ConfigParser()
+simulationConfig.read(g_strSimulationInput)
+
+g_strElemFile = simulationConfig.get("general", "element_file")
+
+# generate output path
+g_strOutDir = os.path.dirname(g_strSimulationInput)
+
+if g_strOutDir=="":
+	g_strOutDir = "."
+
+g_strOutDir = g_strOutDir + "/"
+
+g_strElementListOutput = g_strOutDir + g_strElemFile
 
 #read optimizer input
 strOptimIniFile = g_strDir + g_strOptimizerIni
@@ -80,12 +99,11 @@ def writeModifiedXML(params, strModifiedXML):
 			if sectionID == strSectionID:
 				for elem in section:
 					if elem.tag == strSectionParam:
-						print("bla.")
 						# replace value in XML structure
 						elem.text = str(params[strParam][PARAM_CURR])
 
 	# write modified XML structure
-	print("writing modified XML to", strModifiedXML)
+	print("optimizer: writing modified XML to", strModifiedXML)
 	
 	with open(strModifiedXML, 'wb') as f:
 		f.write(bytes('<?xml version="1.0" encoding="UTF-8" ?>', 'utf-8'))
@@ -110,6 +128,8 @@ def evaluate(params):
 	
 	#cache hit: we ain't got time for that
 	#print(params)
+	
+	# dummy function
 	fReturnValue = 0
 	for strParam in params.keys():
 		fMin = params[strParam][PARAM_MIN]
@@ -120,18 +140,13 @@ def evaluate(params):
 		fRatio = fDist / fRange
 		fReturnValue += fRatio ** 2
 	
-	print(fReturnValue)
-
-	
 	#write horn definition xml file
-	strModifiedXML = "optim_out.xml"
+	strModifiedXML = g_strOutDir + "optim_out.xml"
 	writeModifiedXML(params, strModifiedXML)
 	
-	return fReturnValue
-	
 	#generate element list
+	xml2list.xml2List(strModifiedXML, g_strElementListOutput, False)
 	
-
 	#check constraints by looking at generated element list
 	
 	#run cost function on element list
@@ -143,8 +158,12 @@ def evaluate(params):
 	#check for maximum volume
 
 	#run simulation
+	
+	fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["python3", "../tools/lightsim.py", "0"])
 
 	#calculate objective (cost) function for output
+	
+	return fReturnValue
 	
 	
 #optimization loop
@@ -211,5 +230,8 @@ while not bBreak:
 				print("optimizer: new optimum", g_dSampleParams)
 				bProgress = True
 				fOptimum = fCost
-				g_dOptimumParams = dict(g_dSampleParams)
+				g_dOptimumParams = g_dSampleParams
 
+# output optimized design
+print("optimizer: final optimum", g_dOptimumParams)
+writeModifiedXML(g_dOptimumParams, g_strHornFile + "_opt.xml")

@@ -60,7 +60,7 @@ def get_material_costs(infile):
 				"cost_enclosure" : k_enclosure,
 				"cost_surface" : k_surface,
 				"cost_damping" : k_damping,
-				"cost_total" : k_surface + k_damping}
+				"cost_total" : k_enclosure + k_surface + k_damping}
 				
 	return dResult
 

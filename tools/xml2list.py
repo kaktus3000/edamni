@@ -21,10 +21,6 @@ import sys
 
 import elemfile
 
-infile = sys.argv[1]
-strOutFile = sys.argv[2]
-g_bVerbose = (len(sys.argv) == 4)
-
 #function to check whether adjacent sections have non-matching cross-sections
 def checkCrossSections(hornSections):
 	#dictionary for neighbor links
@@ -79,9 +75,9 @@ def checkCrossSections(hornSections):
 	return neighborDict
 
 # trace string of links
-def traceChain(sUsed, neighborDict, chainStartID, iPort):
+def traceChain(sUsed, neighborDict, chainStartID, iPort, bVerbose):
 	# search for link to port iPort
-	if g_bVerbose:
+	if bVerbose:
 		print("tracing section", chainStartID, "port", iPort)
 	
 	nNeighbors = len(neighborDict[chainStartID])
@@ -91,7 +87,7 @@ def traceChain(sUsed, neighborDict, chainStartID, iPort):
 		# it's a fork element
 		# or an end element
 		# break the chain here 
-		if g_bVerbose:
+		if bVerbose:
 			print("section", chainStartID, "is an end section. terminating trace.")
 		
 		return []
@@ -104,7 +100,7 @@ def traceChain(sUsed, neighborDict, chainStartID, iPort):
 		print("ERROR: port", iPort, "not found on section", chainStartID)
 		
 	if currentSectionID in sUsed:
-		if g_bVerbose:
+		if bVerbose:
 			print("section already processed", currentSectionID)
 		
 		return []
@@ -115,11 +111,11 @@ def traceChain(sUsed, neighborDict, chainStartID, iPort):
 	# the way forwand is not the way back...
 	iFuturePortID = 3 - currentPortID
 	
-	if g_bVerbose:
+	if bVerbose:
 		print("traced to section", currentSectionID, "port", currentPortID, "future port", iFuturePortID)
 	
 	# recurse
-	lRecursionResult = traceChain(sUsed, neighborDict, currentSectionID, iFuturePortID)
+	lRecursionResult = traceChain(sUsed, neighborDict, currentSectionID, iFuturePortID, bVerbose)
 	# append to result vector, save orientation
 	lChain = [(currentSectionID, currentPortID==1)] + lRecursionResult
 	
@@ -136,7 +132,7 @@ def reverseChain(chain):
 	
 # unravel neighbor dictionary
 # find strings of linked sections
-def unravelNeighbors(hornDict, neighborDict):
+def unravelNeighbors(hornDict, neighborDict, bVerbose):
 	# result vector
 	aaChains = []
 	
@@ -162,15 +158,15 @@ def unravelNeighbors(hornDict, neighborDict):
 			# break the chain here
 			continue
 			
-		if g_bVerbose:
+		if bVerbose:
 			print("starting trace at section", sectionID)
 			
 		# find string of linked sections in negative direction
-		aChain1 = traceChain(sUsed, neighborDict, sectionID, 1)
+		aChain1 = traceChain(sUsed, neighborDict, sectionID, 1, bVerbose)
 		# find string in positive direction
-		aChain2 = traceChain(sUsed, neighborDict, sectionID, 2)
+		aChain2 = traceChain(sUsed, neighborDict, sectionID, 2, bVerbose)
 		
-		if g_bVerbose:
+		if bVerbose:
 			print("chain 1:", aChain1)
 			print("chain 1 reversesd:", reverseChain(aChain1))
 		
@@ -185,7 +181,7 @@ def unravelNeighbors(hornDict, neighborDict):
 		
 		aaChains.append(aChain)
 		
-		if g_bVerbose:
+		if bVerbose:
 			print("trace result", aaChains[-1])
 		
 
@@ -378,138 +374,147 @@ def mic_section(dx, params):
 	
 	return [elem]
 
-#dict of functions, working this way:
-#[(area1, area2, damping)] = geometryHandlers["geom"](dx, params)
-#where dx is the width of the elements
-#return value is a list of the elements, sorted from neighbor1 to neighbor2
-geometryHandlers = dict()
-geometryHandlers["conical"] = conical_section
-geometryHandlers["exponential"] = expo_section
-geometryHandlers["wall"] = wall_section
-geometryHandlers["space"] = space_section
-#geometryHandlers["fork"] = dummy_section
-geometryHandlers["mic"] = mic_section
-geometryHandlers["speaker"] = speaker_section
+def xml2List(strInFile, strOutFile, bVerbose):
+	#dict of functions, working this way:
+	#[(area1, area2, damping)] = geometryHandlers["geom"](dx, params)
+	#where dx is the width of the elements
+	#return value is a list of the elements, sorted from neighbor1 to neighbor2
+	geometryHandlers = dict()
+	geometryHandlers["conical"] = conical_section
+	geometryHandlers["exponential"] = expo_section
+	geometryHandlers["wall"] = wall_section
+	geometryHandlers["space"] = space_section
+	#geometryHandlers["fork"] = dummy_section
+	geometryHandlers["mic"] = mic_section
+	geometryHandlers["speaker"] = speaker_section
 
-tree = ET.parse(infile)
-horn = tree.getroot()
+	tree = ET.parse(strInFile)
+	horn = tree.getroot()
 
-if horn.tag != "horn":
-	print("malformed xml: root elem has to be horn!")
-	exit();
+	if horn.tag != "horn":
+		print("malformed xml: root elem has to be horn!")
+		exit();
 	
-dx = float(horn.attrib["dx"])
-#print("dx =", dx)
+	dx = float(horn.attrib["dx"])
+	#print("dx =", dx)
 
-hornDict = dict()
-#print("dumping xml input")
+	hornDict = dict()
+	#print("dumping xml input")
 
-#IDs for elements
-wallID = 0
-currElID = 1
+	#IDs for elements
+	wallID = 0
+	currElID = 1
 
-dElementLists = dict()
+	dElementLists = dict()
 
-for section in horn:
-	if not "id" in section.attrib:
-		print("malformed xml: elem", section.tag, "has no 'id' attribute!")
+	for section in horn:
+		if not "id" in section.attrib:
+			print("malformed xml: elem", section.tag, "has no 'id' attribute!")
 	
-	if section.tag=="tspset":
-		#skip speaker
-		continue	
-#	print(section.tag, "(" + section.attrib["id"] + ")")
-	sectionID = section.attrib["id"]
+		if section.tag=="tspset":
+			#skip speaker
+			continue	
+	#	print(section.tag, "(" + section.attrib["id"] + ")")
+		sectionID = section.attrib["id"]
 	
-	sectionDict = dict()
+		sectionDict = dict()
 	
-	for elem in section:
-		elemText = elem.text
-		if elem.tag.find("neighbor") >=0:
-			elemText = elem.attrib["ref"];
-		else:
-			try:
-				elemText = float(elem.text);
-			except:
-				pass
-#		print(elem.tag, "=", elemText)
-		sectionDict[elem.tag] = elemText
+		for elem in section:
+			elemText = elem.text
+			if elem.tag.find("neighbor") >=0:
+				elemText = elem.attrib["ref"];
+			else:
+				try:
+					elemText = float(elem.text);
+				except:
+					pass
+	#		print(elem.tag, "=", elemText)
+			sectionDict[elem.tag] = elemText
 	
-	sectionDict["id"] = sectionID
+		sectionDict["id"] = sectionID
 	
-	hornDict[sectionID] = (section.tag, sectionDict)
+		hornDict[sectionID] = (section.tag, sectionDict)
 
-#check whether the cross-sections given are discontinuous
-neighborDict = checkCrossSections(hornDict)
-sectionStrings = unravelNeighbors(hornDict, neighborDict)
+	#check whether the cross-sections given are discontinuous
+	neighborDict = checkCrossSections(hornDict)
+	sectionStrings = unravelNeighbors(hornDict, neighborDict, bVerbose)
 
-# create empty element list (of class Element)
-lElements = []
+	# create empty element list (of class Element)
+	lElements = []
 
-# (strElemID, iPort) -> iElemNumber
-dStringEnds = dict()
+	# (strElemID, iPort) -> iElemNumber
+	dStringEnds = dict()
 
-# discretize continuous strings of sections
-# for each string of sections
-for sectionString in sectionStrings:
-	lStringElems = []
+	# discretize continuous strings of sections
+	# for each string of sections
+	for sectionString in sectionStrings:
+		lStringElems = []
 	
-	bFirstSection = True
-	# for each section in string
-	for (section, orientation) in sectionString:
-		if g_bVerbose:
-			print("processing section", section, "...")
-		# discretize section
-		# discretization result format: element list
-		(strSectionTag, sectionDict) = hornDict[section]
+		bFirstSection = True
+		# for each section in string
+		for (section, orientation) in sectionString:
+			if bVerbose:
+				print("processing section", section, "...")
+			# discretize section
+			# discretization result format: element list
+			(strSectionTag, sectionDict) = hornDict[section]
 		
-		lSectionElems = geometryHandlers[strSectionTag](dx, sectionDict)
-		if g_bVerbose:
-			print("generated", len(lSectionElems), "elements on", strSectionTag, "id:", section)
-		if len(lSectionElems) == 0:
-			print("ERROR: no elements on", strSectionTag, "id:", sectionID)
+			lSectionElems = geometryHandlers[strSectionTag](dx, sectionDict)
+			if bVerbose:
+				print("generated", len(lSectionElems), "elements on", strSectionTag, "id:", section)
+			if len(lSectionElems) == 0:
+				print("ERROR: no elements on", strSectionTag, "id:", sectionID)
 				
-		if not orientation:
-			if g_bVerbose:
-				print("reversing.")
-			lSectionElems.reverse()
+			if not orientation:
+				if bVerbose:
+					print("reversing.")
+				lSectionElems.reverse()
 		
-		# remove first element to create continuous slopes
-		if not bFirstSection:
-			lSectionElems = lSectionElems[1:]
+			# remove first element to create continuous slopes
+			if not bFirstSection:
+				lSectionElems = lSectionElems[1:]
 		
-		lStringElems += lSectionElems
+			lStringElems += lSectionElems
 	
-	# add the "break link" property to the first element (after dummy) of the string
-	lStringElems[0].m_bBreak = True
+		# add the "break link" property to the first element (after dummy) of the string
+		lStringElems[0].m_bBreak = True
 	
-	lPaddedElems = lStringElems
+		lPaddedElems = lStringElems
 	
-	# create dummy element for first cross section
-	begElem = elemfile.Elem()
-	begElem.m_fArea = lStringElems[0].m_fArea
-	begElem.m_bBreak = True
-	begElem.m_bGeom = False
+		# create dummy element for first cross section
+		begElem = elemfile.Elem()
+		begElem.m_fArea = lStringElems[0].m_fArea
+		begElem.m_bBreak = True
+		begElem.m_bGeom = False
 	
-	lPaddedElems = [begElem] + lPaddedElems
+		lPaddedElems = [begElem] + lPaddedElems
 
-	# add dummy element to the end if there is no link yet
-	if lStringElems[-1].m_iLink == -1:
-		endElem = elemfile.Elem()
-		endElem.m_fArea = lStringElems[-1].m_fArea
+		# add dummy element to the end if there is no link yet
+		if lStringElems[-1].m_iLink == -1:
+			endElem = elemfile.Elem()
+			endElem.m_fArea = lStringElems[-1].m_fArea
 		
-		endElem.m_bGeom = False
+			endElem.m_bGeom = False
 	
-		lPaddedElems += [endElem]
+			lPaddedElems += [endElem]
 	
-	# assign element numbers to elements
-	lElements += lPaddedElems
+		# assign element numbers to elements
+		lElements += lPaddedElems
 	
-	# append element numbers to end of string link list
-	# append section IDs and link IDs to end of string link list
-if g_bVerbose:
-	print("writing element list to file", strOutFile)
-elemfile.writeElemFile(strOutFile, lElements, dx)
-   
+		# append element numbers to end of string link list
+		# append section IDs and link IDs to end of string link list
+	if bVerbose:
+		print("writing element list to file", strOutFile)
+	elemfile.writeElemFile(strOutFile, lElements, dx)
+
+if __name__ == "__main__":
+	strInFile = sys.argv[1]
+	strOutFile = sys.argv[2]
+	bVerbose = (len(sys.argv) == 4)
+	
+	xml2List(strInFile, strOutFile, bVerbose)
+	
+
 # process links between sections
 # for each end of string link
 	# check if this is the A1 link of the fork
@@ -543,7 +548,7 @@ def getNeighborElemID(neighborList, index):
 				return elID
 	return None
 
-if g_bVerbose:
+if bVerbose:
 	print("dumping neighbor dictionary")
 	print(neighborDict)
 

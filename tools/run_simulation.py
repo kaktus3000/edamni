@@ -14,7 +14,7 @@ from subprocess import call
 
 import material_costs
 
-runSimulation(strSimuInputFile, lstrSimuCommand):
+def runSimulation(strSimuInputFile, lstrSimuCommand):
 	print("run simulation: os dir", os.getcwd() )
 
 	strOSDir = os.path.dirname(strSimuInputFile)
@@ -24,7 +24,7 @@ runSimulation(strSimuInputFile, lstrSimuCommand):
 
 	g_strDir = strOSDir + "/"
 
-	print("run directory", g_strDir)
+	print("run simulation: run dir", g_strDir)
 
 	#get job data
 	config = configparser.ConfigParser()
@@ -55,7 +55,7 @@ runSimulation(strSimuInputFile, lstrSimuCommand):
 	t_edge_low = float(spl_cost_config.get("spl_targets", "t_edge_low"))
 	t_edge_high = float(spl_cost_config.get("spl_targets", "t_edge_high"))
 
-	print("calling", lstrSimuCommand, "with", strSimuInputFile, "in", g_strDir)
+	print("run simulation: calling", lstrSimuCommand, "with", strSimuInputFile, "in", g_strDir)
 	#call simulation with all the data
 	call(lstrSimuCommand + [strSimuInputFile], cwd=g_strDir)
 
@@ -101,7 +101,7 @@ runSimulation(strSimuInputFile, lstrSimuCommand):
 		strMicSPLFile = micSPL.attrib["file"]
 		strMicID = micSPL.attrib["id"]
 
-		print("SPL for", strMicID, ", file =", strMicSPLFile)
+		print("run simulation: SPL for", strMicID, ", file =", strMicSPLFile)
 	
 		daMicSPLs[strMicID] = numpy.loadtxt(g_strDir + strMicSPLFile)
 	
@@ -116,7 +116,7 @@ runSimulation(strSimuInputFile, lstrSimuCommand):
 		strSpeakerImpedanceFile = speakerImpedance.attrib["file"]
 		strSpeakerImpedanceID = speakerImpedance.attrib["id"]
 
-		print("SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
+		print("run simulation: SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
 	
 		daSpeakerImpedances[strSpeakerImpedanceID] = numpy.loadtxt(g_strDir + strSpeakerImpedanceFile)
 	
@@ -211,4 +211,6 @@ runSimulation(strSimuInputFile, lstrSimuCommand):
 if __name__ == "__main__":
 	strSimuInputFile = sys.argv[1]
 	lstrSimuCommand = sys.argv[2:]
+	
+	runSimulation(strSimuInputFile, lstrSimuCommand)
 	

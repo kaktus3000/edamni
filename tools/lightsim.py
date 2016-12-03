@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 import elemfile
 import infinitySection
 
-g_strSimuInputFile = sys.argv[1]
+g_bVerbose = sys.argv[1] == "1"
+g_strSimuInputFile = sys.argv[2]
+
 
 strOSDir = os.path.dirname(g_strSimuInputFile)
 
@@ -28,7 +30,7 @@ g_strElementFile = g_strDir + config.get("general", "element_file")
 
 aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
 
-print("speakers:", dSpeakers)
+print("lightsim: speakers:", dSpeakers)
 
 g_fMaxTimeStep = float(config.get("general", "max_timestep"))
 g_strSignalType = config.get("signal", "signal_type")
@@ -134,11 +136,11 @@ for iElem in range(1, len(aElems)):
 	# take care of links
 	if elem.m_iLink != -1:
 		if elem.m_fArea != aElems[elem.m_iLink].m_fArea:
-			print("ERROR: linked element areas do not match!", iElem, elem.m_iLink)
+			print("lightsim: ERROR linked element areas do not match!", iElem, elem.m_iLink)
 		
 		aPressureLinks.append( (elem.m_iLink, iElem) )
 
-print("number of elements:", len(aPressureFactorsNeg) - 1)
+print("lightsim: number of elements:", len(aPressureFactorsNeg) - 1)
 
 #pointing to velocity indices
 for strSpeaker in dSpeakers:
@@ -149,7 +151,7 @@ for strSpeaker in dSpeakers:
 	speaker_config = configparser.ConfigParser()
 	strSpeakerConfig = g_strDir + strSpeakerConfig
 	if len(speaker_config.read(strSpeakerConfig) ) == 0:
-		print("light sim: ERROR reading speaker config", strSpeakerConfig)
+		print("lightsim: ERROR reading speaker config", strSpeakerConfig)
 	
 	speaker.m_dOptions = dict()
 	
@@ -186,7 +188,7 @@ g_fTimeStep = numpy.amin(lfTimeConstraints)
 
 g_fVelocityFactor = g_fTimeStep / (g_fDensity * g_dx)
 
-print("using time step", g_fTimeStep, "s")
+print("lightsim: using time step", g_fTimeStep, "s")
 
 #print(aPressureFactorsNeg)
 #print(aPressureFactorsPos)
@@ -214,7 +216,8 @@ print("1st factors", astext(npaPressureFactorsPos))
 exit(0)
 '''
 
-print("pressure links", aPressureLinks)
+if g_bVerbose:
+	print("lightsim: pressure links", aPressureLinks)
 
 #will be called with omega*t
 def sinInput(omega_t):
@@ -228,8 +231,9 @@ xmlTree = ET.ElementTree(ET.Element("simu_output") )
 rootElem = xmlTree.getroot()
 
 for strSpeaker in dSpeakers:
-	print(strSpeaker, ":")
-	print(dSpeakers[strSpeaker].m_dOptions)
+	if g_bVerbose:
+		print("lightsim:", strSpeaker, ":")
+		print("lightsim:", dSpeakers[strSpeaker].m_dOptions)
 
 plt.clf()
 fig, ax1 = plt.subplots()
@@ -253,9 +257,14 @@ dlSPLs["spl_sum"] = []
 
 #read parameters needed
 for fFreq in g_afFreqs:
-	print("frequency:", fFreq)
+	if g_bVerbose:
+		print("lightsim: frequency", fFreq)
+	else:
+		print('.', end="", flush=True)
 	fSimulationDuration = g_fLeadTime + len(aElems) * g_dx / g_fSpeed  + 1.0 / fFreq * g_nSignalPeriods
-	print("simulating period of", fSimulationDuration, "s")
+	
+	if g_bVerbose:
+		print("lightsim: simulating period", fSimulationDuration, "s")
 	
 	signalElem = ET.SubElement(rootElem, "signal")
 	signalElem.attrib["freq"] = str(fFreq)
@@ -406,7 +415,8 @@ for fFreq in g_afFreqs:
 				npaSumPressure += npaPressure
 		
 		fPmax = numpy.amax(npaPressure)
-		print("pmax:", fPmax)
+		if g_bVerbose:
+			print("pmax:", fPmax)
 		
 		fMicSPL = calcSPL(npaPressure)
 		
@@ -443,7 +453,8 @@ for fFreq in g_afFreqs:
 		npaX = numpy.transpose(dSpeakerMeasurements[strSpeaker])[4]
 		fXmax = numpy.amax(npaX)
 		
-		print("xmax:", fXmax, "vmax:", fVmax)
+		if g_bVerbose:
+			print("lightsim: xmax:", fXmax, "vmax:", fVmax)
 		
 		if g_bSaveTimeSeries:
 			speakerElem = ET.SubElement(signalElem, "speaker_output")
@@ -479,8 +490,11 @@ for speaker in dSpeakers.keys():
 	micElem.attrib["file"] = strFile
 	
 	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlImpedances[speaker]]) )
-			
-print("writing output XML to", g_strSimuOutputFile)
+
+if not g_bVerbose:
+	print("")
+
+print("lightsim: writing output XML to", g_strSimuOutputFile)
 
 with open(g_strSimuOutputFile, 'wb') as f:
 	f.write(bytes('<?xml version="1.0" encoding="UTF-8" ?>', 'utf-8'))
