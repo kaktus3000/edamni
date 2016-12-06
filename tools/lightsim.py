@@ -30,7 +30,8 @@ g_strElementFile = g_strDir + config.get("general", "element_file")
 
 aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(g_strElementFile)
 
-print("lightsim: speakers:", dSpeakers)
+if g_bVerbose:
+	print("lightsim: speakers:", dSpeakers)
 
 g_fMaxTimeStep = float(config.get("general", "max_timestep"))
 g_strSignalType = config.get("signal", "signal_type")

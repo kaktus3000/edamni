@@ -87,6 +87,16 @@ for section in g_Horn:
 				fMinStep = 0
 
 			g_dParams[sectionID + "." + strTag] = [float(elem.attrib["min"]), float(elem.attrib["max"]), float(elem.text), fMinStep, fMinChange]
+			
+strHistoryFile = g_strOutDir + "optim_history.txt"
+histFile = open(strHistoryFile, 'w')
+
+for strParam in g_dParams:
+	histFile.write(strParam + "\t")
+histFile.write("result\n")
+histFile.flush()
+
+dCache = dict()
 
 def writeModifiedXML(params, strModifiedXML):
 
@@ -127,7 +137,17 @@ def evaluate(params):
 	# approximate means within global tolerances
 	
 	#cache hit: we ain't got time for that
-	#print(params)
+	lValues = []
+	for strParam in params:
+		fValue = params[strParam][PARAM_CURR]
+		histFile.write(str(fValue) + "\t")
+		lValues.append(fValue)
+		
+	keyHash = hash(tuple(lValues))
+	if keyHash in dCache:
+		histFile.write("cached: " + str(fReturnValue) + "\n")
+		histFile.flush()
+		return dCache[keyHash]
 	
 	# dummy function
 	fReturnValue = 0
@@ -163,8 +183,16 @@ def evaluate(params):
 
 	#calculate objective (cost) function for output
 	
-	return fReturnValue
+	# write optimizer history file
 	
+	histFile.write(str(fReturnValue) + "\n")
+	histFile.flush()
+	
+	# fill cache
+	dCache[keyHash] = fReturnValue
+	
+	return fReturnValue
+
 	
 #optimization loop
 g_dOptimumParams = dict(g_dParams)
