@@ -26,7 +26,7 @@ initializeElem(Elem* elem)
 }
 
 void
-scanElemFile(char* strFilename, Elem** ppElems, uint* pnElems)
+scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 {
 	FILE * fp;
 	char * line = NULL;
@@ -45,7 +45,7 @@ scanElemFile(char* strFilename, Elem** ppElems, uint* pnElems)
 
 	rewind(fp);
 	// allocate elements
-	Elem* aElems = calloc(nElems, sizeof(Elem) );
+	Elem* aElems = (Elem*) calloc(nElems, sizeof(Elem) );
 
 	uint iElem = 0;
 	for(; iElem < nElems; iElem++)
@@ -129,13 +129,13 @@ getComponents(const Elem* aElems, uint nElems,
 		if(aElems[iElem].m_strSpeaker )
 		{
 			(*pnSpeakers)++;
-			*ppSpeakers = realloc(*ppSpeakers, *pnSpeakers);
+			*ppSpeakers = (uint*) realloc(*ppSpeakers, *pnSpeakers);
 			(*ppSpeakers)[*pnSpeakers - 1] = iElem;
 		}
 		if(aElems[iElem].m_strMic )
 		{
 			(*pnMics)++;
-			*ppMics = realloc(*ppMics, *pnMics);
+			*ppMics = (uint*) realloc(*ppMics, *pnMics);
 			(*ppMics)[*pnMics - 1] = iElem;
 		}
 	}

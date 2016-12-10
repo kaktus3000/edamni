@@ -27,6 +27,12 @@ prepareArrays(SKernelArray* pArray, SSimuSettings settings)
 }
 
 void
+clearArrays(SKernelArray* pArray)
+{
+
+}
+
+void
 simulate(SKernelArray* pArray, float fFrequency)
 {
 	//simulation loop
