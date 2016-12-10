@@ -31,7 +31,7 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 	FILE * fp;
 	char * line = NULL;
 	size_t len = 0;
-	ssize_t read;
+	size_t read;
 
 	fp = fopen(strFilename, "r");
 	if (fp == NULL)

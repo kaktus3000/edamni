@@ -29,3 +29,5 @@ typedef struct
 void
 initializeSpeaker(	SSpeaker* pSpeaker, SSimuSettings* pSettings);
 
+float
+simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDiff, float fVoltage);

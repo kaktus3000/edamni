@@ -1,9 +1,16 @@
-#include "kernel.h"
-#include "elemFile.h"
-#include "scanINI.h"
-#include "speaker.h"
 #include <fstream>
 #include <string>
+
+// import C code (linker binary interface hint)
+extern "C"
+{
+#include "kernel.h"
+#include "elemFile.h"
+#include "speaker.h"
+}
+
+#include "scanINI.h"
+
 
 int
 main(int argc, char** argv)
@@ -28,7 +35,7 @@ main(int argc, char** argv)
 
 	getComponents(pElems, nElems, &pSpeakerElems, &nSpeakers, &pMics, &nMics);
 
-	// create array of simulation speakers
+	// create array of simulation speakersc
 	SSpeaker* pSpeakers = (SSpeaker* ) calloc(nSpeakers, sizeof(SSpeaker));
 	// for every speaker
 	for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
@@ -50,8 +57,6 @@ main(int argc, char** argv)
 		pSpeaker->cms = atof(speakerScanner.getKey("tspset", "cms").c_str());
 		pSpeaker->bl =  atof(speakerScanner.getKey("tspset", "bl" ).c_str());
 		pSpeaker->sd =  atof(speakerScanner.getKey("tspset", "sd" ).c_str());
-
-
 	}
 
 	// determine simulation time step
@@ -63,18 +68,34 @@ main(int argc, char** argv)
 
 	uint nFrequencies = atoi("1");
 
-	for(uint uiFreq = 0; uiFreq < nFrequencies)
+	for(uint uiFreq = 0; uiFreq < nFrequencies; uiFreq++)
 	{
+		float fFreq = uiFreq;
 		// clear arrays
-		clearArrays(kernelArray);
+		clearArrays(&kernelArray);
 		// re-init speakers
-		initializeSpeaker(pSpeaker, &simuSettings);
+		for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
+		{
+			SSpeaker* pSpeaker = &pSpeakers[iSpeaker];
+
+			initializeSpeaker(pSpeaker, &simuSettings);
+		}
 
 		// start simulation
-		uint nTimesteps = 0;
-		for(uint uiTimeStep = 0; uiTimeStep < nTimeSteps; uiTimeStep++)
-		{
 
+		uint nTimesteps = 1;
+		for(uint uiTimeStep = 0; uiTimeStep < nTimesteps; uiTimeStep++)
+		{
+			float fTotalTime = (float) uiTimeStep * simuSettings.m_fDeltaT;
+			float fVoltage = sinf(fTotalTime * 2.0f * M_PI * fFreq);
+
+			for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
+			{
+				SSpeaker* pSpeaker = &pSpeakers[iSpeaker];
+				simulateSpeaker(pSpeaker, &simuSettings, 0, fVoltage);
+			}
+
+			simulate(&kernelArray);
 		}
 	}
 }

@@ -5,6 +5,8 @@ typedef unsigned int uint;
 #define FALSE 0
 #define TRUE -1
 
+#define M_PI 3.141592654
+
 
 typedef struct
 {

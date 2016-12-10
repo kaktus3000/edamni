@@ -33,7 +33,7 @@ private:
 
 	std::string stripWhitespace(const std::string& str);
 
-	std::map<std::string, std::map<std::string, std::string>> m_mmstrValues;
+	std::map<std::string, std::map<std::string, std::string> > m_mmstrValues;
 };
 
 

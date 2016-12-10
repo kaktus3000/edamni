@@ -31,7 +31,13 @@ typedef struct
 
 } SKernelArray;
 
-void prepareArrays(SKernelArray* pArray, SSimuSettings settings);
-void simulate(SKernelArray* pArray, float fFrequency);
+void
+prepareArrays(SKernelArray* pArray, SSimuSettings* pSettings);
+
+void
+clearArrays(SKernelArray* pArray);
+
+void
+simulate(SKernelArray* pArray);
 
 #endif /* KERNEL_KERNEL_H_ */
