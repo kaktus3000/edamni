@@ -9,7 +9,7 @@ void
 prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 {
 	// the factor to calculate the velocity from the integrated pressure difference
-	pArray->m_fVelocityFactor = pSsettings->m_fDeltaT / (pSsettings->m_fRho * pSsettings->m_fDeltaX);
+	pArray->m_fVelocityFactor = pSsettings->m_fDeltaT / (pSsettings->m_fDensity * pSsettings->m_fDeltaX);
 
 
 	// allocate memory for pressure elements and corresponding factors

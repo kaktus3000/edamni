@@ -11,8 +11,11 @@ typedef unsigned int uint;
 typedef struct
 {
 	float m_fDeltaT;
-	float m_fRho;
+	float m_fDensity;
 	float m_fDeltaX;
+	float m_fTemperature;
+	float m_fReferencePressure;
+	float m_fSpeed;
 } SSimuSettings;
 
 #endif /* COMMON_H_ */

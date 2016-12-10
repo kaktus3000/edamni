@@ -6,7 +6,7 @@ initializeSpeaker(	SSpeaker* pSpeaker, SSimuSettings* pSettings)
 {
 	float fRadius = sqrtf(pSpeaker->sd / M_PI);
 
-	float m_fAirmass = (8.0/3.0) * pSettings->m_fRho * fRadius* fRadius * fRadius;
+	float m_fAirmass = (8.0/3.0) * pSettings->m_fDensity * fRadius* fRadius * fRadius;
 	float m_fStiffness = 1.0 / pSpeaker->cms;
 
 	pSpeaker->mms = pSpeaker->mmd + m_fAirmass;

@@ -29,7 +29,7 @@ typedef struct
     char* m_strMic;
 } Elem;
 
-void scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems);
+float scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems);
 void getComponents(const Elem* aElems, uint nElems, uint** ppSpeakers, uint* pnSpeakers, uint** ppMics, uint* pnMics);
 
 

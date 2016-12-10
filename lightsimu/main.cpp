@@ -22,11 +22,21 @@ main(int argc, char** argv)
 
 	SSimuSettings simuSettings;
 
+	// set standard atmosphere
+	simuSettings.m_fDensity = 1.2041;
+	simuSettings.m_fTemperature = 293.15;
+	simuSettings.m_fReferencePressure = 0.00002;
+	simuSettings.m_fSpeed = 343.0;
+
+
 	std::string strElemFile = inputScanner.getKey("general", "element_file");
 
 	Elem* pElems;
 	uint nElems;
-	scanElemFile(strElemFile.c_str(), &pElems, &nElems);
+
+	std::string strBaseDir( strInputFile.substr(0, strInputFile.find_last_of("/") + 1) );
+
+	simuSettings.m_fDeltaX = scanElemFile((strBaseDir + strElemFile).c_str(), &pElems, &nElems);
 
 	uint* pSpeakerElems;
 	uint* pMics;
@@ -44,9 +54,11 @@ main(int argc, char** argv)
 		uint uiSpeakerElem = pSpeakerElems[iSpeaker];
 		std::string strSpeaker(pElems[uiSpeakerElem].m_strSpeaker);
 
+		//find in ini file
+		std::string strSpeakerFile( inputScanner.getKey("speakers", strSpeaker) );
+
 		// open speaker ini file
-		std::string strSpeakerFile;
-		std::ifstream speakerFile(strSpeakerFile, std::ios_base::in);
+		std::ifstream speakerFile(strBaseDir + strSpeakerFile, std::ios_base::in);
 		ScanINI speakerScanner(speakerFile);
 
 		SSpeaker* pSpeaker = &pSpeakers[iSpeaker];

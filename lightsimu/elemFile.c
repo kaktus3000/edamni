@@ -25,7 +25,7 @@ initializeElem(Elem* elem)
 	elem->m_strMic = NULL;
 }
 
-void
+float
 scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 {
 	FILE * fp;
@@ -103,13 +103,16 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 		case '#':
 			break;
 		default:
-			printf("scanFile: ERROR line %s not recognized", line);
+			line[strlen(line) - 1] = 0;
+			printf("scanFile: ERROR line %s not recognized\n", line);
 
 		}
 	}
 	fclose(fp);
 	*ppElems = aElems;
 	*pnElems = nElems;
+
+	return fDeltaX;
 }
 
 void
