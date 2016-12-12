@@ -5,17 +5,28 @@ typedef unsigned int uint;
 #define FALSE 0
 #define TRUE -1
 
-#define M_PI 3.141592654
-
-
 typedef struct
 {
-	float m_fDeltaT;
+	// basic constants
+
+	// density of air [kg/m3]
 	float m_fDensity;
-	float m_fDeltaX;
+	// temperature of air [K]
 	float m_fTemperature;
+	// gas constant of air [J/(kg K)]
+	float m_fGasConstant;
+	// reference pressure for 0 dB [Pa]
 	float m_fReferencePressure;
-	float m_fSpeed;
+
+	// problem specific constants
+	// finite spacial difference of elements
+	float m_fDeltaX;
+
+	// derived constants obeying specific constraints
+	// time step for explicit integration
+	float m_fDeltaT;
+	// factor to calculate velocities from pressure differences
+	float m_fVelocityFactor;
 } SSimuSettings;
 
 #endif /* COMMON_H_ */
