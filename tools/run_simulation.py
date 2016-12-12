@@ -136,6 +136,8 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	print("run simulation: creating plot", strPlotPath)
 	plt.savefig(strPlotPath)
 
+	plt.close()
+
 	t_mic = None
 
 	for mic in daMicSPLs.keys():
@@ -184,6 +186,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	fBestLower = float("nan")
 	fBestHigher = float("nan")
 
+	'''
 	for spl in range(t_spl - 10, t_spl + 10):
 		for lower in npaLower:
 			for higher in npaHigher:
@@ -196,12 +199,26 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 
 	#linearResponseCost(daMicSPLs[t_mic], fBestSPL, fBestLower, fBestHigher)
 	#print(dMatCosts)
+	'''
+
+	npaSPLs = numpy.transpose(daMicSPLs[t_mic])[1]
+	
+	fMeanSPL = numpy.mean(npaSPLs)
+	k_spl = abs(fMeanSPL - t_spl) * k_spec_spl
+	
+	npaDeviation = numpy.fabs(npaSPLs - t_spl)
+	fMaxDeviation = numpy.amax(npaDeviation)
+	k_linearity = fMaxDeviation * k_spec_linearity
+	
+	print("run simulation: mean spl", fMeanSPL, "max deviation", fMaxDeviation)
+	
+	fBest = k_spl + k_linearity
 
 	k_total = fBest + dMatCosts["cost_total"]
 
 	print("run simulation: material cost", dMatCosts["cost_total"], "; panel thickness", dMatCosts["panel_thickness"], "cube edge length", dMatCosts["edge_length"])
 
-	print("run simulation: frequency response cost (", t_mic, ")", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
+#	print("run simulation: frequency response cost (", t_mic, ")", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
 
 
 	print("run simulation: total cost", k_total)

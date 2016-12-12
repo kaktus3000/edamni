@@ -3,6 +3,7 @@ import configparser
 import xml.etree.ElementTree as ET
 import sys
 import os
+import scipy.optimize as opt
 
 # import modules
 import run_simulation
@@ -78,15 +79,16 @@ for section in g_Horn:
 
 	for elem in section:
 		strTag = elem.tag
-		
-		if("min" in elem.attrib.keys()):
+		if("id" in elem.attrib.keys()):
 			fMinStep = g_fMinLenStep
 			fMinChange = g_fMinLenChange
 			if elem.tag == "a1" or elem.tag == "a2" or elem.tag == "a3":
 				fMinChange = g_fMinAreaChange
 				fMinStep = 0
 
-			g_dParams[sectionID + "." + strTag] = [float(elem.attrib["min"]), float(elem.attrib["max"]), float(elem.text), fMinStep, fMinChange]
+			# in case of dupolicate entries, this will be overwritten.
+			# should be consistent though
+			g_dParams[elem.attrib["id"] ] = [float(elem.attrib["min"]), float(elem.attrib["max"]), float(elem.text), fMinStep, fMinChange]
 			
 strHistoryFile = g_strOutDir + "optim_history.txt"
 histFile = open(strHistoryFile, 'w')
@@ -99,18 +101,11 @@ histFile.flush()
 dCache = dict()
 
 def writeModifiedXML(params, strModifiedXML):
-
-	for strParam in params.keys():
-		astrSplit = strParam.split('.')
-		strSectionID = astrSplit[0]
-		strSectionParam = astrSplit[1]
-		for section in g_Horn:
-			sectionID = section.attrib["id"]
-			if sectionID == strSectionID:
-				for elem in section:
-					if elem.tag == strSectionParam:
-						# replace value in XML structure
-						elem.text = str(params[strParam][PARAM_CURR])
+	for section in g_Horn:
+		for elem in section:
+			if "id" in elem.attrib.keys():
+				# replace value in XML structure
+				elem.text = str(params[elem.attrib["id"] ][PARAM_CURR])
 
 	# write modified XML structure
 	print("optimizer: writing modified XML to", strModifiedXML)
@@ -145,7 +140,7 @@ def evaluate(params):
 		
 	keyHash = hash(tuple(lValues))
 	if keyHash in dCache:
-		histFile.write("cached: " + str(fReturnValue) + "\n")
+		histFile.write("cached: " + str(dCache[keyHash]) + "\n")
 		histFile.flush()
 		return dCache[keyHash]
 	
@@ -193,7 +188,38 @@ def evaluate(params):
 	
 	return fReturnValue
 
+
+def fromProblemFunction(lParams):
+	dParams = dict()
+	for strParam in g_dParams.keys():
+		dParams[strParam] = g_dParams[strParam]
+		dParams[strParam][PARAM_CURR] = lParams[0]
+		
+		lParams = lParams[1:]
+		
+	return dParams
+
+def problemFunction(lParams):
+	dParams = fromProblemFunction(lParams)
 	
+	return evaluate(dParams)
+
+
+bounds = []
+
+for strParam in g_dParams.keys():
+	bmin = g_dParams[strParam][PARAM_MIN]
+	bmax = g_dParams[strParam][PARAM_MAX]
+
+	bounds.append( (bmin, bmax) )
+
+
+
+opt_res = opt.differential_evolution(problemFunction, bounds)
+
+print(fromProblemFunction(opt_res.x) )
+exit()
+
 #optimization loop
 g_dOptimumParams = dict(g_dParams)
 fOptimum = evaluate(g_dOptimumParams)
@@ -228,38 +254,46 @@ while not bBreak:
 		if (1.0 - fGlobalMultiplier) < g_dParams[param][PARAM_MIN_CHANGE]:
 			continue
 		
-		for fMultiplier in [fGlobalMultiplier, 1.0/fGlobalMultiplier]:
-			#try moving the parameter around
+		bVariableProgress = True
+		
+		while bVariableProgress:
+			bVariableProgress = False
+		
+			for fMultiplier in [fGlobalMultiplier, 1.0/fGlobalMultiplier]:
+				#try moving the parameter around
 			
-			# copy parameter dictionary
-			g_dSampleParams = dict()
-			for strKey in g_dOptimumParams:
-				g_dSampleParams[strKey] = list(g_dOptimumParams[strKey])
+				# copy parameter dictionary
+				g_dSampleParams = dict()
+				for strKey in g_dOptimumParams:
+					g_dSampleParams[strKey] = list(g_dOptimumParams[strKey])
 			
-			fParam = g_dOptimumParams[param][PARAM_CURR]
-			fChangedParam = fParam * fMultiplier
-			#print(param, fParam, "->", fChangedParam)
+				fParam = g_dOptimumParams[param][PARAM_CURR]
+				fChangedParam = fParam * fMultiplier
+				#print(param, fParam, "->", fChangedParam)
 			
-			fDelta = abs(fParam - fChangedParam)
+				fDelta = abs(fParam - fChangedParam)
 
-			# check for minimum step width
-			if fDelta < g_dOptimumParams[param][PARAM_MIN_STEP]:
-				continue
+				# check for minimum step width
+				if fDelta < g_dOptimumParams[param][PARAM_MIN_STEP]:
+					continue
 				
-			# check for bounds
-			fChangedParam = max(fChangedParam, g_dOptimumParams[param][PARAM_MIN])
-			fChangedParam = min(fChangedParam, g_dOptimumParams[param][PARAM_MAX])
+				# check for bounds
+				fChangedParam = max(fChangedParam, g_dOptimumParams[param][PARAM_MIN])
+				fChangedParam = min(fChangedParam, g_dOptimumParams[param][PARAM_MAX])
 
-			# apply parameter change		
-			g_dSampleParams[param][PARAM_CURR] = fChangedParam
+				# apply parameter change		
+				g_dSampleParams[param][PARAM_CURR] = fChangedParam
 			
-			fCost = evaluate(g_dSampleParams)
-			if fCost < fOptimum:
-				print("optimizer: new optimum", g_dSampleParams)
-				bProgress = True
-				fOptimum = fCost
-				g_dOptimumParams = g_dSampleParams
+				fCost = evaluate(g_dSampleParams)
+				if fCost < fOptimum:
+					print("optimizer: new optimum", g_dSampleParams)
+					bProgress = True
+					bVariableProgress = True
+					fOptimum = fCost
+					g_dOptimumParams = g_dSampleParams
+					break
 
 # output optimized design
+evaluate(g_dOptimumParams)
 print("optimizer: final optimum", g_dOptimumParams)
 writeModifiedXML(g_dOptimumParams, g_strHornFile + "_opt.xml")
