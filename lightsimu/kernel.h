@@ -31,14 +31,13 @@ typedef struct
 
 } SKernelArray;
 
-typedef struct
-{
-	float m_fDeltaT;
-	float m_fRho;
-	float m_fDeltaX;
-} SSimuSettings;
+void
+prepareArrays(SKernelArray* pArray, SSimuSettings* pSettings);
 
-void prepareArrays(SKernelArray* pArray, SSimuSettings settings);
-void simulate(SKernelArray* pArray, float fFrequency);
+void
+clearArrays(SKernelArray* pArray);
+
+void
+simulate(SKernelArray* pArray);
 
 #endif /* KERNEL_KERNEL_H_ */

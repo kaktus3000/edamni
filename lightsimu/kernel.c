@@ -6,10 +6,10 @@
 #define OFFSET 4
 
 void
-prepareArrays(SKernelArray* pArray, SSimuSettings settings)
+prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 {
 	// the factor to calculate the velocity from the integrated pressure difference
-	pArray->m_fVelocityFactor = settings.m_fDeltaT / (settings.m_fRho * settings.m_fDeltaX);
+	pArray->m_fVelocityFactor = pSsettings->m_fDeltaT / (pSsettings->m_fDensity * pSsettings->m_fDeltaX);
 
 
 	// allocate memory for pressure elements and corresponding factors
@@ -27,7 +27,13 @@ prepareArrays(SKernelArray* pArray, SSimuSettings settings)
 }
 
 void
-simulate(SKernelArray* pArray, float fFrequency)
+clearArrays(SKernelArray* pArray)
+{
+
+}
+
+void
+simulate(SKernelArray* pArray)
 {
 	//simulation loop
 	uint bBreak = FALSE;

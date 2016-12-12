@@ -1,8 +1,32 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
-#define uint unsigned int
+typedef unsigned int uint;
 #define FALSE 0
 #define TRUE -1
+
+typedef struct
+{
+	// basic constants
+
+	// density of air [kg/m3]
+	float m_fDensity;
+	// temperature of air [K]
+	float m_fTemperature;
+	// gas constant of air [J/(kg K)]
+	float m_fGasConstant;
+	// reference pressure for 0 dB [Pa]
+	float m_fReferencePressure;
+
+	// problem specific constants
+	// finite spacial difference of elements
+	float m_fDeltaX;
+
+	// derived constants obeying specific constraints
+	// time step for explicit integration
+	float m_fDeltaT;
+	// factor to calculate velocities from pressure differences
+	float m_fVelocityFactor;
+} SSimuSettings;
 
 #endif /* COMMON_H_ */

@@ -25,13 +25,13 @@ initializeElem(Elem* elem)
 	elem->m_strMic = NULL;
 }
 
-void
-scanElemFile(char* strFilename, Elem** ppElems, uint* pnElems)
+float
+scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 {
 	FILE * fp;
 	char * line = NULL;
 	size_t len = 0;
-	ssize_t read;
+	size_t read;
 
 	fp = fopen(strFilename, "r");
 	if (fp == NULL)
@@ -45,7 +45,7 @@ scanElemFile(char* strFilename, Elem** ppElems, uint* pnElems)
 
 	rewind(fp);
 	// allocate elements
-	Elem* aElems = calloc(nElems, sizeof(Elem) );
+	Elem* aElems = (Elem*) calloc(nElems, sizeof(Elem) );
 
 	uint iElem = 0;
 	for(; iElem < nElems; iElem++)
@@ -103,13 +103,16 @@ scanElemFile(char* strFilename, Elem** ppElems, uint* pnElems)
 		case '#':
 			break;
 		default:
-			printf("scanFile: ERROR line %s not recognized", line);
+			line[strlen(line) - 1] = 0;
+			printf("scanFile: ERROR line %s not recognized\n", line);
 
 		}
 	}
 	fclose(fp);
 	*ppElems = aElems;
 	*pnElems = nElems;
+
+	return fDeltaX;
 }
 
 void
@@ -129,13 +132,13 @@ getComponents(const Elem* aElems, uint nElems,
 		if(aElems[iElem].m_strSpeaker )
 		{
 			(*pnSpeakers)++;
-			*ppSpeakers = realloc(*ppSpeakers, *pnSpeakers);
+			*ppSpeakers = (uint*) realloc(*ppSpeakers, *pnSpeakers);
 			(*ppSpeakers)[*pnSpeakers - 1] = iElem;
 		}
 		if(aElems[iElem].m_strMic )
 		{
 			(*pnMics)++;
-			*ppMics = realloc(*ppMics, *pnMics);
+			*ppMics = (uint*) realloc(*ppMics, *pnMics);
 			(*ppMics)[*pnMics - 1] = iElem;
 		}
 	}
