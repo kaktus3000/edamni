@@ -105,7 +105,6 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 		default:
 			line[strlen(line) - 1] = 0;
 			printf("scanFile: ERROR line %s not recognized\n", line);
-
 		}
 	}
 	fclose(fp);
