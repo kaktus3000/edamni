@@ -3,6 +3,7 @@
 #include <list>
 #include <vector>
 #include <thread>
+#include <iostream>
 #include <memory.h>
 
 // import C code (linker binary interface hint)
@@ -46,10 +47,10 @@ void runThread(float fFreq,
 	prepareArrays(&kernelArray, pSettings);
 	clearArrays(&kernelArray);
 	//copy data
-	memcpy(kernelArray.m_pfPressureFactorsLeft, pArray->m_pfPressureFactorsLeft, kernelArray.m_nElements * sizeof(float));
-	memcpy(kernelArray.m_pfPressureFactorsRight, pArray->m_pfPressureFactorsRight, kernelArray.m_nElements * sizeof(float));
+	memcpy(kernelArray.m_pfPressureFactorsLeft, pArray->m_pfPressureFactorsLeft, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
+	memcpy(kernelArray.m_pfPressureFactorsRight, pArray->m_pfPressureFactorsRight, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
 
-	memcpy(kernelArray.m_piLinkMaster, pArray->m_piLinkMaster, kernelArray.m_nLinks* sizeof(uint));
+	memcpy(kernelArray.m_piLinkMaster, pArray->m_piLinkMaster, kernelArray.m_nLinks * sizeof(uint));
 	memcpy(kernelArray.m_piLinkSlave, pArray->m_piLinkSlave, kernelArray.m_nLinks * sizeof(uint));
 
 	// calculate number of timesteps to simulate
@@ -76,13 +77,13 @@ void runThread(float fFreq,
 			// get pressures
 			uint uiSpeakerElem = pSpeakerElems[iSpeaker];
 
-			float fPresLeft = pArray->m_pfPressureElements[uiSpeakerElem - 1];
-			float fPresRight = pArray->m_pfPressureElements[uiSpeakerElem];
+			float fPresLeft = pArray->m_pfPressureElements[OFFSET + uiSpeakerElem - 1];
+			float fPresRight = pArray->m_pfPressureElements[OFFSET + uiSpeakerElem];
 
 			float fSpeakerVelo = simulateSpeaker(pSpeaker, pSettings, fPresRight - fPresLeft, fVoltage);
 
 			// implant speaker velocity to field
-			pArray->m_pfPressureDifferences[uiSpeakerElem] = fSpeakerVelo / pSettings->m_fVelocityFactor;
+			pArray->m_pfPressureDifferences[OFFSET + uiSpeakerElem] = fSpeakerVelo / pSettings->m_fVelocityFactor;
 		}
 
 		simulate(pArray);
@@ -92,9 +93,11 @@ void runThread(float fFreq,
 			for (uint uiMic = 0; uiMic < nMics; uiMic++)
 			{
 				uint uiMicElem = pMics[uiMic];
-				ppfMicMeasurements[uiMic][iStorageStep] = pArray->m_pfPressureElements[uiMicElem];
+				ppfMicMeasurements[uiMic][iStorageStep] = pArray->m_pfPressureElements[OFFSET + uiMicElem];
 			}
 	}
+	free(pCurrSpeakers);
+	freeArrays(&kernelArray);
 
     // calculate SPL values for mics
 	float* pfSumData = (float*)calloc(nTimesteps, sizeof(float));
@@ -107,6 +110,10 @@ void runThread(float fFreq,
 		pSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
 	}
 	pSPLs[nMics] = spl(rms(pfSumData, nTimesteps - nLeadSteps), pSettings);
+
+	for (uint uiMic = 0; uiMic < nMics; uiMic++)
+		free(ppfMicMeasurements[uiMic]);
+	free(pfSumData);
 }
 
 void
@@ -159,6 +166,9 @@ main(int argc, char** argv)
 	std::ifstream inFile(strInputFile, std::ios_base::in);
 	ScanINI inputScanner(inFile);
 
+	simuSettings.m_fLeadTime = std::stof(inputScanner.getKey("signal", "lead_time"));
+	simuSettings.m_nSimulationPeriods = std::stoi(inputScanner.getKey("signal", "signal_periods"));
+
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");
 
@@ -200,31 +210,17 @@ main(int argc, char** argv)
 		pSpeaker->cms = std::stof(speakerScanner.getKey("tspset", "cms"));
 		pSpeaker->bl =  std::stof(speakerScanner.getKey("tspset", "bl" ));
 		pSpeaker->sd =  std::stof(speakerScanner.getKey("tspset", "sd" ));
+
+		initializeSpeaker(pSpeaker, &simuSettings);
 	}
 	// determine simulation time step
 	calculateTimeStep(&simuSettings, pElems, nElems, pSpeakers, nSpeakers);
 	// actually run simulation
 
-	//read frequencies to simulate
-	std::string strFrequencies(inputScanner.getKey("signal", "frequencies") );
-
-	std::list<float> lfFreqs;
-	uint uiPos = 0;
-	while(true)
-	{
-		uint uiEnd = strFrequencies.find_first_of(";", uiPos);
-		std::string strFreq(strFrequencies.substr(uiPos, uiEnd));
-		float fFreq = std::stof(strFreq);
-		lfFreqs.push_back(fFreq);
-
-		if(uiEnd > strFrequencies.length())
-			break;
-
-		uiPos = uiEnd+1;
-	}
-
 	//allocate simulation data array
 	SKernelArray kernelArray;
+	kernelArray.m_nElements = nElems;
+	kernelArray.m_nLinks = 0;
 	prepareArrays(&kernelArray, &simuSettings);
 
 	// calculate field simulation coefficients
@@ -251,12 +247,12 @@ main(int argc, char** argv)
 		// implement breaks on the left side of the element
 		if(elem.m_bBreak and iElem > 0)
 		{
-			kernelArray.m_pfPressureFactorsRight[iElem - 1] = 0;
+			kernelArray.m_pfPressureFactorsRight[OFFSET + iElem - 1] = 0;
 			fNegArea = 0;
 		}
 
-		kernelArray.m_pfPressureFactorsLeft[iElem ] = fNegArea * fFactor;
-		kernelArray.m_pfPressureFactorsRight[iElem ] = -fPosArea * fFactor;
+		kernelArray.m_pfPressureFactorsLeft[OFFSET + iElem ] = fNegArea * fFactor;
+		kernelArray.m_pfPressureFactorsRight[OFFSET + iElem ] = -fPosArea * fFactor;
 
 		// take care of links
 		/*
@@ -268,33 +264,65 @@ main(int argc, char** argv)
 		*/
 	}
 
-	// spawn calculation threads
-	std::vector<std::thread> vThreads;
 
-	// re-init speakers
-	for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
+
+	//read frequencies to simulate
+	std::string strFrequencies(inputScanner.getKey("signal", "frequencies") );
+
+	std::vector<float> vfFreqs;
+	uint uiPos = 0;
+	while(true)
 	{
-		SSpeaker* pSpeaker = &pSpeakers[iSpeaker];
-		initializeSpeaker(pSpeaker, &simuSettings);
+		uint uiEnd = strFrequencies.find_first_of(";", uiPos);
+		std::string strFreq(strFrequencies.substr(uiPos, uiEnd));
+		if(!strFreq.length())
+			break;
+		float fFreq = std::stof(strFreq);
+		vfFreqs.push_back(fFreq);
+
+		if(uiEnd > strFrequencies.length())
+			break;
+
+		uiPos = uiEnd+1;
 	}
 
 	// clear arrays
 	clearArrays(&kernelArray);
+	float** ppfThreadResults = (float**)calloc(vfFreqs.size(), sizeof(float*));
 
-	for(std::list<float>::const_iterator it = lfFreqs.begin(); it != lfFreqs.end(); it++)
+	// spawn calculation threads
+	std::vector<std::thread> vThreads;
+
+	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)
 	{
-		float fFreq = *it;
+		float fFreq = vfFreqs[uiFreq];
 		// start simulation
 		float* pfResults = (float*)calloc(nMics + 1, sizeof(float));
 
 		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults) );
+
+		//runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults);
+		ppfThreadResults[uiFreq] = pfResults;
 	}
 
+	for(uint uiThread = 0; uiThread < vThreads.size(); uiThread++)
+		vThreads[uiThread].join();
+
 	// Wait for all threads
-	for(uint uiFreq = 0; uiFreq < lfFreqs.size(); uiFreq++)
-		vThreads[uiFreq].join();
+	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)
+	{
+		float fFreq = vfFreqs[uiFreq];
 
-	// now proceed with calculation results
 
+		std::cout << fFreq;
+
+		// now proceed with calculation results
+		for (uint uiMic = 0; uiMic < nMics + 1; uiMic++)
+		{
+			std::cout << "\t" << ppfThreadResults[uiFreq][uiMic];
+		}
+
+		std::cout << "\n";
+	}
 }
 

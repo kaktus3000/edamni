@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#define OFFSET 4
+
 typedef struct
 {
 	uint m_nElements;
@@ -32,6 +34,9 @@ prepareArrays(SKernelArray* pArray, SSimuSettings* pSettings);
 
 void
 clearArrays(SKernelArray* pArray);
+
+void
+freeArrays(SKernelArray* pArray);
 
 void
 simulate(SKernelArray* pArray);
