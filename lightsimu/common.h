@@ -27,6 +27,12 @@ typedef struct
 	float m_fDeltaT;
 	// factor to calculate velocities from pressure differences
 	float m_fVelocityFactor;
+
+	// lead time for measurement (to allow for stationary state)
+	float m_fLeadTime;
+	// number of wave periods to average over
+	float m_nSimulationPeriods;
+
 } SSimuSettings;
 
 #endif /* COMMON_H_ */

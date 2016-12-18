@@ -15,20 +15,60 @@ extern "C"
 
 #include "scanINI.h"
 
-void runThread(float fFreq, SSimuSettings* pSettings, SKernelArray* pArray, SSpeaker* pSpeakers, uint* pSpeakerElems, uint nSpeakers)
+float rms(float* pfData, uint nSamples)
+{
+	double fSquares = 0;
+
+	uint iSample = 0;
+	for (iSample = 0; iSample < nSamples; iSample++)
+		fSquares += pfData[iSample] * pfData[iSample];
+
+	return sqrtf(fSquares / (double)nSamples );
+}
+
+float spl(float fRMS, SSimuSettings* pSettings)
+{
+	return 20.0 * log10f(fRMS / pSettings->m_fReferencePressure);
+}
+
+void runThread(float fFreq,
+		SSimuSettings* pSettings, SKernelArray* pArray,
+		SSpeaker* pSpeakers, uint* pSpeakerElems, uint nSpeakers,
+		uint* pMics, uint nMics,
+		float* pSPLs)
 {
 	// create copy of speakers
 	SSpeaker* pCurrSpeakers = (SSpeaker* ) calloc(nSpeakers, sizeof(SSpeaker));
-
 	memcpy(pCurrSpeakers, pSpeakers, nSpeakers * sizeof(SSpeaker) );
 
 	// create copy of kernel arrays
+	SKernelArray kernelArray = *pArray;
+	prepareArrays(&kernelArray, pSettings);
+	clearArrays(&kernelArray);
+	//copy data
+	memcpy(kernelArray.m_pfPressureFactorsLeft, pArray->m_pfPressureFactorsLeft, kernelArray.m_nElements * sizeof(float));
+	memcpy(kernelArray.m_pfPressureFactorsRight, pArray->m_pfPressureFactorsRight, kernelArray.m_nElements * sizeof(float));
+
+	memcpy(kernelArray.m_piLinkMaster, pArray->m_piLinkMaster, kernelArray.m_nLinks* sizeof(uint));
+	memcpy(kernelArray.m_piLinkSlave, pArray->m_piLinkSlave, kernelArray.m_nLinks * sizeof(uint));
+
+	// calculate number of timesteps to simulate
+	float fSpeed = 340.0f;
+	float fFlightTime = pArray->m_nElements * pSettings->m_fDeltaX / fSpeed;
+	float fSimulationDuration = pSettings->m_fLeadTime + fFlightTime + 1.0f / fFreq * pSettings->m_nSimulationPeriods;
+
+	uint nTimesteps = fSimulationDuration / pSettings->m_fDeltaT;
+	uint nLeadSteps = pSettings->m_fLeadTime / pSettings->m_fDeltaT;
+
     // reserve array for microphone results
-	uint nTimesteps = 1;
+	float** ppfMicMeasurements = (float**)calloc(nMics, sizeof(float*));
+	for (uint uiMic = 0; uiMic < nMics; uiMic++)
+		ppfMicMeasurements[uiMic] = (float*)calloc(nTimesteps, sizeof(float));
+
 	for(uint uiTimeStep = 0; uiTimeStep < nTimesteps; uiTimeStep++)
 	{
 		float fTotalTime = (float) uiTimeStep * pSettings->m_fDeltaT;
-		float fVoltage = sinf(fTotalTime * 2.0f * M_PI * fFreq);
+		float fVoltage = 4.0f * sinf(fTotalTime * 2.0f * M_PI * fFreq);
 
 		for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
 		{
@@ -42,16 +82,35 @@ void runThread(float fFreq, SSimuSettings* pSettings, SKernelArray* pArray, SSpe
 			float fSpeakerVelo = simulateSpeaker(pSpeaker, pSettings, fPresRight - fPresLeft, fVoltage);
 
 			// implant speaker velocity to field
+			pArray->m_pfPressureDifferences[uiSpeakerElem] = fSpeakerVelo / pSettings->m_fVelocityFactor;
 		}
 
 		simulate(pArray);
+
+		int iStorageStep = (int)uiTimeStep > (int)nLeadSteps;
+		if( iStorageStep > 0)
+			for (uint uiMic = 0; uiMic < nMics; uiMic++)
+			{
+				uint uiMicElem = pMics[uiMic];
+				ppfMicMeasurements[uiMic][iStorageStep] = pArray->m_pfPressureElements[uiMicElem];
+			}
 	}
 
     // calculate SPL values for mics
+	float* pfSumData = (float*)calloc(nTimesteps, sizeof(float));
+
+	for (uint uiMic = 0; uiMic < nMics; uiMic++)
+	{
+		for (uint uiSample = 0; uiSample < nTimesteps; ++uiSample)
+			pfSumData[uiSample] += ppfMicMeasurements[uiMic][uiSample];
+
+		pSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
+	}
+	pSPLs[nMics] = spl(rms(pfSumData, nTimesteps - nLeadSteps), pSettings);
 }
 
 void
-calculateTimeStep(SSimuSettings* pSettings, Elem* pElems, uint nElements, SSpeaker* pSpeakers, uint nSpeakers)
+calculateTimeStep(SSimuSettings* pSettings, SElement* pElems, uint nElements, SSpeaker* pSpeakers, uint nSpeakers)
 {
 	float fTimeStep = 1e+30;
 
@@ -95,7 +154,6 @@ main(int argc, char** argv)
 	simuSettings.m_fGasConstant = 343.0;
 	simuSettings.m_fReferencePressure = 0.00002;
 
-
 	// read simulation input file
 	std::string strInputFile(argv[1]);
 	std::ifstream inFile(strInputFile, std::ios_base::in);
@@ -104,7 +162,7 @@ main(int argc, char** argv)
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");
 
-	Elem* pElems;
+	SElement* pElems;
 	uint nElems;
 
 	std::string strBaseDir( strInputFile.substr(0, strInputFile.find_last_of("/") + 1) );
@@ -143,10 +201,8 @@ main(int argc, char** argv)
 		pSpeaker->bl =  std::stof(speakerScanner.getKey("tspset", "bl" ));
 		pSpeaker->sd =  std::stof(speakerScanner.getKey("tspset", "sd" ));
 	}
-
 	// determine simulation time step
 	calculateTimeStep(&simuSettings, pElems, nElems, pSpeakers, nSpeakers);
-
 	// actually run simulation
 
 	//read frequencies to simulate
@@ -167,8 +223,50 @@ main(int argc, char** argv)
 		uiPos = uiEnd+1;
 	}
 
+	//allocate simulation data array
 	SKernelArray kernelArray;
 	prepareArrays(&kernelArray, &simuSettings);
+
+	// calculate field simulation coefficients
+
+	for(uint iElem = 1; iElem < nElems; iElem++)
+	{
+		SElement elem = pElems[iElem];
+
+		// collect infinity elements
+		//kernelArray.m_[iElem] = elem.m_;
+
+		// collect damping coefficients
+		//kernelArray.m_pfDamping = elem.m_fDamping;
+
+		float fNegArea = pElems[iElem - 1].m_fArea;
+		float fPosArea = elem.m_fArea;
+
+		// calculate volume
+		float fVolume = 0.5 * (fNegArea + fPosArea) * simuSettings.m_fDeltaX;
+
+		// this factor is missing time step and velocity factor
+		float fFactor = simuSettings.m_fDensity * simuSettings.m_fGasConstant * simuSettings.m_fTemperature/ fVolume;
+
+		// implement breaks on the left side of the element
+		if(elem.m_bBreak and iElem > 0)
+		{
+			kernelArray.m_pfPressureFactorsRight[iElem - 1] = 0;
+			fNegArea = 0;
+		}
+
+		kernelArray.m_pfPressureFactorsLeft[iElem ] = fNegArea * fFactor;
+		kernelArray.m_pfPressureFactorsRight[iElem ] = -fPosArea * fFactor;
+
+		// take care of links
+		/*
+		if elem.m_iLink != -1:
+			if elem.m_fArea != aElems[elem.m_iLink].m_fArea:
+				print("lightsim: ERROR linked element areas do not match!", iElem, elem.m_iLink)
+
+			aPressureLinks.append( (elem.m_iLink, iElem) )
+		*/
+	}
 
 	// spawn calculation threads
 	std::vector<std::thread> vThreads;
@@ -187,7 +285,9 @@ main(int argc, char** argv)
 	{
 		float fFreq = *it;
 		// start simulation
-		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, nSpeakers) );
+		float* pfResults = (float*)calloc(nMics + 1, sizeof(float));
+
+		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults) );
 	}
 
 	// Wait for all threads

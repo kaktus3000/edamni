@@ -5,7 +5,7 @@
 #include "elemFile.h"
 
 void
-initializeElem(Elem* elem)
+initializeElem(SElement* elem)
 {
 	elem->m_fDamping = 0;
 	elem->m_fArea = 0;
@@ -26,7 +26,7 @@ initializeElem(Elem* elem)
 }
 
 float
-scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
+scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 {
 	FILE * fp;
 	char * line = NULL;
@@ -45,7 +45,7 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 
 	rewind(fp);
 	// allocate elements
-	Elem* aElems = (Elem*) calloc(nElems, sizeof(Elem) );
+	SElement* aElems = (SElement*) calloc(nElems, sizeof(SElement) );
 
 	uint iElem = 0;
 	for(; iElem < nElems; iElem++)
@@ -115,7 +115,7 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 }
 
 void
-getComponents(const Elem* aElems, uint nElems,
+getComponents(const SElement* aElems, uint nElems,
 		uint** ppSpeakers, uint* pnSpeakers,
 		uint** ppMics, uint* pnMics)
 {

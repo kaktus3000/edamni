@@ -1,5 +1,6 @@
 #include <xmmintrin.h>
 #include <stdlib.h>
+#include <memory.h>
 #include "common.h"
 #include "kernel.h"
 
@@ -8,10 +9,6 @@
 void
 prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 {
-	// the factor to calculate the velocity from the integrated pressure difference
-	pArray->m_fVelocityFactor = pSsettings->m_fDeltaT / (pSsettings->m_fDensity * pSsettings->m_fDeltaX);
-
-
 	// allocate memory for pressure elements and corresponding factors
 
 	// has to be one element longer than needed
@@ -29,7 +26,11 @@ prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 void
 clearArrays(SKernelArray* pArray)
 {
+	float** apfArrays[4] = {&pArray->m_pfPressureElements, &pArray->m_pfPressureFactorsLeft, &pArray->m_pfPressureFactorsRight, &pArray->m_pfPressureDifferences};
 
+	uint iArray = 0;
+	for(; iArray < 4; iArray++)
+		memset(apfArrays[iArray], 0, pArray->m_nPressure4Tuples * sizeof(__m128));
 }
 
 void
@@ -46,17 +47,22 @@ simulate(SKernelArray* pArray)
 		{
 			uint uiTupleOffset = 4 * iTuple + OFFSET;
 
+			//get previous pressure result
 			const __m128 v4fLastPressure = _mm_load_ps(pArray->m_pfPressureElements + uiTupleOffset);
 
+			// get previous pressure differences
 			const __m128 v4fPressureDifferencesRight = _mm_load_ps (pArray->m_pfPressureDifferences + uiTupleOffset );
 			const __m128 v4fPressureDifferencesLeft  = _mm_loadu_ps(pArray->m_pfPressureDifferences + uiTupleOffset - 1);
 
+			// get constant pressure factors
 			const __m128 v4fPressureFactorsRight = _mm_load_ps(pArray->m_pfPressureFactorsRight + uiTupleOffset );
 			const __m128 v4fPressureFactorsLeft  = _mm_load_ps(pArray->m_pfPressureFactorsLeft  + uiTupleOffset );
 
+			// calculate delta pressures
 			const __m128 v4fDeltaRight = _mm_mul_ps(v4fPressureDifferencesRight, v4fPressureFactorsRight);
 			const __m128 v4fDeltaLeft  = _mm_mul_ps(v4fPressureDifferencesLeft , v4fPressureFactorsLeft);
 
+			// integrate pressure and save
 			_mm_store_ps(pArray->m_pfPressureElements + uiTupleOffset, _mm_add_ps(_mm_add_ps(v4fLastPressure, v4fDeltaRight), v4fDeltaLeft) );
 		}
 
