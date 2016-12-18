@@ -11,10 +11,16 @@
 
 typedef struct
 {
+	// velocity damping
     float m_fDamping;
+    // cross-section area
     float m_fArea;
+    // no connection to prior element?
     uint m_bBreak;
+    // part of horn geometry?
     uint m_bGeometry;
+
+    float m_fInfiniteDamping;
 
     // link syntax:
     //   -1: no link

@@ -75,6 +75,9 @@ scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems)
 		case 'd':
 			sscanf(line, "d %f", &aElems[iElem].m_fDamping);
 			break;
+		case 'i':
+			sscanf(line, "i %f", &aElems[iElem].m_fInfiniteDamping);
+			break;
 		case 'A':
 			sscanf(line, "A %f", &aElems[iElem].m_fArea);
 			break;
