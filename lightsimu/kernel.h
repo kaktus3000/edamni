@@ -8,10 +8,6 @@ typedef struct
 	uint m_nElements;
 	uint m_nPressure4Tuples;
 
-	// the factor to calculate the velocity from the integrated pressure difference
-	float m_fVelocityFactor;
-
-
 	// pressure element list and number of elements
 	float* m_pfPressureElements;
 	uint m_nPressureElements;

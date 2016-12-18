@@ -171,7 +171,7 @@ for strSpeaker in dSpeakers:
 # speed of sound
 lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
 # acoustic damping
-lfTimeConstraints.append(g_fDensity / numpy.amax(afVelocityDamping) )
+lfTimeConstraints.append(g_fDensity / max(numpy.amax(afVelocityDamping), 1.0) )
 
 # iterate speakers
 for strSpeaker in dSpeakers.keys():

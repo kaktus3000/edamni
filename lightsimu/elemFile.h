@@ -33,10 +33,10 @@ typedef struct
 
     // microphone definition. measures pressure of this pressure element
     char* m_strMic;
-} Elem;
+} SElement;
 
-float scanElemFile(const char* strFilename, Elem** ppElems, uint* pnElems);
-void getComponents(const Elem* aElems, uint nElems, uint** ppSpeakers, uint* pnSpeakers, uint** ppMics, uint* pnMics);
+float scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems);
+void getComponents(const SElement* aElems, uint nElems, uint** ppSpeakers, uint* pnSpeakers, uint** ppMics, uint* pnMics);
 
 
 #endif /* ELEMFILE_H_ */
