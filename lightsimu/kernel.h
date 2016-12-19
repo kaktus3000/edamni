@@ -2,8 +2,9 @@
 #define KERNEL_KERNEL_H_
 
 #include "common.h"
+#include <xmmintrin.h>
 
-#define OFFSET 4
+#define OFFSET (sizeof(__m128) / sizeof(float))
 
 typedef struct
 {

@@ -11,20 +11,22 @@ prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 
 	// has to be one element longer than needed
 	// shifted one tuple to the right to enable reading element -1
-	pArray->m_nPressure4Tuples = (pArray->m_nElements + OFFSET) / 4 + 1;
+	pArray->m_nPressure4Tuples = (pArray->m_nElements) / 4 + 2;
 
-	float** apfArrays[4] = {&pArray->m_pfPressureElements, &pArray->m_pfPressureFactorsLeft, &pArray->m_pfPressureFactorsRight, &pArray->m_pfPressureDifferences};
+	float** appfArrays[4] = {&pArray->m_pfPressureElements, &pArray->m_pfPressureFactorsLeft, &pArray->m_pfPressureFactorsRight, &pArray->m_pfPressureDifferences};
 
 	uint iArray = 0;
 	for(; iArray < 4; iArray++)
-		posix_memalign((void**)apfArrays[iArray], sizeof(__m128), pArray->m_nPressure4Tuples * sizeof(__m128));
-
+	{
+		posix_memalign((void**)appfArrays[iArray], sizeof(__m128), pArray->m_nPressure4Tuples * sizeof(__m128));
+		//memset(*(appfArrays[iArray]), 0, pArray->m_nPressure4Tuples * sizeof(__m128));
+	}
 }
 
 void
 clearArrays(SKernelArray* pArray)
 {
-	float* apfArrays[4] = {pArray->m_pfPressureElements, pArray->m_pfPressureFactorsLeft, pArray->m_pfPressureFactorsRight, pArray->m_pfPressureDifferences};
+	float* apfArrays[4] = {pArray->m_pfPressureElements, pArray->m_pfPressureDifferences};
 
 	uint iArray = 0;
 	for(; iArray < 4; iArray++)
@@ -46,10 +48,10 @@ simulate(SKernelArray* pArray)
 	//simulate one time step
 
 	// calculate pressures
-	uint iTuple = 0;
+	uint iTuple = 1;
 	for(; iTuple < pArray->m_nPressure4Tuples - 1; iTuple++)
 	{
-		uint uiTupleOffset = 4 * iTuple + OFFSET;
+		uint uiTupleOffset = 4 * iTuple;
 
 		//get previous pressure result
 		const __m128 v4fLastPressure = _mm_load_ps(pArray->m_pfPressureElements + uiTupleOffset);
@@ -82,10 +84,10 @@ simulate(SKernelArray* pArray)
 		pArray->m_pfLinkPressure[uiLink] = pArray->m_pfPressureElements[OFFSET + pArray->m_piLinkSlave[uiLink] ] = pArray->m_pfPressureElements[OFFSET + pArray->m_piLinkMaster[uiLink] ];
 
 	// calculate pressure differences
-	iTuple = 0;
+	iTuple = 1;
 	for(; iTuple < pArray->m_nPressure4Tuples - 1; iTuple++)
 	{
-		uint uiTupleOffset = 4 * iTuple + OFFSET;
+		uint uiTupleOffset = 4 * iTuple;
 
 		const __m128 v4fLeftPressure  = _mm_load_ps (pArray->m_pfPressureElements + uiTupleOffset);
 		const __m128 v4fRightPressure = _mm_loadu_ps(pArray->m_pfPressureElements + uiTupleOffset + 1);
