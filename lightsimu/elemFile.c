@@ -8,6 +8,7 @@ void
 initializeElem(SElement* elem)
 {
 	elem->m_fDamping = 0;
+	elem->m_fInfiniteDamping = 1.0f;
 	elem->m_fArea = 0;
 	elem->m_bBreak = FALSE;
 	elem->m_bGeometry = FALSE;

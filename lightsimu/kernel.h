@@ -19,6 +19,12 @@ typedef struct
 	float* m_pfPressureFactorsLeft;
 	float* m_pfPressureFactorsRight;
 
+	// velocity damping coefficients
+	float* m_pfDampingCoefficients;
+
+	// infinity damping coefficients
+	float* m_pfInfinityCoefficients;
+
 	// some elements may have a link to another element
 	uint* m_piLinkMaster;
 	uint* m_piLinkSlave;

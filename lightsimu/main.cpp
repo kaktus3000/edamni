@@ -51,8 +51,13 @@ void runThread(float fFreq,
 	memcpy(kernelArray.m_pfPressureFactorsLeft, pArray->m_pfPressureFactorsLeft, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
 	memcpy(kernelArray.m_pfPressureFactorsRight, pArray->m_pfPressureFactorsRight, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
 
-	//infinity damping coefficients
+	// damping coefficients
+	memcpy(kernelArray.m_pfDampingCoefficients, pArray->m_pfDampingCoefficients, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
 
+	// infinity damping coefficients
+	memcpy(kernelArray.m_pfInfinityCoefficients, pArray->m_pfInfinityCoefficients, kernelArray.m_nPressure4Tuples * 4 * sizeof(float));
+
+	// links
 	memcpy(kernelArray.m_piLinkMaster, pArray->m_piLinkMaster, kernelArray.m_nLinks * sizeof(uint));
 	memcpy(kernelArray.m_piLinkSlave, pArray->m_piLinkSlave, kernelArray.m_nLinks * sizeof(uint));
 
@@ -93,6 +98,7 @@ void runThread(float fFreq,
 		simulate(&kernelArray);
 
 		/*
+
 		for(uint uiElem = OFFSET; uiElem < kernelArray.m_nElements + OFFSET; uiElem++)
 			std::cout << kernelArray.m_pfPressureElements[uiElem] << "\t";
 		std::cout << "\n";
@@ -102,9 +108,9 @@ void runThread(float fFreq,
 
 		if(uiTimeStep > 2)
 			exit(0);
-		*/
 
-		int iStorageStep = (int)uiTimeStep > (int)nLeadSteps;
+		 */
+		int iStorageStep = (int)uiTimeStep - (int)nLeadSteps;
 		if( iStorageStep > 0)
 			for (uint uiMic = 0; uiMic < nMics; uiMic++)
 			{
@@ -121,15 +127,22 @@ void runThread(float fFreq,
 	for (uint uiMic = 0; uiMic < nMics; uiMic++)
 	{
 		for (uint uiSample = 0; uiSample < nTimesteps; ++uiSample)
+		{
 			pfSumData[uiSample] += ppfMicMeasurements[uiMic][uiSample];
+			//std::cout << pfSumData[uiSample] << "\t";
+		}
 
 		pSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
 	}
 	pSPLs[nMics] = spl(rms(pfSumData, nTimesteps - nLeadSteps), pSettings);
+	std::cout << pSPLs[nMics] << "\n";
 
 	for (uint uiMic = 0; uiMic < nMics; uiMic++)
 		free(ppfMicMeasurements[uiMic]);
 	free(pfSumData);
+
+	std::cout << ".";
+	std::cout.flush();
 }
 
 void
@@ -246,10 +259,10 @@ main(int argc, char** argv)
 		SElement elem = pElems[iElem];
 
 		// collect infinity elements
-		//kernelArray.m_[iElem] = elem.m_;
+		kernelArray.m_pfInfinityCoefficients[OFFSET + iElem] = elem.m_fInfiniteDamping;
 
 		// collect damping coefficients
-		//kernelArray.m_pfDamping = elem.m_fDamping;
+		kernelArray.m_pfDampingCoefficients[OFFSET + iElem] = elem.m_fDamping * simuSettings.m_fDeltaX * simuSettings.m_fVelocityFactor;
 
 		float fNegArea = pElems[iElem - 1].m_fArea;
 		float fPosArea = elem.m_fArea;
@@ -270,7 +283,7 @@ main(int argc, char** argv)
 		kernelArray.m_pfPressureFactorsLeft[OFFSET + iElem ] = fNegArea * fFactor;
 		kernelArray.m_pfPressureFactorsRight[OFFSET + iElem ] = -fPosArea * fFactor;
 
-		std::cout << "\t" << fNegArea * fFactor;
+		//std::cout << "\t" << fNegArea * fFactor;
 
 		// take care of links
 		/*
@@ -319,10 +332,13 @@ main(int argc, char** argv)
 
 		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults);
 		ppfThreadResults[uiFreq] = pfResults;
+		std::cout << *pfResults << "\n";
 	}
 
 	for(uint uiThread = 0; uiThread < vThreads.size(); uiThread++)
 		vThreads[uiThread].join();
+
+	std::cout << "\n";
 
 	// Wait for all threads
 	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)

@@ -13,10 +13,15 @@ prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 	// shifted one tuple to the right to enable reading element -1
 	pArray->m_nPressure4Tuples = (pArray->m_nElements) / 4 + 2;
 
-	float** appfArrays[4] = {&pArray->m_pfPressureElements, &pArray->m_pfPressureFactorsLeft, &pArray->m_pfPressureFactorsRight, &pArray->m_pfPressureDifferences};
+	float** appfArrays[6] = {&pArray->m_pfPressureElements,
+			&pArray->m_pfPressureFactorsLeft, &pArray->m_pfPressureFactorsRight,
+			&pArray->m_pfPressureDifferences,
+			&pArray->m_pfDampingCoefficients,
+			&pArray->m_pfInfinityCoefficients,
+	};
 
 	uint iArray = 0;
-	for(; iArray < 4; iArray++)
+	for(; iArray < 6; iArray++)
 	{
 		posix_memalign((void**)appfArrays[iArray], sizeof(__m128), pArray->m_nPressure4Tuples * sizeof(__m128));
 		//memset(*(appfArrays[iArray]), 0, pArray->m_nPressure4Tuples * sizeof(__m128));
@@ -26,10 +31,10 @@ prepareArrays(SKernelArray* pArray, SSimuSettings* pSsettings)
 void
 clearArrays(SKernelArray* pArray)
 {
-	float* apfArrays[4] = {pArray->m_pfPressureElements, pArray->m_pfPressureDifferences};
+	float* apfArrays[2] = {pArray->m_pfPressureElements, pArray->m_pfPressureDifferences};
 
 	uint iArray = 0;
-	for(; iArray < 4; iArray++)
+	for(; iArray < 2; iArray++)
 		memset(apfArrays[iArray], 0, pArray->m_nPressure4Tuples * sizeof(__m128));
 }
 
@@ -40,6 +45,8 @@ freeArrays(SKernelArray* pArray)
 	free(pArray->m_pfPressureFactorsLeft);
 	free(pArray->m_pfPressureFactorsRight);
 	free(pArray->m_pfPressureDifferences);
+	free(pArray->m_pfDampingCoefficients);
+	free(pArray->m_pfInfinityCoefficients);
 }
 
 void
@@ -68,8 +75,14 @@ simulate(SKernelArray* pArray)
 		const __m128 v4fDeltaRight = _mm_mul_ps(v4fPressureDifferencesRight, v4fPressureFactorsRight);
 		const __m128 v4fDeltaLeft  = _mm_mul_ps(v4fPressureDifferencesLeft , v4fPressureFactorsLeft);
 
+		__m128 v4fCurrentPressure = _mm_add_ps(_mm_add_ps(v4fLastPressure, v4fDeltaRight), v4fDeltaLeft);
+
+		// apply damping to "infinity" elements
+		const __m128 v4fInfinityCoefficients = _mm_load_ps (pArray->m_pfInfinityCoefficients + uiTupleOffset);
+		v4fCurrentPressure = _mm_mul_ps(v4fCurrentPressure, v4fInfinityCoefficients);
+
 		// integrate pressure and save
-		_mm_store_ps(pArray->m_pfPressureElements + uiTupleOffset, _mm_add_ps(_mm_add_ps(v4fLastPressure, v4fDeltaRight), v4fDeltaLeft) );
+		_mm_store_ps(pArray->m_pfPressureElements + uiTupleOffset, v4fCurrentPressure);
 	}
 
 	// update pressure element link masters
@@ -95,6 +108,18 @@ simulate(SKernelArray* pArray)
 
 		const __m128 v4fDelta = _mm_sub_ps(v4fLeftPressure, v4fRightPressure);
 
-		_mm_store_ps(pArray->m_pfPressureDifferences + uiTupleOffset, _mm_add_ps(v4fLastPressureDifference, v4fDelta));
+		__m128 v4fCurrentPressureDifference = _mm_add_ps(v4fLastPressureDifference, v4fDelta);
+
+		// apply damping to the velocities (in the form of pressure differences)
+		const __m128 v4fDampingCoefficients = _mm_load_ps (pArray->m_pfDampingCoefficients + uiTupleOffset);
+		v4fCurrentPressureDifference = _mm_sub_ps(v4fCurrentPressureDifference, _mm_mul_ps( v4fCurrentPressureDifference, v4fDampingCoefficients));
+
+		// apply damping to "infinity" elements
+		const __m128 v4fInfinityCoefficients = _mm_load_ps (pArray->m_pfInfinityCoefficients + uiTupleOffset);
+		v4fCurrentPressureDifference = _mm_mul_ps(v4fCurrentPressureDifference, v4fInfinityCoefficients);
+
+		// save result
+		_mm_store_ps(pArray->m_pfPressureDifferences + uiTupleOffset, v4fCurrentPressureDifference);
 	}
+
 }

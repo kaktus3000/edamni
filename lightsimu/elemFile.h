@@ -19,7 +19,7 @@ typedef struct
     uint m_bBreak;
     // part of horn geometry?
     uint m_bGeometry;
-
+    // pressure and velocity drain factor to simulate infinity
     float m_fInfiniteDamping;
 
     // link syntax:
