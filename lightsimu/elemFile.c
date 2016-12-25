@@ -30,7 +30,7 @@ float
 scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 {
 	FILE * fp;
-	char * line = NULL;
+	char * pcLine = NULL;
 	size_t len = 0;
 	size_t read;
 
@@ -39,8 +39,8 @@ scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 		exit(EXIT_FAILURE);
 
 	uint nElems = 0;
-	while ((read = getline(&line, &len, fp)) != -1) {
-		if(strncmp(line, "e", 1) == 0)
+	while ((read = getline(&pcLine, &len, fp)) != -1) {
+		if(strncmp(pcLine, "e", 1) == 0)
 			nElems++;
 	}
 
@@ -57,16 +57,16 @@ scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 
 	char buf[100];
 
-	while ((read = getline(&line, &len, fp)) != -1) {
-		if(strlen(line) < 1)
+	while ((read = getline(&pcLine, &len, fp)) != -1) {
+		if(strlen(pcLine) < 1)
 			continue;
 
-		switch(line[0])
+		switch(pcLine[0])
 		{
 		case 'e':
 		{
 			uint i;
-			sscanf(line, "e %d", &i);
+			sscanf(pcLine, "e %d", &i);
 
 			iElem++;
 			if(i != iElem)
@@ -74,27 +74,27 @@ scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 			break;
 		}
 		case 'd':
-			sscanf(line, "d %f", &aElems[iElem].m_fDamping);
+			sscanf(pcLine, "d %f", &aElems[iElem].m_fDamping);
 			break;
 		case 'i':
-			sscanf(line, "i %f", &aElems[iElem].m_fInfiniteDamping);
+			sscanf(pcLine, "i %f", &aElems[iElem].m_fInfiniteDamping);
 			break;
 		case 'A':
-			sscanf(line, "A %f", &aElems[iElem].m_fArea);
+			sscanf(pcLine, "A %f", &aElems[iElem].m_fArea);
 			break;
 		case 'l':
-			sscanf(line, "l %d", &aElems[iElem].m_iLink);
+			sscanf(pcLine, "l %d", &aElems[iElem].m_iLink);
 			break;
 		case 'b':
 			aElems[iElem].m_bBreak = TRUE;
 			break;
 		case 's':
-			sscanf(line, "s %s", buf);
+			sscanf(pcLine, "s %s", buf);
 			buf[strlen(buf)-1] = 0;
 			aElems[iElem].m_strSpeaker = strdup(buf + 1);
 			break;
 		case 'm':
-			sscanf(line, "m %s", buf);
+			sscanf(pcLine, "m %s", buf);
 			buf[strlen(buf)-1] = 0;
 			aElems[iElem].m_strMic = strdup(buf + 1);
 			break;
@@ -102,16 +102,18 @@ scanElemFile(const char* strFilename, SElement** ppElems, uint* pnElems)
 			aElems[iElem].m_bGeometry = TRUE;
 			break;
 		case 'x':
-			sscanf(line, "x %f", &fDeltaX);
+			sscanf(pcLine, "x %f", &fDeltaX);
 			break;
 		case '#':
 			break;
 		default:
-			line[strlen(line) - 1] = 0;
-			printf("scanFile: ERROR line %s not recognized\n", line);
+			pcLine[strlen(pcLine) - 1] = 0;
+			printf("scanFile: ERROR line %s not recognized\n", pcLine);
 		}
 	}
 	fclose(fp);
+	free(pcLine);
+
 	*ppElems = aElems;
 	*pnElems = nElems;
 
@@ -135,13 +137,13 @@ getComponents(const SElement* aElems, uint nElems,
 		if(aElems[iElem].m_strSpeaker )
 		{
 			(*pnSpeakers)++;
-			*ppSpeakers = (uint*) realloc(*ppSpeakers, *pnSpeakers);
+			*ppSpeakers = (uint*) realloc(*ppSpeakers, *pnSpeakers * sizeof(uint));
 			(*ppSpeakers)[*pnSpeakers - 1] = iElem;
 		}
 		if(aElems[iElem].m_strMic )
 		{
 			(*pnMics)++;
-			*ppMics = (uint*) realloc(*ppMics, *pnMics);
+			*ppMics = (uint*) realloc(*ppMics, *pnMics * sizeof(uint));
 			(*ppMics)[*pnMics - 1] = iElem;
 		}
 	}

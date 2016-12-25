@@ -61,6 +61,8 @@ void runThread(float fFreq,
 	memcpy(kernelArray.m_piLinkMaster, pArray->m_piLinkMaster, kernelArray.m_nLinks * sizeof(uint));
 	memcpy(kernelArray.m_piLinkSlave, pArray->m_piLinkSlave, kernelArray.m_nLinks * sizeof(uint));
 
+	clearArrays(&kernelArray);
+
 	// calculate number of timesteps to simulate
 	float fSpeed = 340.0f;
 	float fFlightTime = kernelArray.m_nElements * pSettings->m_fDeltaX / fSpeed;
@@ -135,10 +137,10 @@ void runThread(float fFreq,
 		pSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
 	}
 	pSPLs[nMics] = spl(rms(pfSumData, nTimesteps - nLeadSteps), pSettings);
-	std::cout << pSPLs[nMics] << "\n";
 
 	for (uint uiMic = 0; uiMic < nMics; uiMic++)
 		free(ppfMicMeasurements[uiMic]);
+	free(ppfMicMeasurements);
 	free(pfSumData);
 
 	std::cout << ".";
@@ -332,7 +334,6 @@ main(int argc, char** argv)
 
 		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults);
 		ppfThreadResults[uiFreq] = pfResults;
-		std::cout << *pfResults << "\n";
 	}
 
 	for(uint uiThread = 0; uiThread < vThreads.size(); uiThread++)
@@ -344,8 +345,6 @@ main(int argc, char** argv)
 	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)
 	{
 		float fFreq = vfFreqs[uiFreq];
-
-
 		std::cout << fFreq;
 
 		// now proceed with calculation results
@@ -355,6 +354,25 @@ main(int argc, char** argv)
 		}
 
 		std::cout << "\n";
+
+		// free buffer
+		free(ppfThreadResults[uiFreq]);
 	}
+
+	// free buffers
+	free(pSpeakers);
+	free(ppfThreadResults);
+
+	free(pSpeakerElems);
+	free(pMics);
+
+	for(uint iElem = 1; iElem < nElems; iElem++)
+	{
+		free(pElems[iElem].m_strMic);
+		free(pElems[iElem].m_strSpeaker);
+	}
+	free(pElems);
+
+	freeArrays(&kernelArray);
 }
 

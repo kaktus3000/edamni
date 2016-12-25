@@ -11,6 +11,12 @@ ScanINI::ScanINI(std::ifstream& iniFile)
 
 	size_t nLines = 0;
 
+	if(iniFile.fail())
+	{
+		std::cout << "ERROR parsing ini file\n";
+		return;
+	}
+
 	while(!iniFile.eof())
 	{
 		nLines++;
