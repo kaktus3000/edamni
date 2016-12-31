@@ -12,6 +12,7 @@ extern "C"
 #include "kernel.h"
 #include "elemFile.h"
 #include "speaker.h"
+#include "writeResult.h"
 }
 
 #include "scanINI.h"
@@ -346,57 +347,103 @@ main(int argc, char** argv)
 		uiPos = uiEnd+1;
 	}
 
-	float** ppfThreadResults = (float**)calloc(vfFreqs.size(), sizeof(float*));
+	const uint nFreqs = vfFreqs.size();
+	float* pfFreqs = (float*) calloc(nFreqs, sizeof(float));
+
+	for(uint uiFreq = 0; uiFreq < nFreqs; uiFreq ++)
+		pfFreqs[uiFreq] = vfFreqs[uiFreq];
+
+	float** ppfThreadResults = (float**)calloc(nMics + 1, sizeof(float*));
+	for(uint uiMic = 0; uiMic < nMics + 1; uiMic++)
+		ppfThreadResults[uiMic] = (float*)calloc(nFreqs, sizeof(float));
 
 	float* pfImpedances = (float*)calloc(vfFreqs.size(), sizeof(float));
 
 	// spawn calculation threads
 	std::vector<std::thread> vThreads;
+	std::vector<float*> vpfResults;
 
-	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)
+	for(uint uiFreq = 0; uiFreq < nFreqs; uiFreq++)
 	{
-		float fFreq = vfFreqs[uiFreq];
+		float fFreq = pfFreqs[uiFreq];
 		// start simulation
 		float* pfResults = (float*)calloc(nMics + 1, sizeof(float));
-		float fImpedance ;
+		vpfResults.push_back(pfResults);
 
 #ifdef DEBUGBUILD
-		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &fImpedance);
+		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]) );
 #else
-		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &fImpedance) );
+		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]) ) );
 #endif
-		//exit(0);
-		ppfThreadResults[uiFreq] = pfResults;
-		pfImpedances[uiFreq] = fImpedance;
 	}
 
 	// Wait for all threads
 	for(uint uiThread = 0; uiThread < vThreads.size(); uiThread++)
 		vThreads[uiThread].join();
 
-	std::cout << "\n";
-
-	for(uint uiFreq = 0; uiFreq < vfFreqs.size(); uiFreq++)
+	for(uint uiFreq = 0; uiFreq < nFreqs; uiFreq++)
 	{
-		float fFreq = vfFreqs[uiFreq];
-		std::cout << fFreq;
+		float* pfResults = vpfResults[uiFreq];
+		for(uint uiMic = 0; uiMic < nMics + 1; uiMic++)
+			ppfThreadResults[uiMic][uiFreq] = pfResults[uiMic];
 
-		// now proceed with calculation results
-		for (uint uiMic = 0; uiMic < nMics + 1; uiMic++)
-		{
-			std::cout << "\t" << ppfThreadResults[uiFreq][uiMic];
-		}
-
-		std::cout << "\t" << pfImpedances[uiFreq];
-
-		std::cout << "\n";
-
-		// free buffer
-		free(ppfThreadResults[uiFreq]);
+		free(pfResults);
 	}
+
+	std::string strOutFile(inputScanner.getKey("general", "output_file"));
+	std::cout << "+\n" << "writing output to " << strOutFile << "\n";
+
+	// write XML output
+	std::ofstream hXML(strBaseDir + strOutFile);
+
+	hXML << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<simu_output>\n";
+
+	for (uint uiMic = 0; uiMic < nMics; uiMic++)
+	{
+		uint uiMicElem = pMics[uiMic];
+		std::string strMic(pElems[uiMicElem].m_strMic);
+		std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
+
+		std::cout << "writing " << strMicFile << "\n";
+		writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[uiMic]), 1, nFreqs);
+
+		hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
+	}
+
+	//write sum mic
+	{
+		std::string strMic("spl_sum");
+		std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
+
+		std::cout << "writing " << strMicFile << "\n";
+		writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[nMics]), 1, nFreqs);
+
+		hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
+	}
+
+	for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
+	{
+		// get speaker name
+		uint uiSpeakerElem = pSpeakerElems[iSpeaker];
+		std::string strSpeaker(pElems[uiSpeakerElem].m_strSpeaker);
+		std::string strSpeakerFile(std::string("imp_") + strSpeaker + std::string(".dat"));
+
+		std::cout << "writing " << strSpeakerFile << "\n";
+		writeTable((strBaseDir + strSpeakerFile).c_str(), pfFreqs, &pfImpedances, 1, nFreqs);
+
+		hXML << "\t<speaker_impedance file=\"" << strSpeakerFile << "\" id=\"" << strSpeaker << "\"/>\n";
+	}
+	hXML << "</simu_output>\n";
+
+	hXML.close();
 
 	// free buffers
 	free(pSpeakers);
+	free(pfFreqs);
+	free(pfImpedances);
+
+	for(uint uiMic = 0; uiMic < nMics + 1; uiMic++)
+		free(ppfThreadResults[uiMic]);
 	free(ppfThreadResults);
 
 	free(pSpeakerElems);
@@ -410,5 +457,7 @@ main(int argc, char** argv)
 	free(pElems);
 
 	freeArrays(&kernelArray);
+
+
 }
 

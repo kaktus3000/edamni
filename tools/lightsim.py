@@ -241,7 +241,7 @@ fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
 n = 50
-n = 10000000
+#n = 10000000
 
 dlSPLs = dict()
 dlImpedances = dict()
@@ -253,7 +253,9 @@ for mic in dMics.keys():
 	dlSPLs[mic] = []
 	
 dlSPLs["spl_sum"] = []
-	
+
+aafProfileSPLs = []
+
 #lfPhase = []
 
 #read parameters needed
@@ -293,6 +295,8 @@ for fFreq in g_afFreqs:
 		
 	# array for linked elements
 	afLinkedPressures = [0] * len(aPressureLinks)
+	
+	npaSummedSquares = npaPressures
 
 	while(not bBreak):
 		fTime = g_fTimeStep * iStep
@@ -378,6 +382,7 @@ for fFreq in g_afFreqs:
 				dMicMeasurements[strMic].append([fTime, npaPressures[iElem]])
 			
 			#save element measurements
+			npaSummedSquares = npaSummedSquares + numpy.square(npaPressures)
 				
 		iStep += 1
 		
@@ -466,12 +471,18 @@ for fFreq in g_afFreqs:
 			
 			numpy.savetxt(g_strDir + strFile, dSpeakerMeasurements[strSpeaker] )
 	
-'''
+	'''
 	#save element measurements
 	signalElem = ET.SubElement(signalElem, "element_output")
 	signalElem.attrib["file"] = g_strPath +
-'''
-			
+	'''
+	npaProfileAmplitudes = numpy.sqrt(npaSummedSquares * (1.0/len(npaSumPressure) ) )
+	npaProfileSPL = 20.0 * numpy.log10(npaProfileAmplitudes /g_fReferencePressure )
+	
+	aafProfileSPLs.append(npaProfileSPL)
+
+numpy.savetxt(g_strDir + "profiles.txt", aafProfileSPLs)
+	
 # save microphone SPL measurements
 for mic in dlSPLs.keys():
 	micElem = ET.SubElement(rootElem, "mic_spl")

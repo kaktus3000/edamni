@@ -133,7 +133,7 @@ def evaluate(params):
 	
 	#cache hit: we ain't got time for that
 	lValues = []
-	for strParam in params:
+	for strParam in g_dParams.keys():
 		fValue = params[strParam][PARAM_CURR]
 		histFile.write(str(fValue) + "\t")
 		lValues.append(fValue)
@@ -174,7 +174,8 @@ def evaluate(params):
 
 	#run simulation
 	
-	fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["python3", "../tools/lightsim.py", "0"])
+	#fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["python3", "../tools/lightsim.py", "0"])
+	fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["../lightsimu/Release/lightsimu"])
 
 	#calculate objective (cost) function for output
 	
@@ -217,8 +218,9 @@ for strParam in g_dParams.keys():
 
 opt_res = opt.differential_evolution(problemFunction, bounds)
 
-print(fromProblemFunction(opt_res.x) )
-exit()
+g_dOptimumParams = fromProblemFunction(opt_res.x)
+
+'''
 
 #optimization loop
 g_dOptimumParams = dict(g_dParams)
@@ -294,6 +296,8 @@ while not bBreak:
 					break
 
 # output optimized design
+
+'''
 evaluate(g_dOptimumParams)
 print("optimizer: final optimum", g_dOptimumParams)
 writeModifiedXML(g_dOptimumParams, g_strHornFile + "_opt.xml")

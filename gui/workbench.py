@@ -881,7 +881,7 @@ def onSimulationButtonClick():
 						 'output_file' : g_strFile + ".out"}
 	 
 	strSignalType = "sine"
-	lfFreqs = numpy.logspace(numpy.log10(10), numpy.log10(1000), num=32)
+	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=128)
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
@@ -921,7 +921,8 @@ def onSimulationButtonClick():
 	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
 		
-	call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim.py", "1"])
+	#call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim.py", "1"])
+	call(["python3", "../tools/run_simulation.py", strSimuInput, "../lightsimu/Release/lightsimu"])
 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
