@@ -65,7 +65,9 @@ def checkCrossSections(hornSections):
 						if (key1 in sectionDict) and (key2 in neighborSectionDict):
 							crossSect1 = sectionDict[key1]
 							crossSect2 = neighborSectionDict[key2]
-							if crossSect1 != crossSect2:
+							
+							fComp = crossSect1 / crossSect2
+							if fComp > 1.01 or fComp < .99:
 								print("WARNING: cross-sections do not match.", sectionID, key1, "->", neighborID, key2)
 	#								else:
 	#									print("cross-sections match!")

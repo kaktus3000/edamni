@@ -137,6 +137,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	plt.savefig(strPlotPath)
 
 	plt.close()
+	
 
 	t_mic = None
 
@@ -184,7 +185,12 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	fBest = float("inf")
 	fBestSPL = float("nan")
 	fBestLower = float("nan")
-	fBestHigher = float("nan")
+	fBestDeviation = float("nan")
+	
+	fBestCostSPL = float("nan")
+	fBestCostLower = float("nan")
+	fBestCostDeviation = float("nan")
+	#fBestHigher = float("nan")
 
 	'''
 	for spl in range(t_spl - 10, t_spl + 10):
@@ -200,28 +206,66 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	#linearResponseCost(daMicSPLs[t_mic], fBestSPL, fBestLower, fBestHigher)
 	#print(dMatCosts)
 	'''
-
+	
 	npaSPLs = numpy.transpose(daMicSPLs[t_mic])[1]
+	npaFreqs = numpy.transpose(daMicSPLs[t_mic])[0]
 	
-	fMeanSPL = numpy.mean(npaSPLs)
-	k_spl = abs(fMeanSPL - t_spl) * k_spec_spl
+	for iLower in range(len(npaSPLs)):
+		npaTestSPLs = npaSPLs[iLower:]
+		fLower = npaFreqs[iLower]
+		
+		k_low = numpy.log10(fLower / t_edge_low) * k_spec_decade
+		k_low = max(k_low, 0)
+		
+		fMeanSPL = numpy.mean(npaTestSPLs)
+		k_spl = abs(fMeanSPL - t_spl) * k_spec_spl
 	
-	npaDeviation = numpy.fabs(npaSPLs - t_spl)
-	fMaxDeviation = numpy.amax(npaDeviation)
-	k_linearity = fMaxDeviation * k_spec_linearity
+		npaDeviation = numpy.fabs(npaTestSPLs - t_spl)
+		fMaxDeviation = numpy.amax(npaDeviation)
+		k_linearity = fMaxDeviation * k_spec_linearity
+		
+		fCost = k_low + k_spl + k_linearity
+		
+		if fCost <= fBest:
+			fBest = fCost
+			fBestSPL = fMeanSPL
+			fBestLower = fLower
+			fBestDeviation = fMaxDeviation
+			
+			fBestCostSPL = k_spl
+			fBestCostLower = k_low
+			fBestCostDeviation = k_linearity
+		
 	
-	print("run simulation: mean spl", fMeanSPL, "max deviation", fMaxDeviation)
-	
-	fBest = k_spl + k_linearity
 
 	k_total = fBest + dMatCosts["cost_total"]
 
-	print("run simulation: material cost", dMatCosts["cost_total"], "; panel thickness", dMatCosts["panel_thickness"], "cube edge length", dMatCosts["edge_length"])
-
-#	print("run simulation: frequency response cost (", t_mic, ")", fBest, "lower edge", fBestLower, "upper edge", fBestHigher, "mean spl", fBestSPL)
-
-
 	print("run simulation: total cost", k_total)
+	
+	strDesignReportFile = g_strSimuOutputFile + "_design_report.txt"
+	
+	hDesignReportFile = open(strDesignReportFile, "wt")
+	hDesignReportFile.write("=== DESIGN REPORT ===\n\n")
+	
+	hDesignReportFile.write("Resonator Volume\t" + str(dMatCosts["air_volume"]*1e3) + "\tl\n")
+	hDesignReportFile.write("Resonator Surface Area\t" + str(dMatCosts["surface_area"]) + "\tm^2\n")
+	hDesignReportFile.write("Panel Thickness\t" + str(dMatCosts["panel_thickness"]*1e3) + "\tmm\n")
+
+	hDesignReportFile.write("Enclosure Cost\t" + str(dMatCosts["cost_enclosure"]) + "\t$\n")
+	hDesignReportFile.write("Resonator Surface Cost\t" + str(dMatCosts["cost_surface"]) + "\t$\n")
+	hDesignReportFile.write("Resonator Total Cost\t" + str(dMatCosts["cost_total"]) + "\t$\n")
+	
+	hDesignReportFile.write("Lower Edge\t" + str(fBestLower) + "\tHz\t" + str(k_spec_decade) + "\t$/decade\t" + str(fBestCostLower) + "$\n")
+	hDesignReportFile.write("Mean SPL\t" + str(fBestSPL) + "\tdB\t" + str(k_spec_spl) + "\t$/dB\t" + str(fBestCostSPL) + "$\n")
+	hDesignReportFile.write("Max SPL Deviation\t" + str(fBestDeviation) + "\tdB\t" + str(k_spec_linearity) + "\t$/dB\t" + str(fBestCostDeviation) + "$\n")
+	
+	hDesignReportFile.write("SPL Total Cost\t" + str(fBest) + "\t$\n")
+	
+	hDesignReportFile.write("Design Total Cost\t" + str(k_total) + "\t$\n")
+	
+	hDesignReportFile.close()
+	
+	#hDesignReportFile.write("Mean SPL\t" + str(fMeanSPL) + "\t$\n")
 	
 	return k_total
 

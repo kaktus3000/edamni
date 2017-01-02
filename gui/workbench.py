@@ -310,7 +310,6 @@ g_dElements = dict(
 )
 
 g_dAcousticElements = dict()
-g_iIDCounter = 1
 
 class Element:
 	def __init__(self, strType, lValues, frame, lButtons, handler):
@@ -571,16 +570,20 @@ def addElementToCanvas(*args):
 	print("element type is " + strElemType)
 
 	#create element in global dictionary
-	global g_iIDCounter
-	strElemID = strElemType + str(g_iIDCounter)
-
-	g_iIDCounter += 1
-
+	iTestID = 1
+	strElemID = strElemType + "1"
+	
+	while strElemID in g_dAcousticElements:
+		strElemID = strElemType + str(iTestID)
+		iTestID += 1
+		
 	elementFrame = ttk.Frame(acuCircuitFrame)
 
 	canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
 
-	movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
+	strBitmapFile = "@xbm/" + elemType.get().lower() + "0.xbm"
+	print(strBitmapFile)
+	movingLabel = tk.Label(elementFrame, bitmap=strBitmapFile, text = elemType.get())
 	movingLabel.grid(row = 1, column = 1)
 	#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
 	#add connection buttons
@@ -598,7 +601,11 @@ def addElementToCanvas(*args):
 	#add element to global dictionary
 	#(strType, lValues, frame, lButtons):
 	lValues = [0] * (len(g_dElements[strElemType]) - 1)
+	
+	print("adding element", strElemID)
 	g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons, myHandler)
+	
+	return strElemID
 
 #callbacks for buttons
 def addAcousticElement(*args):
@@ -641,7 +648,6 @@ def loadDefinition(strFile):
 	g_dSpeakers.clear()
 	
 	print("loading from file", strFile ,"...")
-	global g_iIDCounter
 	tree = ET.parse(strFile)
 	root = tree.getroot()
 
@@ -653,6 +659,8 @@ def loadDefinition(strFile):
 	#preliminary links
 	#id1 -> (id2, button1)
 	dLinks = dict()
+	
+	dRename = dict()
 
 	for element in root:
 		#check if this is speaker data
@@ -666,22 +674,16 @@ def loadDefinition(strFile):
 		#get type of element
 		#capitalize key
 		strElementType = element.tag[0].upper() + element.tag[1:]
-		#get id of element
-		strElementID = element.get("id")
-		#remove everything but the id number
-		strElementIDNum = ""
 		
-		for char in strElementID:
-			if char.isdigit():
-				strElementIDNum += char
-			
-		print(strElementID, strElementIDNum)
-
+		#get id of element
+		#strElementID = element.get("id")
+		
 		#create element on canvas
 		elemType.set(strElementType)
-		g_iIDCounter = int(strElementIDNum)
-		strElementID = strElementType + str(g_iIDCounter)
-		addElementToCanvas()
+		strElementID = addElementToCanvas()
+		
+		print("added element", element.get("id"), "as", strElementID)
+		dRename[element.get("id")] = strElementID
 
 		dLinks[strElementID] = []
 
@@ -721,14 +723,24 @@ def loadDefinition(strFile):
 							#write to properties
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = prop.text
 							
+	# rename links
+	dRenamedLinks = dict()
+	for strID in dLinks.keys():
+		print(dLinks[strID])
+		dRenamedLinks[strID] = []
+		for (strTargetID, iLinkIndex) in dLinks[strID]:
+			print("strID", strID)
+			print("strTargetID", strTargetID)
+			dRenamedLinks[strID].append( (dRename[strTargetID], iLinkIndex) )
+		
 	#finalize links
 	sFinished = set()
-	for strID1 in dLinks:
-		for (strID2, link1) in dLinks[strID1]:
+	for strID1 in dRenamedLinks:
+		for (strID2, link1) in dRenamedLinks[strID1]:
 			end1 = (strID1, link1)
 			if end1 not in sFinished:
 				#find other end of link
-				for (strID1_1, link2) in dLinks[strID2]:
+				for (strID1_1, link2) in dRenamedLinks[strID2]:
 					if strID1_1 == strID1:
 						end2 = (strID2, link2)
 						g_lLinks.append( (end1, end2) )
