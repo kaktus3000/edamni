@@ -14,7 +14,7 @@ from subprocess import call
 
 import material_costs
 
-def runSimulation(strSimuInputFile, lstrSimuCommand):
+def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	print("run simulation: os dir", os.getcwd() )
 
 	strOSDir = os.path.dirname(strSimuInputFile)
@@ -84,59 +84,59 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	
 		#video output is per frequency, no iteration needed.
 
-	# plot spl and impedance
-	fig, ax1 = plt.subplots()
-	ax2 = ax1.twinx()
-	plt.suptitle("Frequency Response Plot")
-
-	ax1.set_xscale("log", nonposx='clip')
-	ax2.set_xscale("log", nonposx='clip')
-
-	nMics = len(root.findall("mic_spl") )
-
-	colors = cm.rainbow(numpy.linspace(0, 1, nMics))
-	iMic = 0
-
 	for micSPL in root.findall("mic_spl"):
 		strMicSPLFile = micSPL.attrib["file"]
 		strMicID = micSPL.attrib["id"]
 
 		print("run simulation: SPL for", strMicID, ", file =", strMicSPLFile)
-	
 		daMicSPLs[strMicID] = numpy.loadtxt(g_strDir + strMicSPLFile)
-	
-		npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
-		npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
-	
-		ax1.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
-	
-		iMic += 1
-
+		
 	for speakerImpedance in root.findall("speaker_impedance"):
 		strSpeakerImpedanceFile = speakerImpedance.attrib["file"]
 		strSpeakerImpedanceID = speakerImpedance.attrib["id"]
 
 		print("run simulation: SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
-	
 		daSpeakerImpedances[strSpeakerImpedanceID] = numpy.loadtxt(g_strDir + strSpeakerImpedanceFile)
+
+	if strPlotFile != "":
+		# plot spl and impedance
+		fig, ax1 = plt.subplots()
+		ax2 = ax1.twinx()
+		plt.suptitle("Frequency Response Plot")
+
+		ax1.set_xscale("log", nonposx='clip')
+		ax2.set_xscale("log", nonposx='clip')
+
+		nMics = len(root.findall("mic_spl") )
+
+		colors = cm.rainbow(numpy.linspace(0, 1, nMics))
+		iMic = 0
+
+		for strMicID in daMicSPLs.keys():
+			npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
+			npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
 	
-		npaFreqs = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[0]
-		npaImpedances = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[1]
+			ax1.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
+			iMic += 1
+
+		for strSpeakerImpedanceID in daSpeakerImpedances.keys():
+			npaFreqs = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[0]
+			npaImpedances = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[1]
 	
-		ax2.plot(npaFreqs, npaImpedances, "g-")
+			ax2.plot(npaFreqs, npaImpedances, "g-")
 
-	ax1.set_ylabel('SPL [dB]', color='b')
-	ax2.set_ylabel('Impedance [ohms]', color='g')
-	ax1.set_xlabel('Frequency [Hz]')
+		ax1.set_ylabel('SPL [dB]', color='b')
+		ax2.set_ylabel('Impedance [ohms]', color='g')
+		ax1.set_xlabel('Frequency [Hz]')
 
-	ax1.legend(loc=2)
-	ax1.grid(which='both')
+		ax1.legend(loc=2)
+		ax1.grid(which='both')
 
-	strPlotPath = g_strDir + "spl.png"
-	print("run simulation: creating plot", strPlotPath)
-	plt.savefig(strPlotPath)
+		strPlotPath = g_strDir + "spl.png"
+		print("run simulation: creating plot", strPlotPath)
+		plt.savefig(strPlotFile)
 
-	plt.close()
+		plt.close()
 	
 
 	t_mic = None
@@ -148,40 +148,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 			t_mic = mic
 			break
 
-	#calculate cost for a linear response fit
-	def linearResponseCost(npaSPL, fSPL, fLowEdge, fHighEdge):
-		#edge cost is easy
-		k_high = numpy.log10(t_edge_high / fHighEdge) * k_spec_decade
-		k_low = numpy.log10(fLowEdge / t_edge_low) * k_spec_decade
-
-		k_high = max(0, k_high)
-		k_low = max(0, k_low)
-	
-		#check linearity
-		npaTransposed = numpy.transpose(npaSPL)
-		npaFreqs = npaTransposed[0]
-		npaSPLs = npaTransposed[1]
-	
-		npaFreqMask = (npaFreqs > fLowEdge) * (npaFreqs < fHighEdge)
-	
-		npaTestSPLs = npaSPLs[numpy.flatnonzero(npaFreqMask)]
-	
-		fMaxSPL = numpy.amax(npaTestSPLs)
-		fMinSPL = numpy.amin(npaTestSPLs)
-	
-		fMaxDeviation = max( abs(fMaxSPL - fSPL), abs(fSPL - fMinSPL) )
-	
-		k_linearity = fMaxDeviation * k_spec_linearity
-	
-		k_spl = abs(fSPL - t_spl) * k_spec_spl
-	
-		return k_spl + k_high + k_low + k_linearity
-
 	#calculate optimal fit of linear response
-
-	npaLower = numpy.logspace(numpy.log10(t_edge_low), numpy.log10(t_edge_low * 2), num=8)
-	npaHigher = numpy.logspace(numpy.log10(t_edge_high / 2), numpy.log10(t_edge_high), num=8)
-
 	fBest = float("inf")
 	fBestSPL = float("nan")
 	fBestLower = float("nan")
@@ -190,22 +157,6 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 	fBestCostSPL = float("nan")
 	fBestCostLower = float("nan")
 	fBestCostDeviation = float("nan")
-	#fBestHigher = float("nan")
-
-	'''
-	for spl in range(t_spl - 10, t_spl + 10):
-		for lower in npaLower:
-			for higher in npaHigher:
-				fCost = linearResponseCost(daMicSPLs[t_mic], spl, lower, higher)
-				if fCost <= fBest:
-					fBest = fCost
-					fBestSPL = spl
-					fBestLower = lower
-					fBestHigher = higher
-
-	#linearResponseCost(daMicSPLs[t_mic], fBestSPL, fBestLower, fBestHigher)
-	#print(dMatCosts)
-	'''
 	
 	npaSPLs = numpy.transpose(daMicSPLs[t_mic])[1]
 	npaFreqs = numpy.transpose(daMicSPLs[t_mic])[0]
@@ -237,7 +188,6 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 			fBestCostDeviation = k_linearity
 		
 	
-
 	k_total = fBest + dMatCosts["cost_total"]
 
 	print("run simulation: total cost", k_total)
@@ -271,7 +221,8 @@ def runSimulation(strSimuInputFile, lstrSimuCommand):
 
 if __name__ == "__main__":
 	strSimuInputFile = sys.argv[1]
-	lstrSimuCommand = sys.argv[2:]
+	strPlotFile = sys.argv[2]
+	lstrSimuCommand = sys.argv[3:]
 	
-	runSimulation(strSimuInputFile, lstrSimuCommand)
+	runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile)
 	

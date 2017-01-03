@@ -862,6 +862,8 @@ g_strResizedFile = g_strFilename + "_resized.png"
 g_strSimuOutputFile = g_strFilename + ".out"
 g_strSimuInputFile = g_strFilename + ".in"
 
+g_strPlotFile = g_strFilename + "_plot.png"
+
 g_strSimuCommand = "../bin/simu"
 
 
@@ -869,7 +871,6 @@ def generateElementList():
 	#write xml file of setup
 	saveDefinition(g_strXMLFile)
 
-	
 	#write element list
 	call(["python3", "../tools/xml2list.py", g_strXMLFile, g_strElementListFilename])
 	
@@ -879,9 +880,18 @@ def generateElementList():
 def escapeString(strToEscape):
 	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
 
+svSimuElementLength = tk.StringVar()
+svSimuElementLength.set(str(g_fDeltaX) )
+svSimuMinFreq = tk.StringVar()
+svSimuMinFreq.set("20")
+svSimuMaxFreq = tk.StringVar()
+svSimuMaxFreq.set("1000")
+svSimuNumFreq = tk.StringVar()
+svSimuNumFreq.set("256")
+
 def onSimulationButtonClick():
 	print("run simulation: generating element list")
-	generateElementList()
+	showSimuImage()
 	
 	print("run simulation: creating simulation configuration")
 	config = configparser.ConfigParser()
@@ -893,7 +903,7 @@ def onSimulationButtonClick():
 						 'output_file' : g_strFile + ".out"}
 	 
 	strSignalType = "sine"
-	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=128)
+	lfFreqs = numpy.logspace(numpy.log10(float(svSimuMinFreq.get())), numpy.log10(float(svSimuMaxFreq.get())), num=int(svSimuNumFreq.get()))
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
@@ -933,26 +943,33 @@ def onSimulationButtonClick():
 	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
 		
-	#call(["python3", "../tools/run_simulation.py", strSimuInput, "python3", "../tools/lightsim.py", "1"])
-	call(["python3", "../tools/run_simulation.py", strSimuInput, "../lightsimu/Release/lightsimu"])
+	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
+	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../lightsimu/Release/lightsimu"])
 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
 
-ttk.Label(simuFrame, text="element length").pack()
+simuSettingsFrame = ttk.Frame(simuFrame)
+simuSettingsFrame.pack()
 
-svSimuElementLength = tk.StringVar()
-svSimuElementLength.set(str(g_fDeltaX) )
+ttk.Label(simuSettingsFrame, text="element length").grid(row=1, column=1, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuElementLength).grid(row=2, column=1)
 
-ttk.Entry(simuFrame, width=8, textvariable=svSimuElementLength).pack()
+ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=2, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=2)
+
+ttk.Label(simuSettingsFrame, text="max frequency").grid(row=1, column=3, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=2, column=3)
+
+ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=1, column=4, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=2, column=4)
 
 
 simuImageCanvas = tk.Label(simuFrame)
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
 
 simuImageCanvas.pack(expand=1, fill=tk.BOTH)
-
 
 def showSimuImage():
 	generateElementList()

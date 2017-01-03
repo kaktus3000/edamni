@@ -87,6 +87,10 @@ else:
 fWidthNormalizer  = 1.0 / nGraphElems * (iWidth - 1)
 fHeightNormalizer = 1.0 / maxDia * (iHeight - 1)
 
+fMaxDamping = 0.1
+for iElem in range(nGraphElems):
+	fMaxDamping = max(fMaxDamping, aElems[iElem].m_fDamping)
+
 for iElem in range(nGraphElems):
 
 	#hMappingFile.write(str(elem) + "\t" +  str(imgWidth // 2) + "\t" + str(pixel) + "\t" + str(imgWidth // 2) + "\n")
@@ -141,7 +145,7 @@ for iElem in range(nGraphElems):
 	#mark damped elements
 	fDamping = aElems[iElem].m_fDamping
 	if fDamping != 0:
-		fRelativeDamping = min (fDamping / 17100, 1)
+		fRelativeDamping = min (fDamping / fMaxDamping, 1)
 	
 		color = (int(255 * (1.0 - fRelativeDamping)), int(127 + (1.0 - fRelativeDamping) * 128), int(255 * (1.0 - fRelativeDamping)) )
 
