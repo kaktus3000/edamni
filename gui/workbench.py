@@ -882,6 +882,8 @@ def escapeString(strToEscape):
 
 svSimuElementLength = tk.StringVar()
 svSimuElementLength.set(str(g_fDeltaX) )
+svSimuMaxTimeStep = tk.StringVar()
+svSimuMaxTimeStep.set("0.001")
 svSimuMinFreq = tk.StringVar()
 svSimuMinFreq.set("20")
 svSimuMaxFreq = tk.StringVar()
@@ -896,7 +898,7 @@ def onSimulationButtonClick():
 	print("run simulation: creating simulation configuration")
 	config = configparser.ConfigParser()
 
-	g_fMaxTimeStep = 0.001
+	g_fMaxTimeStep = float(svSimuMaxTimeStep.get())
 
 	config['general'] = {'element_file': g_strElementListFile,
 						 'max_timestep': str(g_fMaxTimeStep),
@@ -955,6 +957,9 @@ simuSettingsFrame.pack()
 
 ttk.Label(simuSettingsFrame, text="element length").grid(row=1, column=1, padx=5)
 ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuElementLength).grid(row=2, column=1)
+
+ttk.Label(simuSettingsFrame, text="max time step").grid(row=1, column=1, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxTimeStep).grid(row=2, column=1)
 
 ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=2, padx=5)
 ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=2)

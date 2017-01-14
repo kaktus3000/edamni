@@ -37,7 +37,7 @@ void runThread(float fFreq,
 		SSimuSettings* pSettings, SKernelArray* pArray,
 		SSpeaker* pSpeakers, uint* pSpeakerElems, uint nSpeakers,
 		uint* pMics, uint nMics,
-		float* pfSPLs, float* pfImpedance)
+		float* pfSPLs, float* pfImpedance, float* pfExcursion)
 {
 	// create copy of speakers
 	SSpeaker* pCurrSpeakers = (SSpeaker* ) calloc(nSpeakers, sizeof(SSpeaker));
@@ -63,6 +63,8 @@ void runThread(float fFreq,
 	memcpy(kernelArray.m_piLinkSlave, pArray->m_piLinkSlave, kernelArray.m_nLinks * sizeof(uint));
 
 	clearArrays(&kernelArray);
+
+	float fMaxExcursion = 0;
 
 	// calculate number of timesteps to simulate
 	float fSpeed = 340.0f;
@@ -129,6 +131,8 @@ void runThread(float fFreq,
 
 				pfVoltage[iStorageStep] = fVoltage;
 				pfCurrent[iStorageStep] = pCurrSpeakers[0].m_fI;
+
+				fMaxExcursion = fmaxf(fMaxExcursion, fabsf(pCurrSpeakers[0].m_fX) );
 			}
 	}
 	free(pCurrSpeakers);
@@ -155,6 +159,7 @@ void runThread(float fFreq,
 	free(pfSumData);
 
 	*pfImpedance = rms(pfVoltage, nTimesteps - nLeadSteps) / rms(pfCurrent, nTimesteps - nLeadSteps);
+	*pfImpedance = fMaxExcursion;
 
 	free(pfVoltage);
 	free(pfCurrent);
@@ -166,9 +171,7 @@ void runThread(float fFreq,
 void
 calculateTimeStep(SSimuSettings* pSettings, SElement* pElems, uint nElements, SSpeaker* pSpeakers, uint nSpeakers)
 {
-	float fTimeStep = 1e+30;
-
-	//fTimeStep = min(fTimeStep, g_fMaxTimeStep);
+	float fTimeStep = pSettings->m_fDeltaT;
 
 	// time constraints
 	// speed of sound
@@ -218,6 +221,7 @@ main(int argc, char** argv)
 
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");
+	simuSettings.m_fDeltaT = std::stof(inputScanner.getKey("signal", "max_timestep"));
 
 	SElement* pElems;
 	uint nElems;
@@ -358,6 +362,7 @@ main(int argc, char** argv)
 		ppfThreadResults[uiMic] = (float*)calloc(nFreqs, sizeof(float));
 
 	float* pfImpedances = (float*)calloc(vfFreqs.size(), sizeof(float));
+	float* pfExcursions = (float*)calloc(vfFreqs.size(), sizeof(float));
 
 	// spawn calculation threads
 	std::vector<std::thread> vThreads;
@@ -371,9 +376,9 @@ main(int argc, char** argv)
 		vpfResults.push_back(pfResults);
 
 #ifdef DEBUGBUILD
-		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]) );
+		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]));
 #else
-		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]) ) );
+		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]) ) );
 #endif
 	}
 
@@ -431,6 +436,9 @@ main(int argc, char** argv)
 		std::cout << "writing " << strSpeakerFile << "\n";
 		writeTable((strBaseDir + strSpeakerFile).c_str(), pfFreqs, &pfImpedances, 1, nFreqs);
 
+		std::string strSpeakerExcursionFile(std::string("exc_") + strSpeaker + std::string(".dat"));
+		writeTable((strBaseDir + strSpeakerExcursionFile).c_str(), pfFreqs, &pfExcursions, 1, nFreqs);
+
 		hXML << "\t<speaker_impedance file=\"" << strSpeakerFile << "\" id=\"" << strSpeaker << "\"/>\n";
 	}
 	hXML << "</simu_output>\n";
@@ -440,7 +448,9 @@ main(int argc, char** argv)
 	// free buffers
 	free(pSpeakers);
 	free(pfFreqs);
+
 	free(pfImpedances);
+	free(pfExcursions);
 
 	for(uint uiMic = 0; uiMic < nMics + 1; uiMic++)
 		free(ppfThreadResults[uiMic]);
@@ -457,7 +467,5 @@ main(int argc, char** argv)
 	free(pElems);
 
 	freeArrays(&kernelArray);
-
-
 }
 
