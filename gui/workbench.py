@@ -945,8 +945,8 @@ def onSimulationButtonClick():
 	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
 		
-	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
-	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../lightsimu/Release/lightsimu"])
+	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
+	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../lightsimu/Release/lightsimu"])
 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
@@ -958,17 +958,17 @@ simuSettingsFrame.pack()
 ttk.Label(simuSettingsFrame, text="element length").grid(row=1, column=1, padx=5)
 ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuElementLength).grid(row=2, column=1)
 
-ttk.Label(simuSettingsFrame, text="max time step").grid(row=1, column=1, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxTimeStep).grid(row=2, column=1)
+ttk.Label(simuSettingsFrame, text="max time step").grid(row=1, column=2, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxTimeStep).grid(row=2, column=2)
 
-ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=2, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=2)
+ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=3, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=3)
 
-ttk.Label(simuSettingsFrame, text="max frequency").grid(row=1, column=3, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=2, column=3)
+ttk.Label(simuSettingsFrame, text="max frequency").grid(row=1, column=4, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=2, column=4)
 
-ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=1, column=4, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=2, column=4)
+ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=1, column=5, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=2, column=5)
 
 
 simuImageCanvas = tk.Label(simuFrame)

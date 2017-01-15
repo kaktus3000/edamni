@@ -159,7 +159,7 @@ void runThread(float fFreq,
 	free(pfSumData);
 
 	*pfImpedance = rms(pfVoltage, nTimesteps - nLeadSteps) / rms(pfCurrent, nTimesteps - nLeadSteps);
-	*pfImpedance = fMaxExcursion;
+	*pfExcursion = fMaxExcursion;
 
 	free(pfVoltage);
 	free(pfCurrent);
@@ -221,7 +221,7 @@ main(int argc, char** argv)
 
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");
-	simuSettings.m_fDeltaT = std::stof(inputScanner.getKey("signal", "max_timestep"));
+	simuSettings.m_fDeltaT = std::stof(inputScanner.getKey("general", "max_timestep"));
 
 	SElement* pElems;
 	uint nElems;
@@ -266,6 +266,7 @@ main(int argc, char** argv)
 	}
 	// determine simulation time step
 	calculateTimeStep(&simuSettings, pElems, nElems, pSpeakers, nSpeakers);
+	std::cout << "lightsimu: timestep " << simuSettings.m_fDeltaT << "s";
 
 	//allocate simulation data array
 	SKernelArray kernelArray;

@@ -17,7 +17,7 @@ void writeTable(const char* szFile, const float* pfFirstCol, float** ppfData, ui
 		uint uiCol = 0;
 		for(; uiCol < nColumns; uiCol++)
 		{
-			fprintf(fp, "\t%f", ppfData[uiCol][uiRow]);
+			fprintf(fp, "\t%.8f", ppfData[uiCol][uiRow]);
 		}
 
 		fprintf(fp, "\n");
