@@ -173,6 +173,7 @@ lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
 # acoustic damping
 lfTimeConstraints.append(g_fDensity / max(numpy.amax(afVelocityDamping), 1.0) )
 
+'''
 # iterate speakers
 for strSpeaker in dSpeakers.keys():
 	speaker = dSpeakers[strSpeaker]
@@ -183,6 +184,7 @@ for strSpeaker in dSpeakers.keys():
 	# mechanical spring speaker
 	lfTimeConstraints.append(numpy.sqrt(speaker.m_dOptions["mmd"] * speaker.m_dOptions["cms"]) )
 
+'''
 lfTimeConstraints.append(g_fMaxTimeStep)
 
 g_fTimeStep = numpy.amin(lfTimeConstraints)
@@ -240,8 +242,8 @@ plt.clf()
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
-n = 50
-#n = 10000000
+#n = 50
+n = 10000000
 
 dlSPLs = dict()
 dlImpedances = dict()
@@ -351,22 +353,45 @@ for fFreq in g_afFreqs:
 		for strSpeaker in dSpeakers:
 			speaker = dSpeakers[strSpeaker]
 			dOptions = speaker.m_dOptions
+
+			fCurrent = speaker.m_fI			
+			fPosition = speaker.m_fX
+			
+			fPressureDiff = npaPressures[speaker.m_iElemID + 1] - npaPressures[speaker.m_iElemID]
+			
+			for iIter in range(10):
 		
+				fDeltaU =  fU - dOptions["bl"] * (fPosition - speaker.m_fX) / g_fTimeStep - dOptions["re"] * fCurrent - dOptions["le"] * (fCurrent - speaker.m_fI) / g_fTimeStep
+				fDeltaF = dOptions["bl"] * fCurrent - dOptions["sd"] * fPressureDiff - speaker.m_fStiffness * fPosition - dOptions["rms"] * (fPosition - speaker.m_fX) / g_fTimeStep - (dOptions["mmd"] + speaker.m_fAirmass) * ((fPosition - speaker.m_fX) / g_fTimeStep - speaker.m_fV) / g_fTimeStep
+				
+				# check for convergence
+				if abs(fDeltaU) < 1e-10 and abs(fDeltaF) < 1e-12:
+					break
+		
+				fDeterminant = 1.0/((dOptions["re"]*g_fTimeStep+dOptions["le"])*(dOptions["mmd"] + speaker.m_fAirmass)+speaker.m_fStiffness*dOptions["re"]*g_fTimeStep*g_fTimeStep*g_fTimeStep+(dOptions["re"]*dOptions["rms"]+speaker.m_fStiffness*dOptions["le"]+dOptions["bl"]*dOptions["bl"])*g_fTimeStep*g_fTimeStep+dOptions["le"]*dOptions["rms"]*g_fTimeStep)
+				fCurrent = fCurrent - fDeterminant * (-1.0) * (fDeltaU*g_fTimeStep*(dOptions["mmd"] + speaker.m_fAirmass)+fDeltaU*speaker.m_fStiffness*g_fTimeStep*g_fTimeStep*g_fTimeStep+(fDeltaU*dOptions["rms"]-dOptions["bl"]*fDeltaF)*g_fTimeStep*g_fTimeStep)
+				fPosition = fPosition - fDeterminant * (-1.0) * ((fDeltaF*dOptions["re"]+dOptions["bl"]*fDeltaU)*g_fTimeStep*g_fTimeStep*g_fTimeStep+fDeltaF*dOptions["le"]*g_fTimeStep*g_fTimeStep)
+
+			speaker.m_fV = (fPosition - speaker.m_fX) / g_fTimeStep
+			speaker.m_fX = fPosition
+			speaker.m_fI = fCurrent
+			'''
 			#calculate current
 			fCurrentSlope = (fU - dOptions["bl"]*speaker.m_fV - dOptions["re"] * speaker.m_fI)/dOptions["le"]
 			speaker.m_fI = speaker.m_fI + fCurrentSlope * g_fTimeStep
 			
 			fForceMembrane = dOptions["bl"] * speaker.m_fI
-			fPressureDiff = npaPressures[speaker.m_iElemID + 1] - npaPressures[speaker.m_iElemID]
+			
 			
 			#calculate speaker acceleration
 			fAcceleration = (fForceMembrane - fPressureDiff * dOptions["sd"] - speaker.m_fX * speaker.m_fStiffness - dOptions["rms"] * speaker.m_fV)/(dOptions["mmd"] + speaker.m_fAirmass)
 
-			#calculate speaker velocity			
-			speaker.m_fV = speaker.m_fV + fAcceleration * g_fTimeStep
-			
 			#calculate speaker position
 			speaker.m_fX = speaker.m_fX + speaker.m_fV * g_fTimeStep
+
+			#calculate speaker velocity			
+			speaker.m_fV = speaker.m_fV + fAcceleration * g_fTimeStep
+			'''
 			
 			#overwrite updates made by pressure step
 			npaPressureDifference[speaker.m_iElemID] = speaker.m_fV / g_fVelocityFactor
@@ -476,7 +501,7 @@ for fFreq in g_afFreqs:
 	signalElem = ET.SubElement(signalElem, "element_output")
 	signalElem.attrib["file"] = g_strPath +
 	'''
-	npaProfileAmplitudes = numpy.sqrt(npaSummedSquares * (1.0/len(npaSumPressure) ) )
+	npaProfileAmplitudes = numpy.sqrt((npaSummedSquares + g_fReferencePressure * .01) * (1.0/len(npaSumPressure) ) )
 	npaProfileSPL = 20.0 * numpy.log10(npaProfileAmplitudes /g_fReferencePressure )
 	
 	aafProfileSPLs.append(npaProfileSPL)
