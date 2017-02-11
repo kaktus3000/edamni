@@ -24,9 +24,9 @@
 <neighbor2 ref="Space5" />
 <a1 min=".0005" max=".005" id="horn_throat">0.001</a1>
 <a2 min=".0005" max=".05" id="horn_mouth">0.01</a2>
-<a2>0.01</a2>
 <length min=".5" max="5.0" id="horn_len">2.0</length>
-<damping_constant min="0" max="17100" id="horn_damping">0.0</damping_constant>
+<!-- <damping_constant min="0" max="2000" id="horn_damping">0.0</damping_constant> -->
+<damping_constant>0.0</damping_constant>
 <screen_position x="100" y="100" />
 <screen_rotation rot="0" />
 </exponential>

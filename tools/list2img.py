@@ -47,8 +47,17 @@ infile = sys.argv[1]
 outfile = sys.argv[2]
 iWidth  = int(sys.argv[3])
 iHeight = int(sys.argv[4])
+bOnlyGeometry = sys.argv[5] == "1"
 
 aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(infile)
+
+aGeomOnly = []
+if bOnlyGeometry:
+	for elem in aElems:
+		if elem.m_bGeom:
+			aGeomOnly.append(elem)
+			
+aElems = aGeomOnly
 
 #now create a nice image
 fMaxArea = 0
