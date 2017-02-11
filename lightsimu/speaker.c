@@ -1,8 +1,9 @@
 #include <math.h>
 #include "speaker.h"
+#include "stdio.h"
 
 void
-initializeSpeaker(	SSpeaker* pSpeaker, SSimuSettings* pSettings)
+initializeSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings)
 {
 	float fRadius = sqrtf(pSpeaker->sd / M_PI);
 
@@ -21,23 +22,56 @@ initializeSpeaker(	SSpeaker* pSpeaker, SSimuSettings* pSettings)
 	//aPressureFactorsNeg[m_iElemID + 1] *= m_pSpeaker->sd / aElems[m_iElemID].m_fArea
 }
 
+// calculate speaker velocity
+
 float
 simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDiff, float fVoltage)
 {
-	// calculate current
-	float fCurrentSlope = (fVoltage - pSpeaker->bl * pSpeaker->m_fV - pSpeaker->re * pSpeaker->m_fI)/pSpeaker->le;
-	pSpeaker->m_fI = pSpeaker->m_fI + fCurrentSlope * pSettings->m_fDeltaT;
+	// convergence criteria for newton-raphson
+	const unsigned int nMaxIter = 5;
+	const double fEpsU = 1e-8;
+	const double fEpsF = 1e-8;
+	unsigned int uiIter = 0;
 
-	float fForceMembrane = pSpeaker->bl * pSpeaker->m_fI;
+	int bConverged = 0;
 
-	// calculate speaker acceleration
-	float fAcceleration = (fForceMembrane - fPressureDiff * pSpeaker->sd - pSpeaker->m_fX * pSpeaker->sms - pSpeaker->rms * pSpeaker->m_fV)/(pSpeaker->mms);
+	// initial guess from last step
+	double fCurrent = pSpeaker->m_fI;
+	double fPosition = pSpeaker->m_fX;
 
-	// calculate speaker velocity
-	pSpeaker->m_fV = pSpeaker->m_fV + fAcceleration * pSettings->m_fDeltaT;
+	double fDeltaU;
+	double fDeltaF;
 
-	// calculate speaker position
-	pSpeaker->m_fX = pSpeaker->m_fX + pSpeaker->m_fV * pSettings->m_fDeltaT;
+	const double dt= pSettings->m_fDeltaT;
+
+	const double fDeterminant = 1.0/((pSpeaker->re*dt+pSpeaker->le)*pSpeaker->mms+pSpeaker->sms*pSpeaker->re*dt*dt*dt+(pSpeaker->re*pSpeaker->rms+pSpeaker->sms*pSpeaker->le+pSpeaker->bl*pSpeaker->bl)*dt*dt+pSpeaker->le*pSpeaker->rms*dt);
+
+	// iteration loop
+	for(; uiIter < nMaxIter; uiIter++)
+	{
+		// calculate error
+		fDeltaU = (double)fVoltage - pSpeaker->bl * (fPosition - pSpeaker->m_fX) / dt - pSpeaker->re * fCurrent - pSpeaker->le * (fCurrent - pSpeaker->m_fI) / dt;
+		fDeltaF = pSpeaker->bl * fCurrent - pSpeaker->sd * (double)fPressureDiff - pSpeaker->sms * fPosition - pSpeaker->rms * (fPosition - pSpeaker->m_fX) / dt - pSpeaker->mms * ((fPosition - pSpeaker->m_fX) / dt - pSpeaker->m_fV) / dt;
+
+		// check for convergence
+		if(fabs(fDeltaU) < fEpsU && fabs(fDeltaF) < fEpsF)
+		{
+			bConverged = 1;
+			break;
+		}
+
+		// iterate to next guess
+		fCurrent = fCurrent + fDeterminant * (fDeltaU*dt*pSpeaker->mms+fDeltaU*pSpeaker->sms*dt*dt*dt+(fDeltaU*pSpeaker->rms-pSpeaker->bl*fDeltaF)*dt*dt);
+		fPosition = fPosition + fDeterminant * ((fDeltaF*pSpeaker->re+pSpeaker->bl*fDeltaU)*dt*dt*dt+fDeltaF*pSpeaker->le*dt*dt);
+	}
+
+	if(!bConverged)
+		printf("speaker equations failed to converge! %e, %e\n", fDeltaU, fDeltaF);
+
+	// save results
+	pSpeaker->m_fV = (fPosition - pSpeaker->m_fX) / pSettings->m_fDeltaT;
+	pSpeaker->m_fX = fPosition;
+	pSpeaker->m_fI = fCurrent;
 
 	return pSpeaker->m_fV;
 }
