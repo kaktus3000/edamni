@@ -57,6 +57,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 	print("run simulation: calling", lstrSimuCommand, "with", strSimuInputFile, "in", g_strDir)
 	#call simulation with all the data
+	print(lstrSimuCommand, strSimuInputFile, g_strDir)
 	call(lstrSimuCommand + [strSimuInputFile], cwd=g_strDir)
 
 	#collect results
@@ -132,8 +133,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		ax1.legend(loc=2)
 		ax1.grid(which='both')
 
-		strPlotPath = g_strDir + "spl.png"
-		print("run simulation: creating plot", strPlotPath)
+		print("run simulation: creating plot", strPlotFile)
 		plt.savefig(strPlotFile)
 
 		plt.close()
@@ -203,10 +203,12 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 	hDesignReportFile.write("Enclosure Cost\t" + str(dMatCosts["cost_enclosure"]) + "\t$\n")
 	hDesignReportFile.write("Resonator Surface Cost\t" + str(dMatCosts["cost_surface"]) + "\t$\n")
+	hDesignReportFile.write("Resonator Damping Cost\t" + str(dMatCosts["cost_damping"]) + "\t$\n")
+	
 	hDesignReportFile.write("Resonator Total Cost\t" + str(dMatCosts["cost_total"]) + "\t$\n")
 	
-	hDesignReportFile.write("Lower Edge\t" + str(fBestLower) + "\tHz\t" + str(k_spec_decade) + "\t$/decade\t" + str(fBestCostLower) + "$\n")
-	hDesignReportFile.write("Mean SPL\t" + str(fBestSPL) + "\tdB\t" + str(k_spec_spl) + "\t$/dB\t" + str(fBestCostSPL) + "$\n")
+	hDesignReportFile.write("Lower Edge\t" + str(fBestLower) + "\tHz\t" + str(k_spec_decade) + "\t$/decade\t" + str(fBestCostLower) + "$\t" + "target\t" + str(t_edge_low) + "\n")
+	hDesignReportFile.write("Mean SPL\t" + str(fBestSPL) + "\tdB\t" + str(k_spec_spl) + "\t$/dB\t" + str(fBestCostSPL) + "$\t" + "target\t" + str(t_spl) + "\n")
 	hDesignReportFile.write("Max SPL Deviation\t" + str(fBestDeviation) + "\tdB\t" + str(k_spec_linearity) + "\t$/dB\t" + str(fBestCostDeviation) + "$\n")
 	
 	hDesignReportFile.write("SPL Total Cost\t" + str(fBest) + "\t$\n")
