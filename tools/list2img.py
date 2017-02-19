@@ -56,8 +56,7 @@ if bOnlyGeometry:
 	for elem in aElems:
 		if elem.m_bGeom:
 			aGeomOnly.append(elem)
-			
-aElems = aGeomOnly
+	aElems = aGeomOnly
 
 #now create a nice image
 fMaxArea = 0
