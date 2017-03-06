@@ -4,25 +4,25 @@
 typedef struct
 {
 	// speaker parameters
-	float re;
-	float le;
-	float rms;
-	float mmd;
-	float cms;
-	float bl;
-	float sd;
+	double re;
+	double le;
+	double rms;
+	double mmd;
+	double cms;
+	double bl;
+	double sd;
 	// derived values
-	float mms;
-	float sms;
+	double mms;
+	double sms;
 
 	// simulation values
 
 	// mechanical values
-	float m_fX;
-	float m_fV;
+	double m_fX;
+	double m_fV;
 
 	// electrical values
-	float m_fI;
+	double m_fI;
 
 } SSpeaker;
 

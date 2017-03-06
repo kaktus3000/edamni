@@ -184,18 +184,6 @@ calculateTimeStep(SSimuSettings* pSettings, SElement* pElems, uint nElements, SS
 
 	fTimeStep = fmin(fTimeStep, pSettings->m_fDensity / fMaxDamping );
 
-	// iterate speakers
-	for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
-	{
-		SSpeaker* pSpeaker = pSpeakers + iSpeaker;
-		// speaker electric
-		fTimeStep = fmin(fTimeStep, pSpeaker->le / pSpeaker->re);
-		// mechanical damping speaker
-		fTimeStep = fmin(fTimeStep, pSpeaker->mms * pSpeaker->rms);
-		// mechanical spring speaker
-		fTimeStep = fmin(fTimeStep, sqrtf(pSpeaker->mms * pSpeaker->cms));
-	}
-
 	pSettings->m_fDeltaT = fTimeStep;
 	pSettings->m_fVelocityFactor = fTimeStep / (pSettings->m_fDensity * pSettings->m_fDeltaX);
 }
