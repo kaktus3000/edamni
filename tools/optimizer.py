@@ -3,7 +3,8 @@ import configparser
 import xml.etree.ElementTree as ET
 import sys
 import os
-import scipy.optimize as opt
+#import scipy.optimize as opt
+import ndim_search
 
 # import modules
 import run_simulation
@@ -98,8 +99,6 @@ for strParam in g_dParams:
 histFile.write("result\n")
 histFile.flush()
 
-dCache = dict()
-
 def writeModifiedXML(params, strModifiedXML):
 	for section in g_Horn:
 		for elem in section:
@@ -125,25 +124,14 @@ def evaluate(params):
 	# check for neighboring cross-sections
 	# usually we don't want hard steps at the element borders
 
-
-	# check if we already have a similar design in our cache
-	# if we do, discard this design and try something different
-
 	# approximate means within global tolerances
 	
-	#cache hit: we ain't got time for that
 	lValues = []
 	for strParam in g_dParams.keys():
 		fValue = params[strParam][PARAM_CURR]
 		histFile.write(str(fValue) + "\t")
 		lValues.append(fValue)
-		
-	keyHash = hash(tuple(lValues))
-	if keyHash in dCache:
-		histFile.write("cached: " + str(dCache[keyHash]) + "\n")
-		histFile.flush()
-		return dCache[keyHash]
-	
+			
 	# dummy function
 	fReturnValue = 0
 	for strParam in params.keys():
@@ -184,9 +172,6 @@ def evaluate(params):
 	histFile.write(str(fReturnValue) + "\n")
 	histFile.flush()
 	
-	# fill cache
-	dCache[keyHash] = fReturnValue
-	
 	return fReturnValue
 
 
@@ -214,11 +199,30 @@ for strParam in g_dParams.keys():
 
 	bounds.append( (bmin, bmax) )
 
+aiResolution = []
+nBest = 1
+
+for aParams in g_dParams.values():
+	fMinChange = aParams[PARAM_MIN_CHANGE]
+	fMinStep = aParams[PARAM_MIN_STEP]
+	
+	fMin = aParams[PARAM_MIN]
+	fMax = aParams[PARAM_MAX]
+	
+	fRange = fMax - fMin
+	
+	if(fMinStep == 0):
+		fMinStep = fMinChange * (fRange/2 + fMin)
+	
+	aiResolution.append( int(fRange / fMinStep) + 1)
+
+lResult = ndim_search.optimize(problemFunction, bounds, aiResolution, nBest)
+
+#opt_res = opt.differential_evolution(problemFunction, bounds)
+#lResult = opt_res.x
 
 
-opt_res = opt.differential_evolution(problemFunction, bounds)
-
-g_dOptimumParams = fromProblemFunction(opt_res.x)
+g_dOptimumParams = fromProblemFunction(lResult)
 
 '''
 
