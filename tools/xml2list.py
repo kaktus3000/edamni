@@ -171,6 +171,7 @@ def unravelNeighbors(hornDict, neighborDict, bVerbose):
 		if bVerbose:
 			print("chain 1:", aChain1)
 			print("chain 1 reversesd:", reverseChain(aChain1))
+			print("chain 2:", aChain2)
 		
 		aChain = reverseChain(aChain1) + [ (sectionID, True) ] + aChain2
 		
@@ -185,7 +186,6 @@ def unravelNeighbors(hornDict, neighborDict, bVerbose):
 		
 		if bVerbose:
 			print("trace result", aaChains[-1])
-		
 
 	#return result vector
 	return aaChains
@@ -217,7 +217,7 @@ def conical_section(dx, params):
 	positiveGradient = A2 > A1
 	
 	for iElem in range(nElems):
-		relX=(iElem+1)/nElems
+		relX=(iElem)/nElems
 		rx=((relX)*(r2-r1) + r1);
 		Ax=rx*rx
 
@@ -456,7 +456,7 @@ def xml2List(strInFile, strOutFile, bVerbose):
 		# for each section in string
 		for (section, orientation) in sectionString:
 			if bVerbose:
-				print("processing section", section, "...")
+				print("processing section", section, "; orientation =", orientation, "...")
 			# discretize section
 			# discretization result format: element list
 			(strSectionTag, sectionDict) = hornDict[section]
@@ -473,10 +473,12 @@ def xml2List(strInFile, strOutFile, bVerbose):
 				lSectionElems.reverse()
 		
 			# remove first element to create continuous slopes
-			if not bFirstSection:
+			if (not bFirstSection) and (lSectionElems[0].m_strSpeaker == "") and (lSectionElems[0].m_strMic == ""):
 				lSectionElems = lSectionElems[1:]
 		
 			lStringElems += lSectionElems
+			
+			bFirstSection = False
 	
 		# add the "break link" property to the first element (after dummy) of the string
 		lStringElems[0].m_bBreak = True
