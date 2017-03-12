@@ -88,23 +88,27 @@ def optimize(func, aBounds, aiResolution, nBest):
 				
 		fLastBest = float("inf")
 	
+	'''
 	for key in dCache:
 		afCoords = toCoords(aBounds, list(key), aiResolution)
 		strCoords = str(afCoords[0])
 		for fCoord in afCoords[1:]:
 			strCoords += "\t" + str(fCoord)
 		print(strCoords, dCache[key])
+	'''
 	
 	(fBest, aiBest) = aBest[0]
 	return toCoords(aBounds, aiBest, aiResolution)
-		
+
+'''
 def opt_fun(afArgs):
 	return afArgs[0]*math.sin(afArgs[1])-afArgs[2] * afArgs[3]
 	
 def sines_fun(afArgs):
 	return math.sin(6.3*afArgs[0]) + math.sin(6.3*afArgs[1]) + 1.0*(math.sin(1692.145*afArgs[1]*afArgs[0]))
 
-#optimize(sines_fun, [(0,1), (0,1)], [100, 100], 20)
-#optimize(opt_fun, [(0,1), (0,1), (0,1), (0,1)], [10, 20, 30, 40], 20)
+optimize(sines_fun, [(0,1), (0,1)], [100, 100], 20)
+optimize(opt_fun, [(0,1), (0,1), (0,1), (0,1)], [10, 20, 30, 40], 20)
+'''
 
 

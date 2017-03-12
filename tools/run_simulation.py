@@ -198,6 +198,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	hDesignReportFile.write("=== DESIGN REPORT ===\n\n")
 	
 	hDesignReportFile.write("Resonator Volume\t" + str(dMatCosts["air_volume"]*1e3) + "\tl\n")
+	hDesignReportFile.write("Resonator Length\t" + str(dMatCosts["length"]) + "\tm\n")
 	hDesignReportFile.write("Resonator Surface Area\t" + str(dMatCosts["surface_area"]) + "\tm^2\n")
 	hDesignReportFile.write("Panel Thickness\t" + str(dMatCosts["panel_thickness"]*1e3) + "\tmm\n")
 

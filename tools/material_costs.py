@@ -53,7 +53,8 @@ def get_material_costs(infile):
 	#costs for damping material
 	k_damping = volDampened * k_spec_damper
 	
-	dResult = {"air_volume" : vol,
+	dResult = {		"air_volume" : vol,
+				"length" : len(aCrossSections)*dx,
 				"surface_area" : surface,
 				"edge_length" : length,
 				"panel_thickness" : panel,
