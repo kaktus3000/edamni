@@ -398,10 +398,11 @@ def xml2List(strInFile, strOutFile, bVerbose):
 		exit();
 	
 	dx = float(horn.attrib["dx"])
-	#print("dx =", dx)
+	
+	if bVerbose:
+		print("dx =", dx)
 
 	hornDict = dict()
-	#print("dumping xml input")
 
 	#IDs for elements
 	wallID = 0
@@ -418,6 +419,9 @@ def xml2List(strInFile, strOutFile, bVerbose):
 			continue	
 	#	print(section.tag, "(" + section.attrib["id"] + ")")
 		sectionID = section.attrib["id"]
+		
+		if bVerbose:
+			print("section id", sectionID, section.tag)
 	
 		sectionDict = dict()
 	
@@ -439,7 +443,13 @@ def xml2List(strInFile, strOutFile, bVerbose):
 
 	#check whether the cross-sections given are discontinuous
 	neighborDict = checkCrossSections(hornDict)
+	if bVerbose:
+		print("neighbor dict entries:", neighborDict.keys())
+	
 	sectionStrings = unravelNeighbors(hornDict, neighborDict, bVerbose)
+	
+	if bVerbose:
+		print("found", len(sectionStrings), "section strings")
 
 	# create empty element list (of class Element)
 	lElements = []
@@ -508,7 +518,7 @@ def xml2List(strInFile, strOutFile, bVerbose):
 		# append element numbers to end of string link list
 		# append section IDs and link IDs to end of string link list
 	if bVerbose:
-		print("writing element list to file", strOutFile)
+		print("writing", len(lElements), "elements to file", strOutFile)
 	elemfile.writeElemFile(strOutFile, lElements, dx)
 
 if __name__ == "__main__":
@@ -516,7 +526,13 @@ if __name__ == "__main__":
 	strOutFile = sys.argv[2]
 	bVerbose = (len(sys.argv) == 4)
 	
+	
+	if bVerbose:
+		print("xml2list - verbose mode")
+	
 	xml2List(strInFile, strOutFile, bVerbose)
+	
+	print("xml2list: finished!")
 	
 
 # process links between sections
@@ -657,6 +673,5 @@ for sectionID in hornDict.keys():
 hElemFile.close();
 '''
 
-print("xml2list: finished!")
 
 

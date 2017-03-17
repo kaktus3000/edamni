@@ -1,4 +1,5 @@
 import math
+import numpy
 
 def toCoords(aBounds, aiCurrSample, aiResolution):
 	afSample = []
@@ -52,7 +53,7 @@ def optimize(func, aBounds, aiResolution, nBest):
 
 	# initialize stepwidth to the center of the problem	
 	for iDim in range(len(aBounds)):
-		aiStep.append(aiResolution[iDim] // 2)
+		aiStep.append(aiResolution[iDim] // 2 + 1)
 	
 	# initialize state
 	fLastBest = float("inf")
@@ -79,12 +80,15 @@ def optimize(func, aBounds, aiResolution, nBest):
 		
 		bResolution = False
 		
-		for iDim in range(len(aBounds)):
-			if aiStep[iDim] > 1:
-				bResolution = True
-				aiStep[iDim] = aiStep[iDim] // 2
-			else:
-				aiStep[iDim] = 1
+		# reduce largest step by factor 2
+		
+		iMaxDim = numpy.argmax(aiStep)
+		
+		if aiStep[iMaxDim] > 1:
+			bResolution = True
+			aiStep[iMaxDim] //= 2
+		else:
+			aiStep[iMaxDim] = 1
 				
 		fLastBest = float("inf")
 	

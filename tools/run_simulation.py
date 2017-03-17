@@ -55,6 +55,8 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	t_edge_low = float(spl_cost_config.get("spl_targets", "t_edge_low"))
 	t_edge_high = float(spl_cost_config.get("spl_targets", "t_edge_high"))
 
+	t_edge_low_max = float(spl_cost_config.get("spl_targets", "t_edge_low_max"))
+
 	print("run simulation: calling", lstrSimuCommand, "with", strSimuInputFile, "in", g_strDir)
 	#call simulation with all the data
 	print(lstrSimuCommand, strSimuInputFile, g_strDir)
@@ -164,6 +166,9 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	for iLower in range(len(npaSPLs)):
 		npaTestSPLs = npaSPLs[iLower:]
 		fLower = npaFreqs[iLower]
+		
+		if fLower > t_edge_low_max:
+			break
 		
 		k_low = numpy.log10(fLower / t_edge_low) * k_spec_decade
 		k_low = max(k_low, 0)

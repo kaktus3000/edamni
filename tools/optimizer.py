@@ -200,7 +200,7 @@ for strParam in g_dParams.keys():
 	bounds.append( (bmin, bmax) )
 
 aiResolution = []
-nBest = 1
+nBest = 10
 
 for aParams in g_dParams.values():
 	fMinChange = aParams[PARAM_MIN_CHANGE]
