@@ -58,6 +58,8 @@ optimizerConfig.read(strOptimIniFile)
 g_fMinLenChange = float(optimizerConfig.get("step_control", "min_len_change"))
 g_fMinLenStep = float(optimizerConfig.get("step_control", "min_len_step"))
 g_fMinAreaChange = float(optimizerConfig.get("step_control", "min_area_change"))
+g_fMinDampingChange = float(optimizerConfig.get("step_control", "min_damping_change"))
+
 
 g_fMaxIterations = optimizerConfig.get("runtime_control", "max_iterations")
 g_fMaxTime = optimizerConfig.get("runtime_control", "max_time")
@@ -83,11 +85,14 @@ for section in g_Horn:
 		if("id" in elem.attrib.keys()):
 			fMinStep = g_fMinLenStep
 			fMinChange = g_fMinLenChange
-			if elem.tag == "a1" or elem.tag == "a2" or elem.tag == "a3":
+			if elem.tag == "damping_constant":
+				fMinChange = g_fMinDampingChange
+				fMinStep = 0
+			elif elem.tag != "length":
 				fMinChange = g_fMinAreaChange
 				fMinStep = 0
 
-			# in case of dupolicate entries, this will be overwritten.
+			# in case of duplicate entries, this will be overwritten.
 			# should be consistent though
 			g_dParams[elem.attrib["id"] ] = [float(elem.attrib["min"]), float(elem.attrib["max"]), float(elem.text), fMinStep, fMinChange]
 			
@@ -200,7 +205,7 @@ for strParam in g_dParams.keys():
 	bounds.append( (bmin, bmax) )
 
 aiResolution = []
-nBest = 10
+nBest = 1
 
 for aParams in g_dParams.values():
 	fMinChange = aParams[PARAM_MIN_CHANGE]
@@ -215,6 +220,8 @@ for aParams in g_dParams.values():
 		fMinStep = fMinChange * (fRange/2 + fMin)
 	
 	aiResolution.append( int(fRange / fMinStep) + 1)
+	
+	print(fMin, fMax, aiResolution[-1] )
 
 lResult = ndim_search.optimize(problemFunction, bounds, aiResolution, nBest)
 

@@ -132,13 +132,47 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		ax2.set_ylabel('Impedance [ohms]', color='g')
 		ax1.set_xlabel('Frequency [Hz]')
 
-		ax1.legend(loc=2)
+		ax1.legend(loc=4)
 		ax1.grid(which='both')
 
 		print("run simulation: creating plot", strPlotFile)
 		plt.savefig(strPlotFile)
 
 		plt.close()
+		
+		'''
+		import matplotlib.pyplot as plt
+		import numpy as np
+		# To make things reproducible...
+		np.random.seed(1977)
+
+		fig, ax = plt.subplots()
+
+		# Twin the x-axis twice to make independent y-axes.
+		axes = [ax, ax.twinx(), ax.twinx()]
+
+		# Make some space on the right side for the extra y-axis.
+		fig.subplots_adjust(right=0.75)
+
+		# Move the last y-axis spine over to the right by 20% of the width of the axes
+		axes[-1].spines['right'].set_position(('axes', 1.2))
+
+		# To make the border of the right-most axis visible, we need to turn the frame
+		# on. This hides the other plots, however, so we need to turn its fill off.
+		axes[-1].set_frame_on(True)
+		axes[-1].patch.set_visible(False)
+
+		# And finally we get to plot things...
+		colors = ('Green', 'Red', 'Blue')
+		for ax, color in zip(axes, colors):
+		    data = np.random.random(1) * np.random.random(10)
+		    ax.plot(data, marker='o', linestyle='none', color=color)
+		    ax.set_ylabel('%s Thing' % color, color=color)
+		    ax.tick_params(axis='y', colors=color)
+		axes[0].set_xlabel('X-axis')
+
+		plt.show()
+		'''
 	
 
 	t_mic = None
@@ -176,9 +210,14 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		fMeanSPL = numpy.mean(npaTestSPLs)
 		k_spl = abs(fMeanSPL - t_spl) * k_spec_spl
 	
-		npaDeviation = numpy.fabs(npaTestSPLs - t_spl)
+		npaDeviation = numpy.fabs(npaTestSPLs - fMeanSPL)
 		fMaxDeviation = numpy.amax(npaDeviation)
-		k_linearity = fMaxDeviation * k_spec_linearity
+		
+		fRMSDeviation = numpy.sqrt(numpy.mean(numpy.square(npaDeviation) ) )
+		
+		fTotalDeviation = (4.0 * fMaxDeviation + fRMSDeviation) / 5
+		
+		k_linearity = fTotalDeviation * k_spec_linearity
 		
 		fCost = k_low + k_spl + k_linearity
 		
@@ -186,7 +225,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			fBest = fCost
 			fBestSPL = fMeanSPL
 			fBestLower = fLower
-			fBestDeviation = fMaxDeviation
+			fBestDeviation = fTotalDeviation
 			
 			fBestCostSPL = k_spl
 			fBestCostLower = k_low

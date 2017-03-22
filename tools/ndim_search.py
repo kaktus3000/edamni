@@ -11,21 +11,28 @@ def toCoords(aBounds, aiCurrSample, aiResolution):
 	return afSample
 
 def sample(func, aBounds, aiResolution, aiCurrSample, aBest, dCache):
+	fCurrResult = float("inf")
+	
 	tSample = tuple(aiCurrSample)
 	if tSample in dCache.keys():
-		# we already samples this point, skip
-		return
+		# we already sampled this point, skip
+		fCurrResult = dCache[tSample]
+	else:
+		# calculate coordinates in problem space
+		afSample = toCoords(aBounds, aiCurrSample, aiResolution)
 
-	# calculate coordinates in problem space
-	afSample = toCoords(aBounds, aiCurrSample, aiResolution)
-
-	# evaluate and cache result	
-	fCurrResult = func(afSample)
-	dCache[tSample] = fCurrResult
+		# evaluate and cache result	
+		fCurrResult = func(afSample)
+		dCache[tSample] = fCurrResult
 	
 	# put result into hall of fame if good
 	for iBest in range(len(aBest)):
 		(fResult, aiSample) = aBest[iBest]
+		
+		if aiSample == aiCurrSample and fResult == fCurrResult:
+			#we already had that result
+			break
+		
 		if fCurrResult < fResult:
 			for iPos in reversed(range(iBest,len(aBest)-1)):
 				aBest[iPos+1] = aBest[iPos]
@@ -46,51 +53,57 @@ def optimize_base(func, aBounds, aiResolution, aiBase, aiStep, aBest, dCache):
 		
 # optimize in n-dimensional space
 def optimize(func, aBounds, aiResolution, nBest):
-	# stepwidth vector
-	aiStep = []
 	# cache for computed samples
 	dCache = dict()
-
-	# initialize stepwidth to the center of the problem	
-	for iDim in range(len(aBounds)):
-		aiStep.append(aiResolution[iDim] // 2 + 1)
 	
-	# initialize state
-	fLastBest = float("inf")
-	aBest = [(fLastBest, aiStep)] * nBest
+	# initialize best sample vector	
+	aBest = [0]
 	
-	# obtain initial result
-	sample(func, aBounds, aiResolution, aiStep, aBest, dCache)
-	(fBest, aiBest) = aBest[0]
+	for nCurrentBest in range(1, nBest + 1):
+		# stepwidth vector
+		aiStep = []
+		
+		# initialize stepwidth to the center of the problem	
+		for iDim in range(len(aBounds)):
+			aiStep.append(aiResolution[iDim] // 2 + 1)
 	
-	bResolution = True
-	while bResolution:
-		while fBest < fLastBest:
-			aInitialBest = list(aBest)
-			fLastBest = fBest
-			for (res, aiStart) in aInitialBest:
-				#print("base", aiStart)
-				optimize_base(func, aBounds, aiResolution, aiStart, aiStep, aBest, dCache)
-		
-			(fBest, aiBest) = aBest[0]
-		
-		#print("best:", toCoords(aBounds, aiBest, aiResolution), fBest)
-		# this resolution is depleted
-		# lower resolution
-		
-		bResolution = False
-		
-		# reduce largest step by factor 2
-		
-		iMaxDim = numpy.argmax(aiStep)
-		
-		if aiStep[iMaxDim] > 1:
-			bResolution = True
-			aiStep[iMaxDim] //= 2
-		else:
-			aiStep[iMaxDim] = 1
-				
+		# initialize state
 		fLastBest = float("inf")
+		aBest = [(fLastBest, list(aiStep) )] * nCurrentBest
+	
+		# obtain initial result
+		sample(func, aBounds, aiResolution, aiStep, aBest, dCache)
+		(fBest, aiBest) = aBest[0]
+	
+		bResolution = True
+		while bResolution:
+			while fBest < fLastBest:
+				aInitialBest = list(aBest)
+				
+				fLastBest = fBest
+				for (res, aiStart) in aInitialBest:
+					#print("base", aiStart)
+					optimize_base(func, aBounds, aiResolution, aiStart, aiStep, aBest, dCache)
+		
+				(fBest, aiBest) = aBest[0]
+		
+			#print("best:", toCoords(aBounds, aiBest, aiResolution), fBest)
+			# this resolution is depleted
+			# lower resolution
+		
+			bResolution = False
+		
+			# reduce largest step by factor 2
+		
+			iMaxDim = numpy.argmax(aiStep)
+		
+			if aiStep[iMaxDim] > 1:
+				bResolution = True
+				aiStep[iMaxDim] //= 2
+			else:
+				aiStep[iMaxDim] = 1
+				
+			fLastBest = float("inf")
 	
 	'''
 	for key in dCache:
