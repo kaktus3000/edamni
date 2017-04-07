@@ -68,6 +68,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	root = tree.getroot()
 	daMicSPLs = dict()
 	daSpeakerImpedances = dict()
+	daSpeakerExcursions = dict()
 	#periods for measuring spl and phase
 	g_nMeasPeriods = 3
 	#process signals
@@ -100,15 +101,27 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 		print("run simulation: SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
 		daSpeakerImpedances[strSpeakerImpedanceID] = numpy.loadtxt(g_strDir + strSpeakerImpedanceFile)
+		
+	for speakerExcursion in root.findall("speaker_excursion"):
+		strSpeakerExcursionFile = speakerExcursion.attrib["file"]
+		strSpeakerExcursionID = speakerExcursion.attrib["id"]
+
+		print("run simulation: Excursion for", strSpeakerExcursionID, ", file =", strSpeakerExcursionFile)
+		daSpeakerExcursions[strSpeakerExcursionID] = numpy.loadtxt(g_strDir + strSpeakerExcursionFile)
 
 	if strPlotFile != "":
 		# plot spl and impedance
-		fig, ax1 = plt.subplots()
-		ax2 = ax1.twinx()
+		fig, axSPL = plt.subplots()
+		axImpedance = axSPL.twinx()
+		axExcursion = axSPL.twinx()
+		
+		fig.subplots_adjust(right=0.8)
+		axExcursion.spines['right'].set_position(('axes', 1.15))
+		
 		plt.suptitle("Frequency Response Plot")
 
-		ax1.set_xscale("log", nonposx='clip')
-		ax2.set_xscale("log", nonposx='clip')
+		axSPL.set_xscale("log", nonposx='clip')
+		axImpedance.set_xscale("log", nonposx='clip')
 
 		nMics = len(root.findall("mic_spl") )
 
@@ -119,62 +132,35 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
 			npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
 	
-			ax1.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
+			axSPL.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
 			iMic += 1
 
 		for strSpeakerImpedanceID in daSpeakerImpedances.keys():
 			npaFreqs = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[0]
 			npaImpedances = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[1]
 	
-			ax2.plot(npaFreqs, npaImpedances, "g-")
+			axImpedance.plot(npaFreqs, npaImpedances, "g-")
+			
+		for strSpeakerExcursionID in daSpeakerExcursions.keys():
+			npaFreqs = numpy.transpose(daSpeakerExcursions[strSpeakerExcursionID])[0]
+			npaExcursions = numpy.transpose(daSpeakerExcursions[strSpeakerExcursionID])[1]
+	
+			axExcursion.plot(npaFreqs, npaExcursions * 1000.0, "k-")
 
-		ax1.set_ylabel('SPL [dB]', color='b')
-		ax2.set_ylabel('Impedance [ohms]', color='g')
-		ax1.set_xlabel('Frequency [Hz]')
+		axSPL.set_ylabel('SPL [dB]', color='b')
+		axImpedance.set_ylabel('Impedance [ohms]', color='g')
+		axExcursion.set_ylabel('Excursion [mm]', color='k')
+		
+		axSPL.set_xlabel('Frequency [Hz]')
 
-		ax1.legend(loc=4)
-		ax1.grid(which='both')
+		axSPL.legend(loc=4)
+		axSPL.grid(which='both')
 
 		print("run simulation: creating plot", strPlotFile)
 		plt.savefig(strPlotFile)
 
 		plt.close()
 		
-		'''
-		import matplotlib.pyplot as plt
-		import numpy as np
-		# To make things reproducible...
-		np.random.seed(1977)
-
-		fig, ax = plt.subplots()
-
-		# Twin the x-axis twice to make independent y-axes.
-		axes = [ax, ax.twinx(), ax.twinx()]
-
-		# Make some space on the right side for the extra y-axis.
-		fig.subplots_adjust(right=0.75)
-
-		# Move the last y-axis spine over to the right by 20% of the width of the axes
-		axes[-1].spines['right'].set_position(('axes', 1.2))
-
-		# To make the border of the right-most axis visible, we need to turn the frame
-		# on. This hides the other plots, however, so we need to turn its fill off.
-		axes[-1].set_frame_on(True)
-		axes[-1].patch.set_visible(False)
-
-		# And finally we get to plot things...
-		colors = ('Green', 'Red', 'Blue')
-		for ax, color in zip(axes, colors):
-		    data = np.random.random(1) * np.random.random(10)
-		    ax.plot(data, marker='o', linestyle='none', color=color)
-		    ax.set_ylabel('%s Thing' % color, color=color)
-		    ax.tick_params(axis='y', colors=color)
-		axes[0].set_xlabel('X-axis')
-
-		plt.show()
-		'''
-	
-
 	t_mic = None
 
 	for mic in daMicSPLs.keys():
