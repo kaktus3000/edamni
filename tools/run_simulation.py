@@ -68,6 +68,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	root = tree.getroot()
 	daMicSPLs = dict()
 	daSpeakerImpedances = dict()
+	daSpeakerExcursions = dict()
 	#periods for measuring spl and phase
 	g_nMeasPeriods = 3
 	#process signals
@@ -100,15 +101,27 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 		print("run simulation: SPL for", strSpeakerImpedanceID, ", file =", strSpeakerImpedanceFile)
 		daSpeakerImpedances[strSpeakerImpedanceID] = numpy.loadtxt(g_strDir + strSpeakerImpedanceFile)
+		
+	for speakerExcursion in root.findall("speaker_excursion"):
+		strSpeakerExcursionFile = speakerExcursion.attrib["file"]
+		strSpeakerExcursionID = speakerExcursion.attrib["id"]
+
+		print("run simulation: Excursion for", strSpeakerExcursionID, ", file =", strSpeakerExcursionFile)
+		daSpeakerExcursions[strSpeakerExcursionID] = numpy.loadtxt(g_strDir + strSpeakerExcursionFile)
 
 	if strPlotFile != "":
 		# plot spl and impedance
-		fig, ax1 = plt.subplots()
-		ax2 = ax1.twinx()
+		fig, axSPL = plt.subplots()
+		axImpedance = axSPL.twinx()
+		axExcursion = axSPL.twinx()
+		
+		fig.subplots_adjust(right=0.8)
+		axExcursion.spines['right'].set_position(('axes', 1.15))
+		
 		plt.suptitle("Frequency Response Plot")
 
-		ax1.set_xscale("log", nonposx='clip')
-		ax2.set_xscale("log", nonposx='clip')
+		axSPL.set_xscale("log", nonposx='clip')
+		axImpedance.set_xscale("log", nonposx='clip')
 
 		nMics = len(root.findall("mic_spl") )
 
@@ -119,28 +132,35 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			npaFreqs = numpy.transpose(daMicSPLs[strMicID])[0]
 			npaSPLs = numpy.transpose(daMicSPLs[strMicID])[1]
 	
-			ax1.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
+			axSPL.plot(npaFreqs, npaSPLs, "-", color = colors[iMic], label = strMicID)
 			iMic += 1
 
 		for strSpeakerImpedanceID in daSpeakerImpedances.keys():
 			npaFreqs = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[0]
 			npaImpedances = numpy.transpose(daSpeakerImpedances[strSpeakerImpedanceID])[1]
 	
-			ax2.plot(npaFreqs, npaImpedances, "g-")
+			axImpedance.plot(npaFreqs, npaImpedances, "g-")
+			
+		for strSpeakerExcursionID in daSpeakerExcursions.keys():
+			npaFreqs = numpy.transpose(daSpeakerExcursions[strSpeakerExcursionID])[0]
+			npaExcursions = numpy.transpose(daSpeakerExcursions[strSpeakerExcursionID])[1]
+	
+			axExcursion.plot(npaFreqs, npaExcursions * 1000.0, "k-")
 
-		ax1.set_ylabel('SPL [dB]', color='b')
-		ax2.set_ylabel('Impedance [ohms]', color='g')
-		ax1.set_xlabel('Frequency [Hz]')
+		axSPL.set_ylabel('SPL [dB]', color='b')
+		axImpedance.set_ylabel('Impedance [ohms]', color='g')
+		axExcursion.set_ylabel('Excursion [mm]', color='k')
+		
+		axSPL.set_xlabel('Frequency [Hz]')
 
-		ax1.legend(loc=2)
-		ax1.grid(which='both')
+		axSPL.legend(loc=4)
+		axSPL.grid(which='both')
 
 		print("run simulation: creating plot", strPlotFile)
 		plt.savefig(strPlotFile)
 
 		plt.close()
-	
-
+		
 	t_mic = None
 
 	for mic in daMicSPLs.keys():
@@ -176,9 +196,14 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		fMeanSPL = numpy.mean(npaTestSPLs)
 		k_spl = abs(fMeanSPL - t_spl) * k_spec_spl
 	
-		npaDeviation = numpy.fabs(npaTestSPLs - t_spl)
+		npaDeviation = numpy.fabs(npaTestSPLs - fMeanSPL)
 		fMaxDeviation = numpy.amax(npaDeviation)
-		k_linearity = fMaxDeviation * k_spec_linearity
+		
+		fRMSDeviation = numpy.sqrt(numpy.mean(numpy.square(npaDeviation) ) )
+		
+		fTotalDeviation = (4.0 * fMaxDeviation + fRMSDeviation) / 5
+		
+		k_linearity = fTotalDeviation * k_spec_linearity
 		
 		fCost = k_low + k_spl + k_linearity
 		
@@ -186,7 +211,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			fBest = fCost
 			fBestSPL = fMeanSPL
 			fBestLower = fLower
-			fBestDeviation = fMaxDeviation
+			fBestDeviation = fTotalDeviation
 			
 			fBestCostSPL = k_spl
 			fBestCostLower = k_low

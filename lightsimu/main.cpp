@@ -429,6 +429,7 @@ main(int argc, char** argv)
 		writeTable((strBaseDir + strSpeakerExcursionFile).c_str(), pfFreqs, &pfExcursions, 1, nFreqs);
 
 		hXML << "\t<speaker_impedance file=\"" << strSpeakerFile << "\" id=\"" << strSpeaker << "\"/>\n";
+		hXML << "\t<speaker_excursion file=\"" << strSpeakerExcursionFile << "\" id=\"" << strSpeaker << "\"/>\n";
 	}
 	hXML << "</simu_output>\n";
 
