@@ -98,6 +98,9 @@ void runThread(float fFreq,
 			float fPresRight = kernelArray.m_pfPressureElements[OFFSET + uiSpeakerElem + 1];
 
 			float fSpeakerVelo = simulateSpeaker(pSpeaker, pSettings, fPresRight - fPresLeft, fVoltage);
+
+			if(!isfinite(fSpeakerVelo))
+				uiTimeStep = nTimesteps;
 			//std::cout << "speaker velocity " << fSpeakerVelo << "\n";
 
 			// implant speaker velocity to field
