@@ -31,6 +31,7 @@ simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDif
 	const unsigned int nMaxIter = 5;
 	const double fEpsU = 1e-8;
 	const double fEpsF = 1e-8;
+	const double fEpsV = 1e-5;
 	unsigned int uiIter = 0;
 
 	int bConverged = 0;
@@ -54,7 +55,7 @@ simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDif
 		fDeltaV = (fPosition - pSpeaker->m_fX) / dt - (fVelocity + pSpeaker->m_fV) / 2;
 
 		// check for convergence
-		if(fabs(fDeltaU) < fEpsU && fabs(fDeltaF) < fEpsF && fabs(fDeltaV) < fEpsF)
+		if(fabs(fDeltaU) < fEpsU && fabs(fDeltaF) < fEpsF && fabs(fDeltaV) < fEpsV)
 		{
 			bConverged = 1;
 			break;

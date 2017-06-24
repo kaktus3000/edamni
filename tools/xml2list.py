@@ -310,7 +310,7 @@ def space_section(dx, params):
 	micdist = params["length"]
 	free = .5
 	transition = .75
-	nSinkElements = 250
+	nSinkElements = 750
 	fInfinityDamping = 0.02
 	
 	fraction = params["fraction"]

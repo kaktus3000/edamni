@@ -260,6 +260,12 @@ aafProfileSPLs = []
 
 #lfPhase = []
 
+# convergence settings for newton raphson speaker equation solver
+nMaxIter = 5;
+fEpsU = 1e-8;
+fEpsF = 1e-8;
+fEpsV = 1e-5;
+
 #read parameters needed
 for fFreq in g_afFreqs:
 	if g_bVerbose:
@@ -356,42 +362,32 @@ for fFreq in g_afFreqs:
 
 			fCurrent = speaker.m_fI			
 			fPosition = speaker.m_fX
+			fVelocity = speaker.m_fV
 			
 			fPressureDiff = npaPressures[speaker.m_iElemID + 1] - npaPressures[speaker.m_iElemID]
 			
-			for iIter in range(10):
+			fDeterminant = 1.0 / ((4*dOptions["re"]*g_fTimeStep+8*dOptions["le"])*(dOptions["mmd"] + speaker.m_fAirmass)+speaker.m_fStiffness*dOptions["re"]*g_fTimeStep*g_fTimeStep*g_fTimeStep+(2*dOptions["re"]*dOptions["rms"]+2*speaker.m_fStiffness*dOptions["le"]+2*dOptions["bl"]*dOptions["bl"])*g_fTimeStep*g_fTimeStep+4*dOptions["le"]*dOptions["rms"]*g_fTimeStep);
+			
+			for iIter in range(nMaxIter):
 		
-				fDeltaU =  fU - dOptions["bl"] * (fPosition - speaker.m_fX) / g_fTimeStep - dOptions["re"] * fCurrent - dOptions["le"] * (fCurrent - speaker.m_fI) / g_fTimeStep
-				fDeltaF = dOptions["bl"] * fCurrent - dOptions["sd"] * fPressureDiff - speaker.m_fStiffness * fPosition - dOptions["rms"] * (fPosition - speaker.m_fX) / g_fTimeStep - (dOptions["mmd"] + speaker.m_fAirmass) * ((fPosition - speaker.m_fX) / g_fTimeStep - speaker.m_fV) / g_fTimeStep
-				
+				fDeltaU = fU - dOptions["bl"] * (fVelocity + speaker.m_fV) / 2 - dOptions["re"] * (fCurrent + speaker.m_fI) / 2 - dOptions["le"] * (fCurrent - speaker.m_fI) / g_fTimeStep;
+				fDeltaF = dOptions["bl"] * (fCurrent + speaker.m_fI) / 2 - dOptions["sd"] * fPressureDiff - speaker.m_fStiffness * (fPosition + speaker.m_fX) / 2 - dOptions["rms"] * (fVelocity - speaker.m_fV) / 2 - (dOptions["mmd"] + speaker.m_fAirmass) * (fVelocity - speaker.m_fV) / g_fTimeStep;
+				fDeltaV = (fPosition - speaker.m_fX) / g_fTimeStep - (fVelocity + speaker.m_fV) / 2;
+
 				# check for convergence
-				if abs(fDeltaU) < 1e-10 and abs(fDeltaF) < 1e-12:
+				if abs(fDeltaU) < fEpsU and abs(fDeltaF) < fEpsF and abs(fDeltaV) < fEpsV:
 					break
 		
-				fDeterminant = 1.0/((dOptions["re"]*g_fTimeStep+dOptions["le"])*(dOptions["mmd"] + speaker.m_fAirmass)+speaker.m_fStiffness*dOptions["re"]*g_fTimeStep*g_fTimeStep*g_fTimeStep+(dOptions["re"]*dOptions["rms"]+speaker.m_fStiffness*dOptions["le"]+dOptions["bl"]*dOptions["bl"])*g_fTimeStep*g_fTimeStep+dOptions["le"]*dOptions["rms"]*g_fTimeStep)
-				fCurrent = fCurrent - fDeterminant * (-1.0) * (fDeltaU*g_fTimeStep*(dOptions["mmd"] + speaker.m_fAirmass)+fDeltaU*speaker.m_fStiffness*g_fTimeStep*g_fTimeStep*g_fTimeStep+(fDeltaU*dOptions["rms"]-dOptions["bl"]*fDeltaF)*g_fTimeStep*g_fTimeStep)
-				fPosition = fPosition - fDeterminant * (-1.0) * ((fDeltaF*dOptions["re"]+dOptions["bl"]*fDeltaU)*g_fTimeStep*g_fTimeStep*g_fTimeStep+fDeltaF*dOptions["le"]*g_fTimeStep*g_fTimeStep)
+				fCurrent = fCurrent + fDeterminant * (8*fDeltaU*g_fTimeStep*(dOptions["mmd"] + speaker.m_fAirmass)+(2*fDeltaU-2*dOptions["bl"]*fDeltaV)*speaker.m_fStiffness*g_fTimeStep*g_fTimeStep*g_fTimeStep+(4*fDeltaU*dOptions["rms"]-4*dOptions["bl"]*fDeltaF)*g_fTimeStep*g_fTimeStep);
+				fPosition = fPosition + fDeterminant * -((4*fDeltaV*dOptions["re"]*g_fTimeStep*g_fTimeStep+8*fDeltaV*dOptions["le"]*g_fTimeStep)*(dOptions["mmd"] + speaker.m_fAirmass)+(2*fDeltaV*dOptions["re"]*dOptions["rms"]-2*fDeltaF*dOptions["re"]+2*dOptions["bl"]*dOptions["bl"]*fDeltaV-2*dOptions["bl"]*fDeltaU)*g_fTimeStep*g_fTimeStep*g_fTimeStep+(4*fDeltaV*dOptions["le"]*dOptions["rms"]-4*fDeltaF*dOptions["le"])*g_fTimeStep*g_fTimeStep);
+				fVelocity = fVelocity + fDeterminant * (2*fDeltaV*speaker.m_fStiffness*dOptions["re"]*g_fTimeStep*g_fTimeStep*g_fTimeStep+(4*fDeltaF*dOptions["re"]+4*fDeltaV*speaker.m_fStiffness*dOptions["le"]+4*dOptions["bl"]*fDeltaU)*g_fTimeStep*g_fTimeStep+8*fDeltaF*dOptions["le"]*g_fTimeStep);
 
-			speaker.m_fV = (fPosition - speaker.m_fX) / g_fTimeStep
+			if iIter >= nMaxIter:
+				print("speaker equations failed to converge")
+			
+			speaker.m_fV = fVelocity
 			speaker.m_fX = fPosition
 			speaker.m_fI = fCurrent
-			'''
-			#calculate current
-			fCurrentSlope = (fU - dOptions["bl"]*speaker.m_fV - dOptions["re"] * speaker.m_fI)/dOptions["le"]
-			speaker.m_fI = speaker.m_fI + fCurrentSlope * g_fTimeStep
-			
-			fForceMembrane = dOptions["bl"] * speaker.m_fI
-			
-			
-			#calculate speaker acceleration
-			fAcceleration = (fForceMembrane - fPressureDiff * dOptions["sd"] - speaker.m_fX * speaker.m_fStiffness - dOptions["rms"] * speaker.m_fV)/(dOptions["mmd"] + speaker.m_fAirmass)
-
-			#calculate speaker position
-			speaker.m_fX = speaker.m_fX + speaker.m_fV * g_fTimeStep
-
-			#calculate speaker velocity			
-			speaker.m_fV = speaker.m_fV + fAcceleration * g_fTimeStep
-			'''
 			
 			#overwrite updates made by pressure step
 			npaPressureDifference[speaker.m_iElemID] = speaker.m_fV / g_fVelocityFactor

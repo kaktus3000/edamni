@@ -37,7 +37,8 @@ void runThread(float fFreq,
 		SSimuSettings* pSettings, SKernelArray* pArray,
 		SSpeaker* pSpeakers, uint* pSpeakerElems, uint nSpeakers,
 		uint* pMics, uint nMics,
-		float* pfSPLs, float* pfImpedance, float* pfExcursion)
+		float* pfSPLs, float* pfImpedance, float* pfExcursion,
+		const std::string& strMicOutput)
 {
 	// create copy of speakers
 	SSpeaker* pCurrSpeakers = (SSpeaker* ) calloc(nSpeakers, sizeof(SSpeaker));
@@ -151,7 +152,15 @@ void runThread(float fFreq,
 			pfSumData[uiSample] += ppfMicMeasurements[uiMic][uiSample];
 			//std::cout << pfSumData[uiSample] << "\t";
 		}
-
+		
+		if(strMicOutput.size() )
+		{
+			std::string strFile(strMicOutput + std::to_string(uiMic) + std::string(".txt"));
+			std::cout << "writing microphone outputs to " << strFile << "\n";
+			std::ofstream hOutput( strFile);
+			for (uint uiSample = 0; uiSample < nTimesteps - nLeadSteps; ++uiSample)
+				hOutput << uiSample * pSettings->m_fDeltaT << "\t" << ppfMicMeasurements[uiMic][uiSample] << "\n";
+		}
 		pfSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
 	}
 	pfSPLs[nMics] = spl(rms(pfSumData, nTimesteps - nLeadSteps), pSettings);
@@ -320,7 +329,6 @@ main(int argc, char** argv)
 		kernelArray.m_pfPressureFactorsLeft[OFFSET + uiSpeakerElem + 1] *= pSpeaker->sd / pElems[uiSpeakerElem].m_fArea;
 	}
 
-
 	std::cout << "\n";
 
 	//read frequencies to simulate
@@ -341,6 +349,15 @@ main(int argc, char** argv)
 			break;
 
 		uiPos = uiEnd+1;
+	}
+	
+	std::string strMicOut(inputScanner.getKey("general", "mic_output") );
+	
+	std::string strMicBase("");
+	if(strMicOut.size())
+	{
+		std::cout << "microphone output is requested to " << strMicOut << "\n";
+		strMicBase = strBaseDir + strMicOut;
 	}
 
 	const uint nFreqs = vfFreqs.size();
@@ -367,10 +384,30 @@ main(int argc, char** argv)
 		float* pfResults = (float*)calloc(nMics + 1, sizeof(float));
 		vpfResults.push_back(pfResults);
 
+		std::string strMicOutput("");
+		if (strMicBase.size())
+		{
+			strMicOutput = strMicBase + std::to_string(fFreq) + std::string("Hz_");
+			std::cout << "microphone output will be written to " << strMicOutput << "\n";
+		}
+
 #ifdef DEBUGBUILD
-		runThread( fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]));
+		runThread(
+				fFreq, &simuSettings, &kernelArray,
+				pSpeakers, pSpeakerElems, nSpeakers,
+				pMics, nMics,
+				pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]),
+				strMicOutput
+				);
 #else
-		vThreads.push_back(std::thread(runThread, fFreq, &simuSettings, &kernelArray, pSpeakers, pSpeakerElems, nSpeakers, pMics, nMics, pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]) ) );
+		vThreads.push_back(std::thread(
+				runThread,
+				fFreq, &simuSettings, &kernelArray,
+				pSpeakers, pSpeakerElems, nSpeakers,
+				pMics, nMics,
+				pfResults, &(pfImpedances[uiFreq]), &(pfExcursions[uiFreq]),
+				strMicOutput
+				) );
 #endif
 	}
 

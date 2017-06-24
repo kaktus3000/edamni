@@ -78,7 +78,7 @@ ScanINI::getKey(const std::string& strSection, const std::string& strKey)
 
 	if(m_mmstrValues[strSection].find(strKey) == m_mmstrValues[strSection].end())
 	{
-		std::cout << "ERROR parsing INI file " << ": didn't find key " << strKey << " in section " << strSection << "\"\n";
+		std::cout << "ERROR parsing INI file " << ": didn't find key \"" << strKey << "\" in section \"" << strSection << "\"\n";
 		return std::string();
 	}
 
