@@ -403,21 +403,32 @@ class MovableHandler:
 			ttk.Label(editElementDialog, text=propName).grid(column=0, row=gridRow)
 
 			value = g_dAcousticElements[self.strID].m_lValues[iProp]
-
+			
+			#if this is a speaker, add membrane area
+			if g_dAcousticElements[self.strID].m_Type == "Speaker" and propName[0] == "A":
+				strSpeaker = g_dAcousticElements[self.strID].m_lValues[2]
+				if strSpeaker in g_dSpeakers:
+					dSpeakerProps = g_dSpeakers[strSpeaker]
+					fMembraneArea = dSpeakerProps["Sd"]
+					value = fMembraneArea
+				
 			lTextVars.append(tk.StringVar())
 			lTextVars[-1].set(str(value))
 
 			#a specialty
-			if g_dAcousticElements[self.strID].m_Type == "Speaker" and propName == "type":
-				#get speaker model names
-				lstrSpeakers = []
-				for iSpeaker in range(speakerListBox.size()):
-					strListBoxEntry = speakerListBox.get(iSpeaker)
-					lstrSpeakers.append(strListBoxEntry )
-				#produce a dropdown box
-				speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
-				speakerModelBox.state(['readonly'])
-				speakerModelBox.grid(column=1, row=gridRow)
+			if g_dAcousticElements[self.strID].m_Type == "Speaker":
+				if propName == "type":
+					#get speaker model names
+					lstrSpeakers = []
+					for iSpeaker in range(speakerListBox.size()):
+						strListBoxEntry = speakerListBox.get(iSpeaker)
+						lstrSpeakers.append(strListBoxEntry )
+					#produce a dropdown box
+					speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
+					speakerModelBox.state(['readonly'])
+					speakerModelBox.grid(column=1, row=gridRow)
+				else:
+					ttk.Label(editElementDialog, text=str(value)).grid(column=1, row=gridRow)
 			else:
 				ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
 
