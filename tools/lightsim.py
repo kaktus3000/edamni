@@ -36,24 +36,21 @@ if g_bVerbose:
 g_fMaxTimeStep = float(config.get("general", "max_timestep"))
 g_strSignalType = config.get("signal", "signal_type")
 
-'''
-		if(strSignal == std::string("sine"))
-			data.m_SignalType = SIG_SINE;
-		else if(strSignal == std::string("delta"))
-			data.m_SignalType = SIG_DELTA;
-		else if(strSignal == std::string("square"))
-			data.m_SignalType = SIG_SQUARE;
-'''
-
-g_bSaveTimeSeries = False
-
 g_strFreqs = config.get("signal", "frequencies")
-
 g_afFreqs = []
 for strFreq in g_strFreqs.split(";"):
 	if strFreq == "":
 		continue
 	g_afFreqs.append(float(strFreq))
+
+g_bSaveMicTimeSeries = False
+g_bSaveSpeakerTimeSeries = False
+
+if config.has_option("general", "mic_output"):
+	g_bSaveMicTimeSeries = True
+	strMicOutput = config.get("general", "mic_output")
+	if g_bVerbose:
+		print("lightsim: time series output requested:", strMicOutput)
 
 g_nSignalPeriods = int(config.get("signal", "signal_periods"))
 
@@ -173,18 +170,6 @@ lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
 # acoustic damping
 lfTimeConstraints.append(g_fDensity / max(numpy.amax(afVelocityDamping), 1.0) )
 
-'''
-# iterate speakers
-for strSpeaker in dSpeakers.keys():
-	speaker = dSpeakers[strSpeaker]
-	# speaker electric
-	lfTimeConstraints.append(speaker.m_dOptions["le"] / speaker.m_dOptions["re"] )
-	# mechanical damping speaker
-	lfTimeConstraints.append(speaker.m_dOptions["mmd"] * speaker.m_dOptions["rms"] )
-	# mechanical spring speaker
-	lfTimeConstraints.append(numpy.sqrt(speaker.m_dOptions["mmd"] * speaker.m_dOptions["cms"]) )
-
-'''
 lfTimeConstraints.append(g_fMaxTimeStep)
 
 g_fTimeStep = numpy.amin(lfTimeConstraints)
@@ -225,10 +210,21 @@ if g_bVerbose:
 #will be called with omega*t
 def sinInput(omega_t):
 	return numpy.sin(omega_t)
+	
+def stepInput(omega_t):
+	if omega_t > .01:
+		return 1
+	else:
+		return 0
 
 fSignalNormalizer = 4.0 # for 8 ohms
-	
-fnInput = sinInput
+
+if g_strSignalType == "sine":
+	fnInput = sinInput
+elif g_strSignalType == "step":
+	fnInput = stepInput
+else:
+	print("unknown signal type", g_strSignalType)
 
 xmlTree = ET.ElementTree(ET.Element("simu_output") )
 rootElem = xmlTree.getroot()
@@ -291,6 +287,7 @@ for fFreq in g_afFreqs:
 	dMicMeasurements = dict()
 	for strMic in dMics:
 		dMicMeasurements[strMic] = []
+	dMicMeasurements["spl_sum"] = []
 		
 	dSpeakerMeasurements = dict()
 	for strSpeaker in dSpeakers:
@@ -398,9 +395,16 @@ for fFreq in g_afFreqs:
 
 		if fTime > g_fLeadTime:
 			#save microphone measurements
+			
+			fPressureSum = 0
+			
 			for strMic in dMics:
 				iElem = dMics[strMic].m_iElemID
 				dMicMeasurements[strMic].append([fTime, npaPressures[iElem]])
+				if "spl_mic" in strMic:
+					fPressureSum += npaPressures[iElem]
+				
+			dMicMeasurements["spl_sum"].append([fTime, fPressureSum])
 			
 			#save element measurements
 			npaSummedSquares = npaSummedSquares + numpy.square(npaPressures)
@@ -427,40 +431,31 @@ for fFreq in g_afFreqs:
 		fMicRMS = numpy.sqrt(numpy.sum(numpy.square(npaPressure) ) / npaPressure.size)
 		return 20.0 * numpy.log10(fMicRMS/g_fReferencePressure);
 	
-	# virtual mic data for sum output
-	npaSumPressure = []
-	
 	#save microphone measurements
-	for strMic in dMics:
+	dActualMics = dict(dMics)
+	dActualMics["spl_sum"] = 0
+	
+	for strMic in dActualMics:
 		# get pressure
 		npaPressure = numpy.transpose(dMicMeasurements[strMic])[1]
 		
-		if "spl_mic" in strMic:
-			if len(npaSumPressure) == 0:
-				npaSumPressure = npaPressure
-			else:
-				npaSumPressure += npaPressure
-		
 		fPmax = numpy.amax(npaPressure)
 		if g_bVerbose:
-			print("pmax:", fPmax)
+			print("mic", strMic, "pmax:", fPmax)
 		
 		fMicSPL = calcSPL(npaPressure)
 		
 		dlSPLs[strMic].append(fMicSPL)
 		
-		if g_bSaveTimeSeries:
+		if g_bSaveMicTimeSeries:
 			micElem = ET.SubElement(signalElem, "mic_output")
 			micElem.attrib["id"] = strMic
 			
-			strFile = strMic + "_" + str(fFreq) + ".dat"
+			strFile = strMicOutput + strMic + "_" + str(fFreq) + ".dat"
 			micElem.attrib["file"] = strFile
 			
 			numpy.savetxt(g_strDir + strFile, dMicMeasurements[strMic] )
 	
-	# create a virtual mic capturing the sum output
-	dlSPLs["spl_sum"].append( calcSPL(npaSumPressure) )
-			
 	#save speaker measurements
 	for strSpeaker in dSpeakers:
 		# get voltage and current
@@ -483,7 +478,7 @@ for fFreq in g_afFreqs:
 		if g_bVerbose:
 			print("lightsim: xmax:", fXmax, "vmax:", fVmax)
 		
-		if g_bSaveTimeSeries:
+		if g_bSaveSpeakerTimeSeries:
 			speakerElem = ET.SubElement(signalElem, "speaker_output")
 			speakerElem.attrib["id"] = strSpeaker
 			
@@ -497,32 +492,34 @@ for fFreq in g_afFreqs:
 	signalElem = ET.SubElement(signalElem, "element_output")
 	signalElem.attrib["file"] = g_strPath +
 	'''
-	npaProfileAmplitudes = numpy.sqrt((npaSummedSquares + g_fReferencePressure * .01) * (1.0/len(npaSumPressure) ) )
+	npaProfileAmplitudes = numpy.sqrt((npaSummedSquares + g_fReferencePressure * .01) * (1.0/len(dMicMeasurements["spl_sum"]) ) )
 	npaProfileSPL = 20.0 * numpy.log10(npaProfileAmplitudes /g_fReferencePressure )
 	
 	aafProfileSPLs.append(npaProfileSPL)
 
 numpy.savetxt(g_strDir + "profiles.txt", aafProfileSPLs)
+
+if g_strSignalType == "sine":
+
+	# save microphone SPL measurements
+	for mic in dlSPLs.keys():
+		micElem = ET.SubElement(rootElem, "mic_spl")
+		micElem.attrib["id"] = mic
 	
-# save microphone SPL measurements
-for mic in dlSPLs.keys():
-	micElem = ET.SubElement(rootElem, "mic_spl")
-	micElem.attrib["id"] = mic
+		strFile = "spl_" + mic + ".dat"
+		micElem.attrib["file"] = strFile
 	
-	strFile = "spl_" + mic + ".dat"
-	micElem.attrib["file"] = strFile
+		numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlSPLs[mic]] ) )
 	
-	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlSPLs[mic]] ) )
+	# save speaker impedance
+	for speaker in dSpeakers.keys():
+		micElem = ET.SubElement(rootElem, "speaker_impedance")
+		micElem.attrib["id"] = speaker
 	
-# save speaker impedance
-for speaker in dSpeakers.keys():
-	micElem = ET.SubElement(rootElem, "speaker_impedance")
-	micElem.attrib["id"] = speaker
+		strFile = "impedance_speaker_" + speaker + ".dat"
+		micElem.attrib["file"] = strFile
 	
-	strFile = "impedance_speaker_" + speaker + ".dat"
-	micElem.attrib["file"] = strFile
-	
-	numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlImpedances[speaker]]) )
+		numpy.savetxt(g_strDir + strFile, numpy.transpose([g_afFreqs, dlImpedances[speaker]]) )
 
 if not g_bVerbose:
 	print("")

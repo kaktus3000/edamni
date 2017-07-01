@@ -5,6 +5,7 @@ import os
 import configparser
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import scipy.signal
 
 #xml support
 import xml.etree.ElementTree as ET
@@ -66,6 +67,9 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	#parse simu output file
 	tree = ET.parse(g_strSimuOutputFile)
 	root = tree.getroot()
+	
+	nMics = len(root.findall("mic_spl") )
+	
 	daMicSPLs = dict()
 	daSpeakerImpedances = dict()
 	daSpeakerExcursions = dict()
@@ -77,10 +81,30 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		fSsignalFreq = float(signal.attrib["freq"])
 		#print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
 		#process outputs
-		for mic_output in signal.findall("mic_output"):
-			strMicId = mic_output.attrib["id"]
-			strMicFile = mic_output.attrib["file"]
 		
+		for mic_output in signal.findall("mic_output"):
+			strMicID = mic_output.attrib["id"]
+			strMicFile = mic_output.attrib["file"]
+			
+			#create spl information from time series
+			npaData = numpy.loadtxt(g_strDir + strMicFile)
+
+			npaStepResponse = numpy.transpose(npaData)[1]
+			fTimeStep = npaData[0][0]
+
+			npaImpulseResponse = numpy.ediff1d(npaStepResponse) / fTimeStep
+
+			w,h = scipy.signal.freqz(npaImpulseResponse, worN=4096)
+			
+			w = w[10:int(len(w)*.9)]
+			h = h[10:int(len(h)*.9)]
+
+			npaFreqs = 1.1 * w/(fTimeStep * 2 * numpy.pi)
+			npaSPLs  = (20 * numpy.log10(abs(h)) ) + 7
+		
+			daMicSPLs[strMicID] = numpy.transpose([npaFreqs, npaSPLs])
+			
+			nMics += 1
 	
 		for speaker_output in signal.findall("speaker_output"):
 			strSpeakerId = speaker_output.attrib["id"]
@@ -122,8 +146,6 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 		axSPL.set_xscale("log", nonposx='clip')
 		axImpedance.set_xscale("log", nonposx='clip')
-
-		nMics = len(root.findall("mic_spl") )
 
 		colors = cm.rainbow(numpy.linspace(0, 1, nMics))
 		iMic = 0
