@@ -234,6 +234,30 @@ def conical_section(dx, params):
 		outList.append(elem)
 	
 	return outList
+	
+def prismatic_section(dx, params):
+	#params should all be float
+	A1 = params["a1"]
+	A2 = params["a2"]
+	
+	length = params["length"]
+	damping = params["damping_constant"]
+	
+	nElems = int((length / dx) + 1);
+	
+	outList = []
+	
+	for iElem in range(nElems):
+		relX=(iElem)/nElems
+		
+		A = relX * A2 + (1.0 - relX) * A1
+
+		elem = elemfile.Elem()
+		elem.m_fArea = A
+		elem.m_fDamping = damping
+		outList.append(elem)
+	
+	return outList
 
 def expo_section(dx, params):
 	#params should all be float
@@ -383,6 +407,7 @@ def xml2List(strInFile, strOutFile, bVerbose):
 	#return value is a list of the elements, sorted from neighbor1 to neighbor2
 	geometryHandlers = dict()
 	geometryHandlers["conical"] = conical_section
+	geometryHandlers["prismatic"] = prismatic_section
 	geometryHandlers["exponential"] = expo_section
 	geometryHandlers["wall"] = wall_section
 	geometryHandlers["space"] = space_section

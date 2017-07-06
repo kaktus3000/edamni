@@ -189,6 +189,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		if t_mic == None:
 			t_mic = mic
 		if "spl_sum" in mic:
+			print("run simulation: identified SPL microphone")
 			t_mic = mic
 			break
 
@@ -204,6 +205,9 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	
 	npaSPLs = numpy.transpose(daMicSPLs[t_mic])[1]
 	npaFreqs = numpy.transpose(daMicSPLs[t_mic])[0]
+	
+	npaSPLs = numpy.compress(npaFreqs <= t_edge_high, npaSPLs)
+	npaFreqs = numpy.compress(npaFreqs <= t_edge_high, npaFreqs)
 	
 	for iLower in range(len(npaSPLs)):
 		npaTestSPLs = npaSPLs[iLower:]
