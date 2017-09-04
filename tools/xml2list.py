@@ -399,6 +399,13 @@ def mic_section(dx, params):
 	elem.m_strMic = escapeString(params["name"] )
 	
 	return [elem]
+	
+def fork_section(dx, params):
+	elem = elemfile.Elem()
+	elem.m_fArea = params["a2"]
+	elem.m_iLink = escapeString(params["name"] )
+	
+	return [elem]
 
 def xml2List(strInFile, strOutFile, bVerbose):
 	#dict of functions, working this way:
@@ -411,7 +418,7 @@ def xml2List(strInFile, strOutFile, bVerbose):
 	geometryHandlers["exponential"] = expo_section
 	geometryHandlers["wall"] = wall_section
 	geometryHandlers["space"] = space_section
-	#geometryHandlers["fork"] = dummy_section
+	geometryHandlers["fork"] = fork_section
 	geometryHandlers["mic"] = mic_section
 	geometryHandlers["speaker"] = speaker_section
 

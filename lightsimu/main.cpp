@@ -86,7 +86,12 @@ void runThread(float fFreq,
 	for(uint uiTimeStep = 0; uiTimeStep < nTimesteps; uiTimeStep++)
 	{
 		float fTotalTime = (float) uiTimeStep * pSettings->m_fDeltaT;
-		float fVoltage = 4.0f * sinf(fTotalTime * 2.0f * M_PI * fFreq);
+		
+		float fVoltage = pSettings->m_fVoltageAmplitude * 
+			sinf(fTotalTime * 2.0f * M_PI * fFreq);
+		if(pSettings->m_strSignalType == std::string("step") )
+			fVoltage = (fTotalTime < .01*fFreq) ? 
+				0 : pSettings->m_fVoltageAmplitude / 1.414213562;
 
 		for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
 		{
@@ -210,6 +215,7 @@ main(int argc, char** argv)
 	simuSettings.m_fTemperature = 293.15;
 	simuSettings.m_fGasConstant = 343.0;
 	simuSettings.m_fReferencePressure = 0.00002;
+	simuSettings.m_fVoltageAmplitude = 4.0;
 
 	// read simulation input file
 	std::string strInputFile(argv[1]);
@@ -218,6 +224,9 @@ main(int argc, char** argv)
 
 	simuSettings.m_fLeadTime = std::stof(inputScanner.getKey("signal", "lead_time"));
 	simuSettings.m_nSimulationPeriods = std::stoi(inputScanner.getKey("signal", "signal_periods"));
+	
+	//read signal type
+	simuSettings.m_strSignalType = inputScanner.getKey("signal", "signal_type");
 
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");

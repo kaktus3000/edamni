@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 from subprocess import call
 
 import material_costs
+import length_distrib
+
 
 def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	print("run simulation: os dir", os.getcwd() )
@@ -57,6 +59,23 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	t_edge_high = float(spl_cost_config.get("spl_targets", "t_edge_high"))
 
 	t_edge_low_max = float(spl_cost_config.get("spl_targets", "t_edge_low_max"))
+	
+	# get distribution for length variation
+	lDistribution = length_distrib.getDistribution()
+	
+	# for each variation
+	
+	# clone simulation input file
+	
+	# read element file
+	
+	# check if we are set to step response, else perform no variation
+	
+	# create variation
+	
+	# modify simulation input file
+	
+	# call simulation with variation
 
 	print("run simulation: calling", lstrSimuCommand, "with", strSimuInputFile, "in", g_strDir)
 	#call simulation with all the data
@@ -91,7 +110,11 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 
 			npaStepResponse = numpy.transpose(npaData)[1]
 			fTimeStep = npaData[0][0]
+			
+			# accumulate step responses for all variations
 
+
+			# calculate impulse response for averaged time signals
 			npaImpulseResponse = numpy.ediff1d(npaStepResponse) / fTimeStep
 
 			w,h = scipy.signal.freqz(npaImpulseResponse, worN=4096)
@@ -111,6 +134,8 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			strSpeakerFile = speaker_output.attrib["file"]
 	
 		#video output is per frequency, no iteration needed.
+		
+	# 
 
 	for micSPL in root.findall("mic_spl"):
 		strMicSPLFile = micSPL.attrib["file"]

@@ -58,6 +58,8 @@ def scanElemFile(strFilename):
 	f = open(strFilename, 'r')
 	aLines = f.readlines()
 	f.close()
+	
+	print("scan elem file: read", len(aLines), "lines")
 
 #	delta X of the elements (length)
 	dx = float("nan")
