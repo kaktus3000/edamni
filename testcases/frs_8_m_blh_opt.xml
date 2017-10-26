@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE horn SYSTEM "../horn.dtd">
+<horn dx="0.02">
+<tspset id="visaton frs 8m-8">
+<Cms>0.0009000000000000001</Cms>
+<Sd>0.0029000000000000002</Sd>
+<Mmd>0.0017099459028558936</Mmd>
+<BL>4.0</BL>
+<Le>0.0003</Le>
+<Rms>0.436332313</Rms>
+<Re>7.2</Re>
+</tspset>
+<speaker id="Speaker1">
+<neighbor2 ref="Space2" />
+<neighbor1 ref="Conical3" />
+<a1>0.01</a1>
+<a2>0.01</a2>
+<type>visaton frs 8m-8</type>
+<screen_position x="253" y="239" />
+<screen_rotation rot="0" />
+</speaker>
+<exponential id="Exponential4">
+<neighbor1 ref="Conical3" />
+<neighbor2 ref="Space5" />
+<a1 min=".0005" max=".005" id="horn_throat">0.001</a1>
+<a2 min=".0005" max=".05" id="horn_mouth">0.01</a2>
+<length min=".5" max="5.0" id="horn_len">2.0</length>
+<!-- <damping_constant min="0" max="2000" id="horn_damping">0.0</damping_constant> -->
+<damping_constant>0.0</damping_constant>
+<screen_position x="100" y="100" />
+<screen_rotation rot="0" />
+</exponential>
+<conical id="Conical3">
+<neighbor2 ref="Speaker1" />
+<neighbor1 ref="Exponential4" />
+<a1>0.01</a1>
+<a2>0.01</a2>
+<length min=".05" max=".5" id="box_decaliters">0.3</length>
+<damping_constant>1000.0</damping_constant>
+<screen_position x="93" y="235" />
+<screen_rotation rot="0" />
+</conical>
+<space id="Space5">
+<neighbor1 ref="Exponential4" />
+<a1 min=".0005" max=".05" id="horn_mouth">0.01</a1>
+<length>1.0</length>
+<fraction>0.5</fraction>
+<screen_position x="245" y="105" />
+<screen_rotation rot="0" />
+</space>
+<space id="Space2">
+<neighbor1 ref="Speaker1" />
+<a1>0.01</a1>
+<length>1.0</length>
+<fraction>0.5</fraction>
+<screen_position x="397" y="237" />
+<screen_rotation rot="0" />
+</space>
+</horn>

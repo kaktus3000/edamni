@@ -7,10 +7,10 @@ import xml.etree.ElementTree as ET
 output file format:
 
 <TSPSET id="value"> //name
-	<RMS> <value> //wert für mech. verluste
+	<RMS> <value> //wert fuer mech. verluste
 	<CMS> <value> //nachgiebigkeit
 	<RE> <value> //dc widerstand
-	<LE> <value> //schwingspuleninduktivität
+	<LE> <value> //schwingspuleninduktivitaet
 	<BL> <value> //
 	<SD> <value> //membranflaeche
 	<MMD> <value> //membranmasse ohne luftlast, wie bei hornresp

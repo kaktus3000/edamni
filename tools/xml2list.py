@@ -6,30 +6,23 @@ output file format:
 
 //volume element
 e <#ID>				#element ID
-- <#REF> <AREA>		#volume id of "negative" side adjacent elements and common cross-section
-+ <#REF> <AREA>		#same for "positive" side
+A <AREA>			#cross section of the right side of the element
 d <#VALUE>			#velocity damping
+s <#ID>				#speaker and definition file
+m <#ID>				#virtual microphone with ID
 
-//speaker
-s <#ID>				#speaker with left and right adjacent elements, definition file
-- <#REF> <AREA>		#volume id of left adjacent elements and common cross-section
-+ <#REF> <AREA>		#same for right
 
-m <#ID> <#REF>		#virtual microphone ID and reference to measured element
-dx <#VALUE>			#element width
-
+x <#VALUE>			#element length
 '''
 
 import xml.etree.ElementTree as ET
 import math
 import sys
 
-infile = sys.argv[1]
-outfile = sys.argv[2]
-g_bVerbose = (len(sys.argv) == 4)
+import elemfile
 
 #function to check whether adjacent sections have non-matching cross-sections
-def check_cross_sections(hornSections):
+def checkCrossSections(hornSections):
 	#dictionary for neighbor links
 	#ID1 -> (ID2, port1, port2)
 	neighborDict = dict()
@@ -72,22 +65,139 @@ def check_cross_sections(hornSections):
 						if (key1 in sectionDict) and (key2 in neighborSectionDict):
 							crossSect1 = sectionDict[key1]
 							crossSect2 = neighborSectionDict[key2]
-							if crossSect1 != crossSect2:
+							
+							fComp = crossSect1 / crossSect2
+							if fComp > 1.01 or fComp < .99:
 								print("WARNING: cross-sections do not match.", sectionID, key1, "->", neighborID, key2)
 	#								else:
 	#									print("cross-sections match!")
 						else:
 							print("did not find", key1, "in", sectionID, "or", key2, "in", neighborID)
-	#unravel neighbor dictionary
 	
 	return neighborDict
 
+# trace string of links
+def traceChain(sUsed, neighborDict, chainStartID, iPort, bVerbose):
+	# search for link to port iPort
+	if bVerbose:
+		print("tracing section", chainStartID, "port", iPort)
+	
+	nNeighbors = len(neighborDict[chainStartID])
+	
+	# check for fork or end section
+	if nNeighbors != 2:
+		# it's a fork element
+		# or an end element
+		# break the chain here 
+		if bVerbose:
+			print("section", chainStartID, "is an end section. terminating trace.")
+		
+		return []
+	
+	for (currentSectionID, lastPortID, currentPortID) in neighborDict[chainStartID]:
+		if lastPortID == iPort:
+			break
 
-#outputs:
-#(A1, A2, damp)
+	if lastPortID != iPort:
+		print("ERROR: port", iPort, "not found on section", chainStartID)
+		
+	if currentSectionID in sUsed:
+		if bVerbose:
+			print("section already processed", currentSectionID)
+		
+		return []
+	
+	# mark section as processed
+	sUsed.add(currentSectionID)
+	
+	# the way forwand is not the way back...
+	iFuturePortID = 3 - currentPortID
+	
+	if bVerbose:
+		print("traced to section", currentSectionID, "port", currentPortID, "future port", iFuturePortID)
+	
+	# recurse
+	lRecursionResult = traceChain(sUsed, neighborDict, currentSectionID, iFuturePortID, bVerbose)
+	# append to result vector, save orientation
+	lChain = [(currentSectionID, currentPortID==1)] + lRecursionResult
+	
+	# return result vector
+	return lChain
 
-#area = 0 denotes closed end
-#area = inf denotes open end
+def reverseChain(chain):
+	aReversedChain = []
+	
+	for (chainSection, orientation) in reversed(chain):
+		aReversedChain.append( (chainSection, not orientation) )
+		
+	return aReversedChain
+	
+# unravel neighbor dictionary
+# find strings of linked sections
+def unravelNeighbors(hornDict, neighborDict, bVerbose):
+	# result vector
+	aaChains = []
+	
+	sUsed = set()
+	
+	# for each section
+	for sectionID in neighborDict.keys():
+		# check if section was already processed
+		if sectionID in sUsed:
+			continue
+		
+		nNeighbors = len(neighborDict[sectionID])
+		
+		if nNeighbors == 1:
+			continue
+		
+		# mark section as processed
+		sUsed.add(sectionID)
+		
+		# check for fork section
+		if nNeighbors == 3:
+			# it's a fork element
+			# break the chain here
+			continue
+			
+		if bVerbose:
+			print("starting trace at section", sectionID)
+			
+		# find string of linked sections in negative direction
+		aChain1 = traceChain(sUsed, neighborDict, sectionID, 1, bVerbose)
+		# find string in positive direction
+		aChain2 = traceChain(sUsed, neighborDict, sectionID, 2, bVerbose)
+		
+		if bVerbose:
+			print("chain 1:", aChain1)
+			print("chain 1 reversesd:", reverseChain(aChain1))
+			print("chain 2:", aChain2)
+		
+		aChain = reverseChain(aChain1) + [ (sectionID, True) ] + aChain2
+		
+		# check for a speaker section
+		for (section, bOrientation) in aChain:
+			tag, sectionDict = hornDict[section]
+			if tag == "speaker" and bOrientation == False:
+				# reverse chain to create correct orientation for speaker
+				aChain = reverseChain(aChain)
+		
+		aaChains.append(aChain)
+		
+		if bVerbose:
+			print("trace result", aaChains[-1])
+
+	#return result vector
+	return aaChains
+
+# escape a string to easily processible file name
+def escapeString(strToEscape):
+	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
+
+# discretizsation function
+# return elements from A1 to A2 (including ends)
+# one element longer than physical dimension
+# in case of continuous sections, an element is clipped from the section
 
 def conical_section(dx, params):
 	#params should all be float
@@ -104,11 +214,10 @@ def conical_section(dx, params):
 	
 	outList = []
 	
-	lastA = A1
 	positiveGradient = A2 > A1
 	
 	for iElem in range(nElems):
-		relX=(iElem+1)/nElems
+		relX=(iElem)/nElems
 		rx=((relX)*(r2-r1) + r1);
 		Ax=rx*rx
 
@@ -119,9 +228,34 @@ def conical_section(dx, params):
 
 #		print(rx*rx, Ax, positiveGradient, A1, A2)
 
-		outList.append((lastA, Ax, damping))
+		elem = elemfile.Elem()
+		elem.m_fArea = Ax
+		elem.m_fDamping = damping
+		outList.append(elem)
+	
+	return outList
+	
+def prismatic_section(dx, params):
+	#params should all be float
+	A1 = params["a1"]
+	A2 = params["a2"]
+	
+	length = params["length"]
+	damping = params["damping_constant"]
+	
+	nElems = int((length / dx) + 1);
+	
+	outList = []
+	
+	for iElem in range(nElems):
+		relX=(iElem)/nElems
 		
-		lastA = Ax
+		A = relX * A2 + (1.0 - relX) * A1
+
+		elem = elemfile.Elem()
+		elem.m_fArea = A
+		elem.m_fDamping = damping
+		outList.append(elem)
 	
 	return outList
 
@@ -139,7 +273,6 @@ def expo_section(dx, params):
 	
 	xLen = x2-x1;
 	
-	lastA = A1
 	positiveGradient = A2 > A1
 		
 	outList = [] 
@@ -153,10 +286,12 @@ def expo_section(dx, params):
 			Ax = A2
 		if (Ax < A1) and (not positiveGradient):
 			Ax = A1
+			
+		elem = elemfile.Elem()
+		elem.m_fArea = Ax
+		elem.m_fDamping = damping
 		
-		outList.append((lastA, Ax, damping))
-		
-		lastA = Ax
+		outList.append(elem)
 	
 	return outList
 
@@ -169,13 +304,25 @@ def wall_section(dx, params):
 	transient = params["damping_transient"]
 
 	outList = []
-
+	
 	nTransientElems = int((transient / dx) + 1);
 	for iTransient in range(nTransientElems):
-		outList.append( (A1, A1, damping * iTransient / nTransientElems ) )
+		elem = elemfile.Elem()
+		elem.m_fArea = A1
+		elem.m_fDamping = damping * iTransient / nTransientElems
+		outList.append( elem )
 
 	nWallElems = int((length / dx) + 1);
-	outList.extend( [(A1, A1, damping)]*nWallElems )
+	
+	for iElem in range(nWallElems):
+		elem = elemfile.Elem()
+		elem.m_fArea = A1
+		elem.m_fDamping = damping
+	
+		outList.append( elem )
+	
+	#add break to the left
+	outList[-1].m_bBreak = True
 
 	return outList
 
@@ -183,115 +330,253 @@ def space_section(dx, params):
 	#params should all be float
 	A1 = params["a1"]
 	
-	length = params["length"]
+	# lengths of geometry sections
+	micdist = params["length"]
+	free = .5
+	transition = .75
+	nSinkElements = 750
+	fInfinityDamping = 0.02
+	
 	fraction = params["fraction"]
 	
-	nFreeElems = int((length / dx) + 1);
-	
-	lastA = A1
+	nFreeElems = int( ((micdist + free) / dx) + 1);
+
 	outList = []
 	
 	r0 = math.sqrt(A1/math.pi)
-
+	
 	for iElem in range(nFreeElems):
 		r = iElem * dx
-		surf = math.pi * r * (math.pi*r0 + 2 * r)
+		surf = 2.0 * math.pi * r * (math.pi*r0 + 2 * r)
 		Ax = A1 + surf * fraction
 		
-		outList.append((lastA, Ax, 0))
-		lastA = Ax
-
-	outList.append( (lastA, -1, 0) )
-
-	return outList
-
-def dummy_section(dx, params):
-	#params should all be float
-	A1 = params["a1"]
-	outList = [(A1, A1, 0)]
-	
-	return outList
-
-#dict of functions, working this way:
-#[(area1, area2, damping)] = geometryHandlers["geom"](dx, params)
-#where dx is the width of the elements
-#return value is a list of the elements, sorted from neighbor1 to neighbor2
-geometryHandlers = dict()
-geometryHandlers["conical"] = conical_section
-geometryHandlers["exponential"] = expo_section
-geometryHandlers["wall"] = wall_section
-geometryHandlers["space"] = space_section
-geometryHandlers["fork"] = dummy_section
-geometryHandlers["mic"] = dummy_section
-
-tree = ET.parse(infile)
-horn = tree.getroot()
-
-if horn.tag != "horn":
-	print("malformed xml: root elem has to be horn!")
-	exit();
-	
-dx = float(horn.attrib["dx"])
-#print("dx =", dx)
-
-hornDict = dict()
-#print("dumping xml input")
-
-#IDs for elements
-wallID = 0
-currElID = 1
-
-dElementLists = dict()
-
-for section in horn:
-	if not "id" in section.attrib:
-		print("malformed xml: elem", section.tag, "has no 'id' attribute!")
-	
-	if section.tag=="tspset":
-		#skip speaker
-		continue	
-#	print(section.tag, "(" + section.attrib["id"] + ")")
-	sectionID = section.attrib["id"]
-	
-	sectionDict = dict()
-	
-	for elem in section:
-		elemText = elem.text
-		if elem.tag.find("neighbor") >=0:
-			elemText = elem.attrib["ref"];
-		else:
-			try:
-				elemText = float(elem.text);
-			except:
-				pass
-#		print(elem.tag, "=", elemText)
-		sectionDict[elem.tag] = elemText
+		elem = elemfile.Elem()
+		elem.m_fArea = Ax
+		elem.m_bGeom = False
 		
-	hornDict[sectionID] = (section.tag, sectionDict)
+		outList.append(elem)
+	
+	outList[-int(free / dx)].m_strMic = "spl_mic_" + params["id"]
+	
+	fSpaceSlope = fraction * math.pi * 8.0 * (r0 + r)
 
-	#generate elements on this section
-	elementList = []
-	if section.tag in geometryHandlers:
-		#this is geometry, use handler
-#		print(section.tag, sectionDict)
-		elementList = geometryHandlers[section.tag](dx, sectionDict)
-		print("generated", len(elementList), "elements on", section.tag, "id:", sectionID)
-		if len(elementList) == 0:
-			print("error, no elements on", section.tag, "id:", sectionID)
+	fTransParameter = 0.5 * fSpaceSlope / transition
+	
+	fTransEndArea = fTransParameter * transition ** 2 + outList[-1].m_fArea
+	
+	for i in range(int(transition / dx)):
+		x = (i+1) * dx
+		l = transition - x
+		
+		fTransArea = fTransParameter * l * l
 
-	dElementLists[sectionID] = []
-	for (A1, A2, damping) in elementList:
-		elID = currElID
-		if A1 == -1 or A2 == -1:
-			elID = wallID
-		else:
-			currElID += 1
+		elem = elemfile.Elem()
+		elem.m_fArea = fTransEndArea - fTransArea
+		elem.m_bGeom = False
+		
+		outList.append(elem)
 
-		#assign id to element
-		dElementLists[sectionID].append( (elID, A1, A2, damping) )
+	for i in range(nSinkElements):
+		elem = elemfile.Elem()
+		elem.m_fArea = fTransEndArea
+		elem.m_bGeom = False
+		elem.m_fSink = 1.0 - fInfinityDamping * i / nSinkElements
 
-#check whether the cross-sections given are discontinuous
-neighborDict = check_cross_sections(hornDict)
+		outList.append(elem)
+
+	return outList
+
+def speaker_section(dx, params):
+	elem = elemfile.Elem()
+	elem.m_fArea = params["a2"]
+	elem.m_strSpeaker = escapeString(params["type"] )
+	
+	return [elem]
+
+def mic_section(dx, params):
+	elem = elemfile.Elem()
+	elem.m_fArea = params["a2"]
+	elem.m_strMic = escapeString(params["name"] )
+	
+	return [elem]
+	
+def fork_section(dx, params):
+	elem = elemfile.Elem()
+	elem.m_fArea = params["a2"]
+	elem.m_iLink = escapeString(params["name"] )
+	
+	return [elem]
+
+def xml2List(strInFile, strOutFile, bVerbose):
+	#dict of functions, working this way:
+	#[(area1, area2, damping)] = geometryHandlers["geom"](dx, params)
+	#where dx is the width of the elements
+	#return value is a list of the elements, sorted from neighbor1 to neighbor2
+	geometryHandlers = dict()
+	geometryHandlers["conical"] = conical_section
+	geometryHandlers["prismatic"] = prismatic_section
+	geometryHandlers["exponential"] = expo_section
+	geometryHandlers["wall"] = wall_section
+	geometryHandlers["space"] = space_section
+	geometryHandlers["fork"] = fork_section
+	geometryHandlers["mic"] = mic_section
+	geometryHandlers["speaker"] = speaker_section
+
+	tree = ET.parse(strInFile)
+	horn = tree.getroot()
+
+	if horn.tag != "horn":
+		print("malformed xml: root elem has to be horn!")
+		exit();
+	
+	dx = float(horn.attrib["dx"])
+	
+	if bVerbose:
+		print("dx =", dx)
+
+	hornDict = dict()
+
+	#IDs for elements
+	wallID = 0
+	currElID = 1
+
+	dElementLists = dict()
+
+	for section in horn:
+		if not "id" in section.attrib:
+			print("malformed xml: elem", section.tag, "has no 'id' attribute!")
+	
+		if section.tag=="tspset":
+			#skip speaker
+			continue	
+	#	print(section.tag, "(" + section.attrib["id"] + ")")
+		sectionID = section.attrib["id"]
+		
+		if bVerbose:
+			print("section id", sectionID, section.tag)
+	
+		sectionDict = dict()
+	
+		for elem in section:
+			elemText = elem.text
+			if elem.tag.find("neighbor") >=0:
+				elemText = elem.attrib["ref"];
+			else:
+				try:
+					elemText = float(elem.text);
+				except:
+					pass
+	#		print(elem.tag, "=", elemText)
+			sectionDict[elem.tag] = elemText
+	
+		sectionDict["id"] = sectionID
+	
+		hornDict[sectionID] = (section.tag, sectionDict)
+
+	#check whether the cross-sections given are discontinuous
+	neighborDict = checkCrossSections(hornDict)
+	if bVerbose:
+		print("neighbor dict entries:", neighborDict.keys())
+	
+	sectionStrings = unravelNeighbors(hornDict, neighborDict, bVerbose)
+	
+	if bVerbose:
+		print("found", len(sectionStrings), "section strings")
+
+	# create empty element list (of class Element)
+	lElements = []
+
+	# (strElemID, iPort) -> iElemNumber
+	dStringEnds = dict()
+
+	# discretize continuous strings of sections
+	# for each string of sections
+	for sectionString in sectionStrings:
+		lStringElems = []
+	
+		bFirstSection = True
+		# for each section in string
+		for (section, orientation) in sectionString:
+			if bVerbose:
+				print("processing section", section, "; orientation =", orientation, "...")
+			# discretize section
+			# discretization result format: element list
+			(strSectionTag, sectionDict) = hornDict[section]
+		
+			lSectionElems = geometryHandlers[strSectionTag](dx, sectionDict)
+			if bVerbose:
+				print("generated", len(lSectionElems), "elements on", strSectionTag, "id:", section)
+			if len(lSectionElems) == 0:
+				print("ERROR: no elements on", strSectionTag, "id:", sectionID)
+				
+			if not orientation:
+				if bVerbose:
+					print("reversing.")
+				lSectionElems.reverse()
+		
+			# remove first element to create continuous slopes
+			if (not bFirstSection) and (lSectionElems[0].m_strSpeaker == "") and (lSectionElems[0].m_strMic == ""):
+				lSectionElems = lSectionElems[1:]
+		
+			lStringElems += lSectionElems
+			
+			bFirstSection = False
+	
+		# add the "break link" property to the first element (after dummy) of the string
+		lStringElems[0].m_bBreak = True
+	
+		lPaddedElems = lStringElems
+	
+		# create dummy element for first cross section
+		begElem = elemfile.Elem()
+		begElem.m_fArea = lStringElems[0].m_fArea
+		begElem.m_bBreak = True
+		begElem.m_bGeom = False
+	
+		lPaddedElems = [begElem] + lPaddedElems
+
+		# add dummy element to the end if there is no link yet
+		if lStringElems[-1].m_iLink == -1:
+			endElem = elemfile.Elem()
+			endElem.m_fArea = lStringElems[-1].m_fArea
+		
+			endElem.m_bGeom = False
+	
+			lPaddedElems += [endElem]
+	
+		# assign element numbers to elements
+		lElements += lPaddedElems
+	
+		# append element numbers to end of string link list
+		# append section IDs and link IDs to end of string link list
+	if bVerbose:
+		print("writing", len(lElements), "elements to file", strOutFile)
+	elemfile.writeElemFile(strOutFile, lElements, dx)
+
+if __name__ == "__main__":
+	strInFile = sys.argv[1]
+	strOutFile = sys.argv[2]
+	bVerbose = (len(sys.argv) == 4)
+	
+	
+	if bVerbose:
+		print("xml2list - verbose mode")
+	
+	xml2List(strInFile, strOutFile, bVerbose)
+	
+	print("xml2list: finished!")
+	
+
+# process links between sections
+# for each end of string link
+	# check if this is the A1 link of the fork
+		# else discard
+	# get destination string links
+	# get destination element numbers
+	# introduce link to destination elements
+
+
+'''
 
 def getNeighborXmlID(neighborList, index):
 	for (neigh, myPort, neighPort) in neighborList:
@@ -308,18 +593,18 @@ def getNeighborElemID(neighborList, index):
 			if len(lNeighElems) == 0:
 				return None
 			if neighPort == 1:
-				(elID, A1, A2, damping) = lNeighElems[0]
+				(elID, A1, damping) = lNeighElems[0]
 				return elID
 			elif neighPort >= 2:
-				(elID, A1, A2, damping) = lNeighElems[-1]
+				(elID, A1, damping) = lNeighElems[-1]
 				return elID
 	return None
 
-if g_bVerbose:
+if bVerbose:
 	print("dumping neighbor dictionary")
 	print(neighborDict)
 
-hElemFile=open(outfile, "wt")
+hElemFile=open(strOutFile, "wt")
 hElemFile.write("dx " + str(dx) + "\n")
 
 def escapeString(strToEscape):
@@ -363,7 +648,7 @@ for sectionID in hornDict.keys():
 		print(sectionType, "id:", sectionID, "minusID = ", minusID)
 		
 		#initialization if only one element exists
-		(posElID, A1, A2, posDamping) = lElements[0]
+		(posElID, A1, posDamping) = lElements[0]
 		lNegNeighbors = [ (minusID, A1) ]
 
 		for iElement in range(len(lElements)-1):
@@ -418,4 +703,7 @@ for sectionID in hornDict.keys():
 		hElemFile.write("\n")
 
 hElemFile.close();
-print("fin.")
+'''
+
+
+

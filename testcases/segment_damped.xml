@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE horn SYSTEM "../horn.dtd">
+<horn dx="0.02">
+<tspset id="visaton frs 8m-8">
+<Re>7.2</Re>
+<Cms>0.0009000000000000001</Cms>
+<Le>0.0003</Le>
+<Rms>0.436332313</Rms>
+<Sd>0.0029000000000000002</Sd>
+<Mmd>0.0017099459028558936</Mmd>
+<BL>4.0</BL>
+</tspset>
+<space id="end_space">
+<neighbor1 ref="Segment0" />
+<a1>0.01</a1>
+<length>1.0</length>
+<fraction>0.5</fraction>
+<screen_position x="72" y="54" />
+<screen_rotation rot="2" />
+</space>
+<speaker id="Speaker">
+<neighbor2 ref="start_space" />
+<neighbor1 ref="chamber" />
+<a1>0.01</a1>
+<a2>0.01</a2>
+<type>visaton frs 8m-8</type>
+<screen_position x="237" y="268" />
+<screen_rotation rot="0" />
+</speaker>
+<space id="start_space">
+<neighbor1 ref="Speaker" />
+<a1>0.01</a1>
+<length>1.0</length>
+<fraction>0.5</fraction>
+<screen_position x="389" y="273" />
+<screen_rotation rot="0" />
+</space>
+<conical id="Segment0">
+<neighbor1 ref="end_space" />
+<neighbor2 ref="Segment1" />
+<a1>0.01</a1>
+<a2 min="0.0004" max="0.01" id="Segment0_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant>0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment1">
+<neighbor1 ref="Segment0" />
+<neighbor2 ref="Segment2" />
+<a1 min="0.0004" max="0.01" id="Segment0_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment1_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant>0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment2">
+<neighbor1 ref="Segment1" />
+<neighbor2 ref="Segment3" />
+<a1 min="0.0004" max="0.01" id="Segment1_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment2_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant>0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment3">
+<neighbor1 ref="Segment2" />
+<neighbor2 ref="Segment4" />
+<a1 min="0.0004" max="0.01" id="Segment2_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment3_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant>0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment4">
+<neighbor1 ref="Segment3" />
+<neighbor2 ref="Segment5" />
+<a1 min="0.0004" max="0.01" id="Segment3_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment4_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant>0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment5">
+<neighbor1 ref="Segment4" />
+<neighbor2 ref="Segment6" />
+<a1 min="0.0004" max="0.01" id="Segment4_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment5_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant min="0.0" max="1500.0" id="Damp5">0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment6">
+<neighbor1 ref="Segment5" />
+<neighbor2 ref="Segment7" />
+<a1 min="0.0004" max="0.01" id="Segment5_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment6_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant min="0.0" max="1500.0" id="Damp6">0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment7">
+<neighbor1 ref="Segment6" />
+<neighbor2 ref="Segment8" />
+<a1 min="0.0004" max="0.01" id="Segment6_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment7_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant min="0.0" max="1500.0" id="Damp7">0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment8">
+<neighbor1 ref="Segment7" />
+<neighbor2 ref="Segment9" />
+<a1 min="0.0004" max="0.01" id="Segment7_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment8_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant min="0.0" max="1500.0" id="Damp8">0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Segment9">
+<neighbor1 ref="Segment8" />
+<neighbor2 ref="chamber" />
+<a1 min="0.0004" max="0.01" id="Segment8_area">0.005</a1>
+<a2 min="0.0004" max="0.01" id="Segment9_area">0.005</a2>
+<length min="0.05" max="0.25" id="len">0.15</length>
+<damping_constant min="0.0" max="1500.0" id="Damp9">0.0</damping_constant>
+<screen_position x="389" y="170" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="chamber">
+<neighbor1 ref="Speaker" />
+<neighbor2 ref="Segment9" />
+<a1>0.01</a1>
+<a2>0.01</a2>
+<length min="0.04" max="0.2" id="box_decaliters">0.1</length>
+<damping_constant>1000.0</damping_constant>
+<screen_position x="80" y="273" />
+<screen_rotation rot="2" />
+</conical>
+</horn>

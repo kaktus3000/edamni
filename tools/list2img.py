@@ -5,251 +5,166 @@
 from PIL import Image
 import math
 import sys
+import elemfile
 
 g_lSpeakerVectorGraphics = [[(0.0, 0.0),
-							 (1.0, 0.0),
-							 (0.6, 0.4),
-							 (0.0, 0.4)],
-							[(0.3, 0.4),
-							 (0.3, 0.5)],
-							[(0.0, 0.5),
-							 (0.4, 0.5),
-							 (0.4, 0.8),
-							 (0.0, 0.8)]
+							 (0.0, 1.0),
+							 (-0.2, 0.8),
+							 (-0.2, 0.2)],
+							[(-0.2, 0.6),
+							 (-0.25, 0.6),
+							 (-0.25, 0.4),
+							 (-0.2, 0.4)],
+							[(-0.25, 0.7),
+							 (-0.25, 0.3),
+							 (-0.4, 0.3),
+							 (-0.4, 0.7)]
 							]
-								
+
+def rasterizeLine(pixMap, vStart, vEnd, color):
+	fSample = .5
+	(x1, y1) = vStart
+	(x2, y2) = vEnd
+	
+	fDx = x2 - x1
+	fDy = y2 - y1
+	
+	fLength = math.sqrt(fDx * fDx + fDy * fDy)
+	
+	if fLength < 0.5:
+		return
+	
+	fScan = fSample * 1.0 / fLength
+	
+	for iSample in range(int( 1.0 / fScan) ):
+		x = x1 + fDx * iSample * fScan
+		y = y1 + fDy * iSample * fScan 
+		
+		if pixMap[x, y] == (255, 255, 255):
+			pixMap[x, y] = color
 
 infile = sys.argv[1]
 outfile = sys.argv[2]
+iWidth  = int(sys.argv[3])
+iHeight = int(sys.argv[4])
+bOnlyGeometry = sys.argv[5] == "1"
 
-class Elem:
-#	def __init__(self, name):
-#		self.negativeNeighbors = []
-#		self.tricks = []    # creates a new empty list for each dog
-	negativeNeighbors = []; #tuple: id, area
-	positiveNeighbors = [];
-	damping = 0;
-	def __str__(self):
-		return "{element; neg:" + str(self.negativeNeighbors) + "; pos:" + str(self.positiveNeighbors) + "; damp:" + str(self.damping) + "}"
+aElems, dMics, dSpeakers, g_dx = elemfile.scanElemFile(infile)
 
-class Microphone:
-	dummy = 0
-
-class Speaker:
-	positiveElem = -1;
-	negativeElem = -1;
-	def __str__(self):
-		return "{speaker; neg:" + str(self.negativeElem) + "; pos:" + str(self.positiveElem) + "}"
-
-elems = dict()
-
-f = open(infile, 'r')
-
-aLines = f.readlines()
-
-f.close()
-
-#delta X of the elements (length)
-g_dx = 0.01
-
-iLine = 0
-
-def scanAttribs(aLines, iLine):
-	negativeNeighbors = []
-	positiveNeighbors = []
-	damping = 0
-
-	bLineForElem = True
-	while(iLine < len(aLines)):
-		currLine = aLines[iLine]
-		attribType = currLine[0]
-#		print("attribute type is", attribType)
-		if attribType == "-":
-			substrings = currLine.split(" ")
-#			print("substrings are:", substrings)
-			conn = int(substrings[1])
-			area = float(substrings[2])
-			negativeNeighbors.append( (conn, area) )
-		elif attribType == "+":
-			substrings = currLine.split(" ")
-#			print("substrings are:", substrings)
-			conn = int(substrings[1])
-			area = float(substrings[2])
-			positiveNeighbors.append( (conn, area) )
-		elif attribType == "d":
-			damping = float(currLine[2:])
-		else:
-			break
-		iLine += 1
-	return (negativeNeighbors, positiveNeighbors, damping, iLine -1)
-
-speakers = []
-
-while iLine < len(aLines):
-	currLine = aLines[iLine]
-	linetype = currLine[0]
-
-#	print ("type of line", iLine, "is", linetype)
-
-	if linetype == "e":
-		elID = int(currLine[2:])
-#		print("element ID is", elID)
-		(negN, posN, damp, line) = scanAttribs(aLines, iLine + 1)
-
-		elem = Elem()
-		elem.negativeNeighbors = negN
-		elem.positiveNeighbors = posN
-		elem.damping = damp
-		elems[elID] = elem
-		iLine = line
-	elif linetype == "s":
-#		print("speaker!")
-		(negN, posN, damp, line) = scanAttribs(aLines, iLine + 1)
-
-		spkr = Speaker()
-		(spkr.positiveElem, unused) = posN[0]
-		(spkr.negativeElem, unused) = negN[0]
-#		spkr.positiveElem = posN[0]
-#		spkr.negativeElem = negN[0]
-
-		speakers.append(spkr)
-		iLine = line
-	elif linetype == "m":
-		micID = int(currLine.split(" ")[-1])
-#		print("mic ID", micID)
-	elif linetype == "d":
-		#HACK: this is the 'dx' element
-		g_dx = float(currLine[3:])
-		print("element length is", g_dx)
-	else:
-		print("type of line not recognized!", currLine)
-	iLine += 1
-
-#for elem in elems:
-#	print(elem, "->", elems[elem])
-
-sVisited = set()
-
-#build directed graph from speaker
-#search positive direction
-def subGraph(elems, elem, currGraph):
-	#there should be only one direction to go
-	currGraph.append(elem)
-		
-	if len(elems[elem].positiveNeighbors) > 0:
-		(elem, area) = elems[elem].positiveNeighbors[0]
-	else:
-		(elem, area) = elems[elem].negativeNeighbors[0]
-	
-	while(elem > 0):
-#		print("lastElem:", lastElem, "elem:", elem, "neg:", elems[elem].negativeNeighbors, "pos:", elems[elem].positiveNeighbors)
-
-		if elem in sVisited:
-			return currGraph
-		sVisited.add(elem)
-
-		bFound = False
-		for (neighID, area) in elems[elem].positiveNeighbors:
-			if neighID in currGraph:
-				bFound = True
-		
-		neighs = []
-
-		if bFound:
-			neighs = elems[elem].negativeNeighbors
-		else:
-			neighs = elems[elem].positiveNeighbors
-
-		nNeighs = len(neighs)
-#		print("elem", elem, elems[elem], "has", nNeighs, "neighs")
-		currGraph.append(elem)
-
-		if nNeighs == 0:
-			return currGraph
-		if nNeighs == 1:
-			(elemID, area) = neighs[0]
-#			print(neighs)
-			elem = elemID
-			continue
-		#more than two
-		print(">1")
-		exit(0)
-		subGraphs = []
-		for neigh in neighs:
-			(elemID, area) = neigh
-			subGraphs.append(subGraph(elems, elemID, positiveDir, []) )
-		return currGraph.append(subGraphs)
-	
-	return currGraph
-
-print(speakers[0])
-negGraph = subGraph(elems, speakers[0].negativeElem, [])
-posGraph = subGraph(elems, speakers[0].positiveElem, [])
-
-negGraph.reverse()
-
-graph = negGraph + posGraph
-#print(posGraph)
+aGeomOnly = []
+if bOnlyGeometry:
+	for elem in aElems:
+		if elem.m_bGeom:
+			aGeomOnly.append(elem)
+	aElems = aGeomOnly
 
 #now create a nice image
-maxArea = 0
-for elem in elems.values():
-	for (elemID, area) in elem.positiveNeighbors:
-		maxArea = max(maxArea, area)
+fMaxArea = 0
+for elem in aElems:
+	# print(elem)
+	fMaxArea = max(fMaxArea, elem.m_fArea)
 
 def toDiam(area):
-	return math.sqrt(area/math.pi) * 2.0
+	if area > 0:
+		return math.sqrt(area/math.pi) * 2.0
+	else:
+		return 0
 
-maxDia = toDiam(maxArea)
-print("max area is", maxArea, "diam", maxDia)
+nGraphElems = len(aElems)
+maxDia = toDiam(fMaxArea)
+print("list2img: number of elements:", nGraphElems, "; max area:", fMaxArea, "; diam:", maxDia)
 
-nGraphElems = len(graph)
+image = Image.new("RGB", (iWidth, iHeight), "white")
 
-imgWidth = (int(maxDia/g_dx+2)//2)*2 + 2
-
-image = Image.new("RGB", (imgWidth, (int(nGraphElems)//2)*2 + 2), "black")
-
-hMappingFile=open(outfile + ".txt", "wt")
+#hMappingFile=open(outfile + ".txt", "wt")
 
 pixMap = image.load()
 
-print("first elem:", graph[0])
-print("first elem neighs:", elems[graph[0]].positiveNeighbors)
+fRelativeHeight = maxDia / (nGraphElems * g_dx) * iWidth
 
-print("last elem:", graph[-1])
-print("last elem neighs:", elems[graph[-1]].positiveNeighbors)
+print("list2img: relative height:", fRelativeHeight)
 
-for pixel in range(nGraphElems):
-	elem = graph[pixel]
+if fRelativeHeight > iHeight:
+	iWidth *= iHeight / fRelativeHeight
+	
+	print("list2img: scaling width to:", iWidth)
+else:
+	iHeight = fRelativeHeight
+	print("list2img: scaling height to:", iHeight)
 
-	hMappingFile.write(str(elem) + "\t" +  str(imgWidth // 2) + "\t" + str(pixel) + "\t" + str(imgWidth // 2) + "\n")
+fWidthNormalizer  = 1.0 / nGraphElems * (iWidth - 1)
+fHeightNormalizer = 1.0 / maxDia * (iHeight - 1)
+
+fMaxDamping = 0.1
+for iElem in range(nGraphElems):
+	fMaxDamping = max(fMaxDamping, aElems[iElem].m_fDamping)
+
+for iElem in range(nGraphElems):
+
+	#hMappingFile.write(str(elem) + "\t" +  str(imgWidth // 2) + "\t" + str(pixel) + "\t" + str(imgWidth // 2) + "\n")
 #	print(pixel, elem)
-	neighbors = elems[elem].positiveNeighbors
-	if neighbors == []:
-		neighbors = elems[elem].negativeNeighbors
-	(elemID, area) = neighbors[0]
-	x = toDiam(area)
-	drawX = int(x/g_dx)
-#	print(elem, elemID, area, x)
-	pixMap[drawX, pixel] = (255,255,255)
-	#mark infinite element
-	if len(elems[elem].positiveNeighbors) > 0:
-		(neighID, unused) = elems[elem].positiveNeighbors[0]
-		if neighID == 0:
-			for x in range(drawX):
-				pixMap[x, pixel] = (255,0,255)
-			continue
-	#mark walls
-	if len(elems[elem].positiveNeighbors) == 0 or len(elems[elem].negativeNeighbors) == 0:
-		for x in range(drawX):
-			pixMap[x, pixel] = (255,255,255)
-		continue
-	#mark damped elems
-	if elems[elem].damping != 0:
-		for x in range(drawX):
-			pixMap[x, pixel] = (0,127,0)
+
+	xEnd   = iElem  * fWidthNormalizer
+	yEnd   = toDiam(aElems[iElem].m_fArea) * fHeightNormalizer
+	
+	#mark speaker
+	if aElems[iElem].m_strSpeaker != "":
+		for chain in g_lSpeakerVectorGraphics:
+			for iLine in range(len(chain)):
+				(x0, y0) = chain[iLine - 1]
+				xLine0 = x0 * yEnd
+				yLine0 = (y0 - 0.5) * yEnd
+			
+				(x1, y1) = chain[iLine]
+				xLine1 = x1 * yEnd
+				yLine1 = (y1 - 0.5) * yEnd
+			
+				# clamp graphics
+				xLine0 = max(-xEnd, xLine0)
+				xLine1 = max(-xEnd, xLine1)
+				
+				rasterizeLine(pixMap, (xLine0 + xEnd, yLine0 + iHeight * 0.5), (xLine1 + xEnd, yLine1 + iHeight * 0.5), (255,0,0))
+		
+	#mark links
+	if aElems[iElem].m_iLink != -1:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (255,0,255) )
+		
+	#mark mic
+	if aElems[iElem].m_strMic != "":
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (0,127,255) )
+	
+	#mark sink elements
+	if aElems[iElem].m_fSink != 1.0:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (127,0,255) )
+	
+	#mark not geometry
+	if not aElems[iElem].m_bGeom:
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (224, 224, 224) )	
+	
+	# draw outline
+	if iElem > 1:
+	
+		xStart = (iElem-1) * fWidthNormalizer
+		yStart = toDiam(aElems[iElem-1].m_fArea) * fHeightNormalizer
+
+		rasterizeLine(pixMap, (xStart, (yStart + iHeight) * 0.5), (xEnd, (yEnd + iHeight) * 0.5), (0,0,0) )
+		rasterizeLine(pixMap, (xStart, (-yStart + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), (0,0,0) )
+
+	#mark damped elements
+	fDamping = aElems[iElem].m_fDamping
+	if fDamping != 0:
+		fRelativeDamping = min (fDamping / fMaxDamping, 1)
+	
+		color = (int(255 * (1.0 - fRelativeDamping)), int(127 + (1.0 - fRelativeDamping) * 128), int(255 * (1.0 - fRelativeDamping)) )
+
+		rasterizeLine(pixMap, (xEnd, (yEnd + iHeight) * 0.5), (xEnd, (-yEnd + iHeight) * 0.5), color)
+
+
+print("list2img: writing image", outfile)
+
+#draw center line
+rasterizeLine(pixMap, (0, iHeight / 2), (iWidth - 1, iHeight / 2), (0,0,0) )
 
 image.save(outfile)
-hMappingFile.close()
+#hMappingFile.close()
 
-print("fin.")

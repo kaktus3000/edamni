@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE horn SYSTEM "../horn.dtd">
+<horn dx="0.01">
+<tspset id="visaton frs 8m-8">
+<Re>
+7.2</Re>
+<Le>
+0.0003</Le>
+<Mmd>
+0.0017099459028558936</Mmd>
+<Sd>
+0.0029000000000000002</Sd>
+<Rms>
+0.436332313</Rms>
+<BL>
+4.0</BL>
+<Cms>
+0.0009000000000000001</Cms>
+</tspset>
+<space id="Space7">
+<neighbor1 ref="Exponential6" />
+<a1>
+0.016</a1>
+<length>
+1.0</length>
+<fraction>
+0.25</fraction>
+<screen_position x="210" y="330" />
+<screen_rotation rot="0" />
+</space>
+<conical id="Conical5">
+<neighbor2 ref="Conical4" />
+<neighbor1 ref="Exponential6" />
+<a1>
+0.0016</a1>
+<a2>
+0.0064</a2>
+<length>
+0.03</length>
+<damping_constant>
+0.0</damping_constant>
+<screen_position x="225" y="191" />
+<screen_rotation rot="0" />
+</conical>
+<conical id="Conical4">
+<neighbor1 ref="Speaker3" />
+<neighbor2 ref="Conical5" />
+<a1>
+0.0064</a1>
+<a2>
+0.0064</a2>
+<length>
+0.05</length>
+<damping_constant>
+0.0</damping_constant>
+<screen_position x="388" y="201" />
+<screen_rotation rot="2" />
+</conical>
+<wall id="Wall1">
+<neighbor1 ref="Conical2" />
+<a1>
+0.01</a1>
+<damping_thickness>
+0.05</damping_thickness>
+<damping_transient>
+0.02</damping_transient>
+<damping_constant>
+17100.0</damping_constant>
+<screen_position x="104" y="44" />
+<screen_rotation rot="0" />
+</wall>
+<speaker id="Speaker3">
+<neighbor1 ref="Conical2" />
+<neighbor2 ref="Conical4" />
+<a1>
+0.01</a1>
+<a2>
+0.0064</a2>
+<type>visaton frs 8m-8</type>
+<screen_position x="409" y="83" />
+<screen_rotation rot="3" />
+</speaker>
+<exponential id="Exponential6">
+<neighbor1 ref="Conical5" />
+<neighbor2 ref="Space7" />
+<a1>
+0.0016</a1>
+<a2>
+0.016</a2>
+<length min="0.05" max="2.5">
+1.5</length>
+<damping_constant>
+0.0</damping_constant>
+<screen_position x="85" y="226" />
+<screen_rotation rot="3" />
+</exponential>
+<conical id="Conical2">
+<neighbor1 ref="Wall1" />
+<neighbor2 ref="Speaker3" />
+<a1>
+0.01</a1>
+<a2>
+0.01</a2>
+<length min="0.1" max="0.5">
+0.3</length>
+<damping_constant>
+0.0</damping_constant>
+<screen_position x="259" y="42" />
+<screen_rotation rot="0" />
+</conical>
+</horn>
+

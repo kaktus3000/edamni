@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?><horn dx="0.02">
+	<tspset id="visaton frs 8m-8">
+		<Re>7.2</Re>
+		<Cms>0.0009000000000000001</Cms>
+		<Le>0.0003</Le>
+		<Rms>0.436332313</Rms>
+		<Sd>0.0029000000000000002</Sd>
+		<Mmd>0.0017099459028558936</Mmd>
+		<BL>4.0</BL>
+	</tspset>
+	<space id="Space2">
+		<neighbor1 ref="Conical6" />
+		<a1 id="area6" max="1e-2" min="4e-4">0.0043397427038</a1>
+		<length>1.0</length>
+		<fraction>0.5</fraction>
+		<screen_position x="72" y="54" />
+		<screen_rotation rot="2" />
+	</space>
+	<conical id="Conical4">
+		<neighbor1 ref="Conical2" />
+		<neighbor2 ref="Conical5" />
+		<a1 id="area3" max="1e-2" min="4e-4">0.00994827950202</a1>
+		<a2 id="area4" max="1e-2" min="4e-4">0.00224309902585</a2>
+		<length id="len_5" max=".5" min=".1">0.199645511148</length>
+		<damping_constant>0.0</damping_constant>
+		<screen_position x="389" y="170" />
+		<screen_rotation rot="0" />
+	</conical>
+	<speaker id="Speaker1">
+		<neighbor2 ref="Space1" />
+		<neighbor1 ref="Conical3" />
+		<a1>0.01</a1>
+		<a2>0.01</a2>
+		<type>visaton frs 8m-8</type>
+		<screen_position x="237" y="268" />
+		<screen_rotation rot="0" />
+	</speaker>
+	<conical id="Conical3">
+		<neighbor1 ref="Speaker1" />
+		<neighbor2 ref="Conical1" />
+		<a1>0.01</a1>
+		<a2>0.01</a2>
+		<length id="box_decaliters" max=".2" min=".04">0.187633060313</length>
+		<damping_constant>1000.0</damping_constant>
+		<screen_position x="80" y="273" />
+		<screen_rotation rot="2" />
+	</conical>
+	<conical id="Conical2">
+		<neighbor1 ref="Conical1" />
+		<neighbor2 ref="Conical4" />
+		<a1 id="area2" max="1e-2" min="4e-4">0.0092736234321</a1>
+		<a2 id="area3" max="1e-2" min="4e-4">0.00994827950202</a2>
+		<length id="len_5" max=".5" min=".1">0.199645511148</length>
+		<damping_constant>0.0</damping_constant>
+		<screen_position x="228" y="167" />
+		<screen_rotation rot="0" />
+	</conical>
+	<space id="Space1">
+		<neighbor1 ref="Speaker1" />
+		<a1>0.01</a1>
+		<length>1.0</length>
+		<fraction>0.5</fraction>
+		<screen_position x="389" y="273" />
+		<screen_rotation rot="0" />
+	</space>
+	<conical id="Conical5">
+		<neighbor1 ref="Conical4" />
+		<neighbor2 ref="Conical6" />
+		<a1 id="area4" max="1e-2" min="4e-4">0.00224309902585</a1>
+		<a2 id="area5" max="1e-2" min="4e-4">0.00937972077364</a2>
+		<length id="len_5" max=".5" min=".1">0.199645511148</length>
+		<damping_constant>0.0</damping_constant>
+		<screen_position x="371" y="68" />
+		<screen_rotation rot="2" />
+	</conical>
+	<conical id="Conical1">
+		<neighbor1 ref="Conical3" />
+		<neighbor2 ref="Conical2" />
+		<a1 id="area1" max="1e-2" min="4e-4">0.00700837917534</a1>
+		<a2 id="area2" max="1e-2" min="4e-4">0.0092736234321</a2>
+		<length id="len_5" max=".5" min=".1">0.199645511148</length>
+		<damping_constant>0.0</damping_constant>
+		<screen_position x="71" y="173" />
+		<screen_rotation rot="0" />
+	</conical>
+	<conical id="Conical6">
+		<neighbor1 ref="Conical5" />
+		<neighbor2 ref="Space2" />
+		<a1 id="area5" max="1e-2" min="4e-4">0.00937972077364</a1>
+		<a2 id="area6" max="1e-2" min="4e-4">0.0043397427038</a2>
+		<length id="len_5" max=".5" min=".1">0.199645511148</length>
+		<damping_constant>0.0</damping_constant>
+		<screen_position x="215" y="76" />
+		<screen_rotation rot="2" />
+	</conical>
+</horn>

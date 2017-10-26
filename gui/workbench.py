@@ -213,6 +213,11 @@ def removeSpeaker(*args):
 	lSelections = speakerListBox.curselection()
 	if len(lSelections) == 0:
 		return
+	strSpeaker = speakerListBox.get(lSelections[0] )
+
+	print(strSpeaker)
+	del g_dSpeakers[strSpeaker ]
+
 	speakerListBox.delete(lSelections[0])
 
 def moveSpeakerUp(*args):
@@ -269,6 +274,12 @@ g_dElements = dict(
 			('A2', 'm^2'),
 			('length', 'm'),
 			('damping constant', 'Ns/m^4')],
+			
+	Prismatic = [[[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
+			('A1', 'm^2'),
+			('A2', 'm^2'),
+			('length', 'm'),
+			('damping constant', 'Ns/m^4')],
 
 	Exponential = [ [[(1, 0), (2, 1), (1, 2), (0, 1)], [(1, 2), (0, 1), (1, 0), (2, 1)]],
 			('A1', 'm^2'),
@@ -305,7 +316,6 @@ g_dElements = dict(
 )
 
 g_dAcousticElements = dict()
-g_iIDCounter = 1
 
 class Element:
 	def __init__(self, strType, lValues, frame, lButtons, handler):
@@ -399,27 +409,38 @@ class MovableHandler:
 			ttk.Label(editElementDialog, text=propName).grid(column=0, row=gridRow)
 
 			value = g_dAcousticElements[self.strID].m_lValues[iProp]
-
+			
+			#if this is a speaker, add membrane area
+			if g_dAcousticElements[self.strID].m_Type == "Speaker" and propName[0] == "A":
+				strSpeaker = g_dAcousticElements[self.strID].m_lValues[2]
+				if strSpeaker in g_dSpeakers:
+					dSpeakerProps = g_dSpeakers[strSpeaker]
+					fMembraneArea = dSpeakerProps["Sd"]
+					value = fMembraneArea
+				
 			lTextVars.append(tk.StringVar())
 			lTextVars[-1].set(str(value))
 
 			#a specialty
-			if g_dAcousticElements[self.strID].m_Type == "Speaker" and propName == "type":
-				#get speaker model names
-				lstrSpeakers = []
-				for iSpeaker in range(speakerListBox.size()):
-					strListBoxEntry = speakerListBox.get(iSpeaker)
-					lstrSpeakers.append(strListBoxEntry )
-				#produce a dropdown box
-				speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
-				speakerModelBox.state(['readonly'])
-				speakerModelBox.grid(column=1, row=gridRow)
+			if g_dAcousticElements[self.strID].m_Type == "Speaker":
+				if propName == "type":
+					#get speaker model names
+					lstrSpeakers = []
+					for iSpeaker in range(speakerListBox.size()):
+						strListBoxEntry = speakerListBox.get(iSpeaker)
+						lstrSpeakers.append(strListBoxEntry )
+					#produce a dropdown box
+					speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
+					speakerModelBox.state(['readonly'])
+					speakerModelBox.grid(column=1, row=gridRow)
+				else:
+					ttk.Label(editElementDialog, text=str(value)).grid(column=1, row=gridRow)
 			else:
 				ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
 
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
 
-			gridRow += 1;
+			gridRow += 1
 		#add button to delete element
 		def deleteMe():
 			print("deleting ID", self.strID)
@@ -566,16 +587,20 @@ def addElementToCanvas(*args):
 	print("element type is " + strElemType)
 
 	#create element in global dictionary
-	global g_iIDCounter
-	strElemID = strElemType + str(g_iIDCounter)
-
-	g_iIDCounter += 1
-
+	iTestID = 1
+	strElemID = strElemType + "1"
+	
+	while strElemID in g_dAcousticElements:
+		strElemID = strElemType + str(iTestID)
+		iTestID += 1
+		
 	elementFrame = ttk.Frame(acuCircuitFrame)
 
 	canvasID = acuCanvas.create_window(100, 100, window=elementFrame, tags="movable")
 
-	movingLabel = tk.Label(elementFrame, bitmap="@xbm/" + elemType.get().lower() + "0.xbm", text = elemType.get())
+	strBitmapFile = "@xbm/" + elemType.get().lower() + "0.xbm"
+	print(strBitmapFile)
+	movingLabel = tk.Label(elementFrame, bitmap=strBitmapFile, text = elemType.get())
 	movingLabel.grid(row = 1, column = 1)
 	#tk.Button(elementFrame, bitmap="@xbm/connector.xbm", command=exit).grid(row = 1, column = 0)
 	#add connection buttons
@@ -593,7 +618,11 @@ def addElementToCanvas(*args):
 	#add element to global dictionary
 	#(strType, lValues, frame, lButtons):
 	lValues = [0] * (len(g_dElements[strElemType]) - 1)
+	
+	print("adding element", strElemID)
 	g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons, myHandler)
+	
+	return strElemID
 
 #callbacks for buttons
 def addAcousticElement(*args):
@@ -636,7 +665,6 @@ def loadDefinition(strFile):
 	g_dSpeakers.clear()
 	
 	print("loading from file", strFile ,"...")
-	global g_iIDCounter
 	tree = ET.parse(strFile)
 	root = tree.getroot()
 
@@ -648,6 +676,8 @@ def loadDefinition(strFile):
 	#preliminary links
 	#id1 -> (id2, button1)
 	dLinks = dict()
+	
+	dRename = dict()
 
 	for element in root:
 		#check if this is speaker data
@@ -661,22 +691,16 @@ def loadDefinition(strFile):
 		#get type of element
 		#capitalize key
 		strElementType = element.tag[0].upper() + element.tag[1:]
-		#get id of element
-		strElementID = element.get("id")
-		#remove everything but the id number
-		strElementIDNum = ""
 		
-		for char in strElementID:
-			if char.isdigit():
-				strElementIDNum += char
-			
-		print(strElementID, strElementIDNum)
-
+		#get id of element
+		#strElementID = element.get("id")
+		
 		#create element on canvas
 		elemType.set(strElementType)
-		g_iIDCounter = int(strElementIDNum)
-		strElementID = strElementType + str(g_iIDCounter)
-		addElementToCanvas()
+		strElementID = addElementToCanvas()
+		
+		print("added element", element.get("id"), "as", strElementID)
+		dRename[element.get("id")] = strElementID
 
 		dLinks[strElementID] = []
 
@@ -716,14 +740,24 @@ def loadDefinition(strFile):
 							#write to properties
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = prop.text
 							
+	# rename links
+	dRenamedLinks = dict()
+	for strID in dLinks.keys():
+		print(dLinks[strID])
+		dRenamedLinks[strID] = []
+		for (strTargetID, iLinkIndex) in dLinks[strID]:
+			print("strID", strID)
+			print("strTargetID", strTargetID)
+			dRenamedLinks[strID].append( (dRename[strTargetID], iLinkIndex) )
+		
 	#finalize links
 	sFinished = set()
-	for strID1 in dLinks:
-		for (strID2, link1) in dLinks[strID1]:
+	for strID1 in dRenamedLinks:
+		for (strID2, link1) in dRenamedLinks[strID1]:
 			end1 = (strID1, link1)
 			if end1 not in sFinished:
 				#find other end of link
-				for (strID1_1, link2) in dLinks[strID2]:
+				for (strID1_1, link2) in dRenamedLinks[strID2]:
 					if strID1_1 == strID1:
 						end2 = (strID2, link2)
 						g_lLinks.append( (end1, end2) )
@@ -842,8 +876,12 @@ g_strElementListFilename = g_strDir + g_strElementListFile
 g_strImageFile = g_strFilename + ".png"
 g_strResizedFile = g_strFilename + "_resized.png"
 
-g_strSimuInputFile = g_strFile + ".in"
-g_strSimuOutputFile = g_strFile + ".out"
+g_strSimuOutputFile = g_strFilename + ".out"
+g_strSimuInputFile = g_strFilename + ".in"
+
+g_strPlotFile = g_strFilename + "_plot.png"
+
+g_strSimuCommand = "../bin/simu"
 
 
 def generateElementList():
@@ -854,135 +892,106 @@ def generateElementList():
 	call(["python3", "../tools/xml2list.py", g_strXMLFile, g_strElementListFilename])
 	
 	
-	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile])
+	call(["python3", "../tools/list2img.py", g_strElementListFilename, g_strImageFile, str(simuImageCanvas.winfo_width()), str(simuImageCanvas.winfo_height()), "1"])
 
 def escapeString(strToEscape):
 	return "".join([c if c.isalnum() else '_' for c in strToEscape ])
 
+svSimuElementLength = tk.StringVar()
+svSimuElementLength.set(str(g_fDeltaX) )
+svSimuMaxTimeStep = tk.StringVar()
+svSimuMaxTimeStep.set("0.001")
+svSimuMinFreq = tk.StringVar()
+svSimuMinFreq.set("20")
+svSimuMaxFreq = tk.StringVar()
+svSimuMaxFreq.set("1000")
+svSimuNumFreq = tk.StringVar()
+svSimuNumFreq.set("256")
+
 def onSimulationButtonClick():
-	generateElementList()
+	print("run simulation: generating element list")
+	showSimuImage()
+	
+	print("run simulation: creating simulation configuration")
 	config = configparser.ConfigParser()
-	
-	g_fMaxTimeStep = 0.001
-	
+
+	g_fMaxTimeStep = float(svSimuMaxTimeStep.get())
+
 	config['general'] = {'element_file': g_strElementListFile,
-						 'max_timestep': str(g_fMaxTimeStep)}
-
+						 'max_timestep': str(g_fMaxTimeStep),
+						 'output_file' : g_strFile + ".out"}
+	 
 	strSignalType = "sine"
-
-	lfFreqs = numpy.logspace(numpy.log10(20), numpy.log10(1000), num=16)
+	lfFreqs = numpy.logspace(numpy.log10(float(svSimuMinFreq.get())), numpy.log10(float(svSimuMaxFreq.get())), num=int(svSimuNumFreq.get()))
 	strFreqs = ""
 	for fFreq in lfFreqs:
 		strFreqs += str(fFreq) + "; "
-
-	g_iSignalPeriods = 15
-	g_iTrailingPeriods = 15
-
+	g_iSignalPeriods = 8
+	g_fLeadTime = 0.1
 	config['signal'] = {'signal_type': strSignalType,
 						'frequencies': strFreqs,
 						'signal_periods': str(g_iSignalPeriods),
-						'trailing_periods': str(g_iTrailingPeriods)}
-
+						'lead_time': str(g_fLeadTime)}
 	dSpeakerFileMapping = dict()
 	for iSpeaker in range(speakerListBox.size()):
 		strSpeakerName = speakerListBox.get(iSpeaker)
 		strSpeakerFile = escapeString(strSpeakerName) + ".cfg"
-		
+	
 		strSpeakerFilename = g_strDir + strSpeakerFile
-		
+	
 		dSpeakerFileMapping[escapeString(strSpeakerName)] = strSpeakerFile
 		#create xml data
 		xmlTree = ET.ElementTree(ET.Element("tspset") )
 		rootElem = xmlTree.getroot()
 		writeSpeakerXML(strSpeakerName, rootElem)
-
 		speakerConfig = configparser.ConfigParser()
 		dSpeakerProps = dict()
 		for prop in rootElem:
 			dSpeakerProps[prop.tag] = prop.text
-		
+	
 		speakerConfig['tspset'] = dSpeakerProps
-		
+	
 		with open(strSpeakerFilename, 'w') as speakerFile:
 			speakerConfig.write(speakerFile)
-		
+	
 	config['speakers'] = dSpeakerFileMapping
-
 	#open simulation input file for writing
-	
-	with open(g_strDir + g_strSimuInputFile, 'w') as configfile:
+
+	print("run simulation: writing simulation input file")
+	strSimuInput = g_strSimuInputFile
+	with open(strSimuInput, 'w') as configfile:
 		config.write(configfile)
-	
-	#call simulation with all the data
-	call(["../bin/simu", g_strSimuInputFile, g_strSimuOutputFile], cwd=g_strDir)
-	
-	#collect results
-	#parse simu output file
-	tree = ET.parse(strSimuOutputFile)
-	root = tree.getroot()
+		
+	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
+	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../lightsimu/Release/lightsimu"])
 
-	daMicSPLs = dict()
-
-	#periods for measuring spl and phase
-	g_nMeasPeriods = 3
-
-	#process signals
-	for signal in root.findall("signal"):
-		strSignalType = signal.attrib["type"]
-		fSsignalFreq = float(signal.attrib["freq"])
-
-		print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
-
-		#process outputs
-		for mic_output in signal.findall("mic_output"):
-			strMicId = mic_output.attrib["id"]
-			strMicFile = mic_output.attrib["file"]
-
-			print("Mic - id =", strMicId, ", file =", strMicFile)
-
-			#load output file
-			hMicSamples = open(strMicFile, 'rb')
-			aMicData = parse2column(hMicSamples)
-
-			#cut the last signal period from the data
-			fPeriodTime = 1.0 / fSsignalFreq
-
-			fMeasPeriodEnd   = g_iSignalPeriods * fPeriodTime
-			fMeasPeriodStart = fMeasPeriodEnd - g_nMeasPeriods * fPeriodTime
-
-			aMeasData = cutRows(aMicData, fMeasPeriodStart, fMeasPeriodEnd)
-
-			fMicSPL = rmsColumn(aMeasData, 1)
-
-			if not strMicId in daMicSPLs:
-				daMicSPLs[strMicId] = []
-
-			daMicSPLs[strMicId].append( (fSsignalFreq, fMicSPL) )
-
-		#video output is per frequency, no iteration needed.
-
-	#write spl files for mics
-	for strMicID in daMicSPLs:
-		hMicFile = open("spl_mic_" + strMicID, 'w')
-		for (freq, spl) in daMicSPLs[strMicID]:
-			hOutput.write(str( freq ) + "\t" + str( spl ) + "\n" ) 
 
 #ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
 
-ttk.Label(simuFrame, text="element length").pack()
+simuSettingsFrame = ttk.Frame(simuFrame)
+simuSettingsFrame.pack()
 
-svSimuElementLength = tk.StringVar()
-svSimuElementLength.set(str(g_fDeltaX) )
+ttk.Label(simuSettingsFrame, text="element length").grid(row=1, column=1, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuElementLength).grid(row=2, column=1)
 
-ttk.Entry(simuFrame, width=8, textvariable=svSimuElementLength).pack()
+ttk.Label(simuSettingsFrame, text="max time step").grid(row=1, column=2, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxTimeStep).grid(row=2, column=2)
+
+ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=3, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=3)
+
+ttk.Label(simuSettingsFrame, text="max frequency").grid(row=1, column=4, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=2, column=4)
+
+ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=1, column=5, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=2, column=5)
 
 
 simuImageCanvas = tk.Label(simuFrame)
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
 
 simuImageCanvas.pack(expand=1, fill=tk.BOTH)
-
 
 def showSimuImage():
 	generateElementList()
