@@ -73,9 +73,7 @@ def saveMap(npaMap, strFileName):
 				
 	image.save(strFileName)
 
-def placeVertex(iVertex, npaPrevVertex, npaDirection, npaImage):
-
-	saveMap(npaImage, "falter" + str(iVertex) + ".png")
+def placeVertex(iVertex, iDecision, npaPrevVertex, npaDirection, iDirection, npaImage):
 	# test if we can place the cross section
 	npaVertex = npaPrevVertex + npaDirection
 	
@@ -123,6 +121,16 @@ def placeVertex(iVertex, npaPrevVertex, npaDirection, npaImage):
 		vPos = (- iPixel - .5 * fWidth - fMinWallPixels) * npaPerpendicular + npaVertex
 		placePixel(npaNewImage, vPos[0], vPos[1])
 	
+	print("iDecision", iDecision)
+	# check if we have to decide a direction yet
+	if iDecision > 0:
+		placeVertex(iVertex + 1, iDecision-1, npaVertex, npaDirection, npaNewImage)
+		
+		return True
+		
+	print("decision at vertex", iVertex)
+		
+	saveMap(npaImage, "falter" + str(iVertex) + ".png")
 	# calculate bending angle
 	
 	vDirections = []
@@ -152,10 +160,11 @@ def placeVertex(iVertex, npaPrevVertex, npaDirection, npaImage):
 	# test allowable angles
 	for iDirection in range(nDirections):	
 		# place next section
-		placeVertex(iVertex + 1, npaVertex, vDirections[iDirection], npaNewImage)
+		print("fWidth", fWidth, "fResolution", fResolution)
+		placeVertex(iVertex + 1, int(fWidth), npaVertex, vDirections[iDirection], npaNewImage)
 
 saveMap(npaInitialMap, "falter.png")
 
 # fold horn
-placeVertex(0, numpy.asarray([iWidth -1, 15]), numpy.asarray([-1, 0]), npaInitialMap)
+placeVertex(0, 0, numpy.asarray([iWidth -1, 15]), numpy.asarray([-1, 0]), npaInitialMap)
 

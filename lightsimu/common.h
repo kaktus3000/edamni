@@ -17,6 +17,8 @@ typedef struct
 	float m_fGasConstant;
 	// reference pressure for 0 dB [Pa]
 	float m_fReferencePressure;
+	// input voltage amplitude for harmonic excitation
+	float m_fVoltageAmplitude;
 
 	// problem specific constants
 	// finite spacial difference of elements
@@ -32,6 +34,8 @@ typedef struct
 	float m_fLeadTime;
 	// number of wave periods to average over
 	float m_nSimulationPeriods;
+	// signal type
+	std::string m_strSignalType;
 
 } SSimuSettings;
 
