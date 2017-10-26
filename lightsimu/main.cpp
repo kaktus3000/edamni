@@ -89,7 +89,7 @@ void runThread(float fFreq,
 		
 		float fVoltage = pSettings->m_fVoltageAmplitude * 
 			sinf(fTotalTime * 2.0f * M_PI * fFreq);
-		if(pSettings->m_strSignalType == std::string("step") )
+		if(std::string(pSettings->m_szSignalType) == std::string("step") )
 			fVoltage = (fTotalTime < .01*fFreq) ? 
 				0 : pSettings->m_fVoltageAmplitude / 1.414213562;
 
@@ -226,7 +226,8 @@ main(int argc, char** argv)
 	simuSettings.m_nSimulationPeriods = std::stoi(inputScanner.getKey("signal", "signal_periods"));
 	
 	//read signal type
-	simuSettings.m_strSignalType = inputScanner.getKey("signal", "signal_type");
+	std::string strSignalType(inputScanner.getKey("signal", "signal_type") );
+	strcpy(simuSettings.m_szSignalType, strSignalType.c_str());
 
 	// get name of element list file
 	std::string strElemFile = inputScanner.getKey("general", "element_file");

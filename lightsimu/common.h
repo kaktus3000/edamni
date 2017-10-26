@@ -35,7 +35,7 @@ typedef struct
 	// number of wave periods to average over
 	float m_nSimulationPeriods;
 	// signal type
-	std::string m_strSignalType;
+	char m_szSignalType[50];
 
 } SSimuSettings;
 
