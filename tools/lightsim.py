@@ -119,7 +119,7 @@ for iElem in range(1, len(aElems)):
 	fVolume = 0.5 * (fNegArea + fPosArea) * g_dx
 	
 	# this factor is missing time step and velocity factor
-	fFactor = g_fDensity * g_fGasConstant * g_fTemperature/ fVolume
+	fFactor = g_fDensity * g_fIsentropicExponent * g_fGasConstant * g_fTemperature/ fVolume
 	
 	# implement breaks on the left side of the element
 	if elem.m_bBreak and iElem > 0:
@@ -166,7 +166,7 @@ for strSpeaker in dSpeakers:
 
 # time constraints
 # speed of sound
-lfTimeConstraints = [g_dx / numpy.sqrt(g_fGasConstant* g_fTemperature)]
+lfTimeConstraints = [g_dx / numpy.sqrt(g_fIsentropicExponent * g_fGasConstant* g_fTemperature)]
 # acoustic damping
 lfTimeConstraints.append(g_fDensity / max(numpy.amax(afVelocityDamping), 1.0) )
 

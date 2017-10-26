@@ -15,6 +15,8 @@ typedef struct
 	float m_fTemperature;
 	// gas constant of air [J/(kg K)]
 	float m_fGasConstant;
+	// gas isentropic exponent [-]
+	float m_fIsentropicExponent;
 	// reference pressure for 0 dB [Pa]
 	float m_fReferencePressure;
 	// input voltage amplitude for harmonic excitation

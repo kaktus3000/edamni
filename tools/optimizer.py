@@ -168,7 +168,7 @@ def evaluate(params):
 	#run simulation
 	
 	#fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["python3", "../tools/lightsim.py", "0"])
-	fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["../lightsimu/Release/lightsimu"], "")
+	fReturnValue = run_simulation.runSimulation(g_strSimulationInput, ["../simu/Release/simu"], "")
 
 	#calculate objective (cost) function for output
 	
