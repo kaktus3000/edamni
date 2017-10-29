@@ -29,9 +29,9 @@ simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDif
 {
 	// convergence criteria for newton-raphson
 	const unsigned int nMaxIter = 5;
-	const double fEpsU = 1e-8;
-	const double fEpsF = 1e-8;
-	const double fEpsV = 1e-5;
+	const double fEpsU = 1e-10;
+	const double fEpsF = 1e-10;
+	const double fEpsV = 1e-8;
 	unsigned int uiIter = 0;
 
 	int bConverged = 0;
@@ -51,7 +51,7 @@ simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDif
 	{
 		// calculate error
 		fDeltaU = (double)fVoltage - pSpeaker->bl * (fVelocity + pSpeaker->m_fV) / 2 - pSpeaker->re * (fCurrent + pSpeaker->m_fI) / 2 - pSpeaker->le * (fCurrent - pSpeaker->m_fI) / dt;
-		fDeltaF = pSpeaker->bl * (fCurrent + pSpeaker->m_fI) / 2 - pSpeaker->sd * (double)fPressureDiff - pSpeaker->sms * (fPosition + pSpeaker->m_fX) / 2 - pSpeaker->rms * (fVelocity - pSpeaker->m_fV) / 2 - pSpeaker->mms * (fVelocity - pSpeaker->m_fV) / dt;
+		fDeltaF = pSpeaker->bl * (fCurrent + pSpeaker->m_fI) / 2 - pSpeaker->sd * (double)fPressureDiff - pSpeaker->sms * (fPosition + pSpeaker->m_fX) / 2 - pSpeaker->rms * (fVelocity + pSpeaker->m_fV) / 2 - pSpeaker->mms * (fVelocity - pSpeaker->m_fV) / dt;
 		fDeltaV = (fPosition - pSpeaker->m_fX) / dt - (fVelocity + pSpeaker->m_fV) / 2;
 
 		// check for convergence

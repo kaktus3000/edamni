@@ -1,0 +1,9 @@
+<tspset id="ideal piston">
+	<Re>0.0</Re>
+	<Le>0.0</Le>
+	<Mmd>0.0</Mmd>
+	<Rms>0.0</Rms>
+	<Cms>9999.9</Cms>
+	<BL>1.0</BL>
+	<Sd>0.01</Sd>
+</tspset>
