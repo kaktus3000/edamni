@@ -85,6 +85,17 @@ ScanINI::getKey(const std::string& strSection, const std::string& strKey)
 	return m_mmstrValues[strSection].at(strKey);
 }
 
+
+const bool
+ScanINI::keyExists(const std::string& strSection, const std::string& strKey)
+{
+	if(m_mmstrValues.find(strSection) == m_mmstrValues.end())
+		return false;
+	if(m_mmstrValues[strSection].find(strKey) == m_mmstrValues[strSection].end())
+		return false;
+	return true;
+}
+
 bool
 ScanINI::scanAsSection(const std::string& strLine, std::string& strSection)
 {

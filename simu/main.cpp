@@ -362,11 +362,12 @@ main(int argc, char** argv)
 		uiPos = uiEnd+1;
 	}
 	
-	std::string strMicOut(inputScanner.getKey("general", "mic_output") );
-	
 	std::string strMicBase("");
-	if(strMicOut.size())
+	
+	if(inputScanner.keyExists("general", "mic_output"))
 	{
+		std::string strMicOut(inputScanner.getKey("general", "mic_output") );
+
 		std::cout << "microphone output is requested to " << strMicOut << "\n";
 		strMicBase = strBaseDir + strMicOut;
 	}

@@ -26,6 +26,7 @@ public:
 	const std::set<std::string> getSections();
 	const std::set<std::string> getKeys(const std::string& strSection);
 	const std::string getKey(const std::string& strSection, const std::string& strKey);
+	const bool keyExists(const std::string& strSection, const std::string& strKey);
 private:
 	bool scanAsSection(const std::string& strLine, std::string& strSection);
 	bool scanAsComment(const std::string& strLine);
