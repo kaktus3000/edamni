@@ -30,8 +30,8 @@ simulateSpeaker(SSpeaker* pSpeaker, SSimuSettings* pSettings, float fPressureDif
 	// convergence criteria for newton-raphson
 	const unsigned int nMaxIter = 5;
 	const double fEpsU = 1e-10;
-	const double fEpsF = 1e-10;
-	const double fEpsV = 1e-8;
+	const double fEpsF = 1e-8;
+	const double fEpsV = 1e-10;
 	unsigned int uiIter = 0;
 
 	int bConverged = 0;
