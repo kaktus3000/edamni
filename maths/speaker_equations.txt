@@ -1,0 +1,11 @@
+Delta_U = U - BL / 2 * (v_c + v_1) - Re / 2 * (I_c+I_1) - Le * (I_c - I_1) / dt
+Delta_F = BL / 2 * (I_c+I_1) - Sd * dp - K / 2 * (x_c+x_1) - Rms / 2 * (v_c + v_1) - mms * (v_c - v_1) / dt
+Delta_V = (x_c - x_1)/dt - (v_c + v_1) / 2
+
+1.0/((4*Re*dt+8*Le)*mms+K*Re*dt^3+(2*Re*Rms+2*K*Le+2*BL^2)*dt^2+4*Le*Rms*dt)
+
+-(8*Delta_U*dt*mms+(2*Delta_U-2*BL*Delta_V)*K*dt^3+(4*Delta_U*Rms-4*BL*Delta_F)*dt^2)
+
+((4*Delta_V*Re*dt^2+8*Delta_V*Le*dt)*mms+(2*Delta_V*Re*Rms-2*Delta_F*Re+2*BL^2*Delta_V-2*BL*Delta_U)*dt^3+(4*Delta_V*Le*Rms-4*Delta_F*Le)*dt^2)
+           
+-(2*Delta_V*K*Re*dt^3+(4*Delta_F*Re+4*Delta_V*K*Le+4*BL*Delta_U)*dt^2+8*Delta_F*Le*dt)

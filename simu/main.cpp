@@ -193,7 +193,7 @@ calculateTimeStep(SSimuSettings* pSettings, SElement* pElems, uint nElements, SS
 
 	// time constraints
 	// speed of sound
-	fTimeStep = fmin(fTimeStep, pSettings->m_fDeltaX / sqrtf(pSettings->m_fIsentropicExponent * pSettings->m_fGasConstant * pSettings->m_fTemperature));
+	fTimeStep = fmin(fTimeStep, pSettings->m_fDeltaX / pSettings->m_fSpeedOfSound);
 
 	// acoustic damping
 	float fMaxDamping = 0;
@@ -218,6 +218,8 @@ main(int argc, char** argv)
 	simuSettings.m_fIsentropicExponent = 1.4;
 	simuSettings.m_fReferencePressure = 0.00002;
 	simuSettings.m_fVoltageAmplitude = 4.0;
+	//calculate speed of sound
+	simuSettings.m_fSpeedOfSound = sqrtf(simuSettings.m_fIsentropicExponent * simuSettings.m_fGasConstant * simuSettings.m_fGasConstant);
 
 	// read simulation input file
 	std::string strInputFile(argv[1]);
@@ -305,7 +307,9 @@ main(int argc, char** argv)
 		float fVolume = 0.5 * (fNegArea + fPosArea) * simuSettings.m_fDeltaX;
 
 		// this factor is missing
-		float fFactor = simuSettings.m_fIsentropicExponent * simuSettings.m_fDensity * simuSettings.m_fGasConstant * simuSettings.m_fTemperature * simuSettings.m_fVelocityFactor * simuSettings.m_fDeltaT / fVolume;
+		float fFactor = (simuSettings.m_fSpeedOfSound * simuSettings.m_fSpeedOfSound) *
+				simuSettings.m_fDensity * simuSettings.m_fVelocityFactor *
+				simuSettings.m_fDeltaT / fVolume;
 
 		// implement breaks on the left side of the element
 		if(elem.m_bBreak and iElem > 0)

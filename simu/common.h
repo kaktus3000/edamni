@@ -17,6 +17,8 @@ typedef struct
 	float m_fGasConstant;
 	// gas isentropic exponent [-]
 	float m_fIsentropicExponent;
+	// speed of sound [m/s]
+	float m_fSpeedOfSound;
 	// reference pressure for 0 dB [Pa]
 	float m_fReferencePressure;
 	// input voltage amplitude for harmonic excitation
