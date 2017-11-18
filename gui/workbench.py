@@ -901,6 +901,8 @@ svSimuElementLength = tk.StringVar()
 svSimuElementLength.set(str(g_fDeltaX) )
 svSimuMaxTimeStep = tk.StringVar()
 svSimuMaxTimeStep.set("0.001")
+svSimuStepResponse = tk.IntVar()
+svSimuStepResponse.set(1)
 svSimuMinFreq = tk.StringVar()
 svSimuMinFreq.set("20")
 svSimuMaxFreq = tk.StringVar()
@@ -921,13 +923,21 @@ def onSimulationButtonClick():
 						 'max_timestep': str(g_fMaxTimeStep),
 						 'output_file' : g_strFile + ".out"}
 	 
-	strSignalType = "sine"
-	lfFreqs = numpy.logspace(numpy.log10(float(svSimuMinFreq.get())), numpy.log10(float(svSimuMaxFreq.get())), num=int(svSimuNumFreq.get()))
-	strFreqs = ""
-	for fFreq in lfFreqs:
-		strFreqs += str(fFreq) + "; "
-	g_iSignalPeriods = 8
-	g_fLeadTime = 0.1
+	# check if we are simulating a step response
+	if(svSimuStepResponse.get() == 1):
+		g_iSignalPeriods = 1
+		g_fLeadTime = 0.0
+		strFreqs = "20"
+		strSignalType = "step"
+		config['general']['mic_output'] = g_strFile + "_time_series"
+	else:
+		strSignalType = "sine"
+		lfFreqs = numpy.logspace(numpy.log10(float(svSimuMinFreq.get())), numpy.log10(float(svSimuMaxFreq.get())), num=int(svSimuNumFreq.get()))
+		strFreqs = ""
+		for fFreq in lfFreqs:
+			strFreqs += str(fFreq) + "; "
+		g_iSignalPeriods = 8
+		g_fLeadTime = 0.1
 	config['signal'] = {'signal_type': strSignalType,
 						'frequencies': strFreqs,
 						'signal_periods': str(g_iSignalPeriods),
@@ -965,10 +975,6 @@ def onSimulationButtonClick():
 	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
 	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../simu/Release/simu"])
 
-
-#ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).grid()
-ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
-
 simuSettingsFrame = ttk.Frame(simuFrame)
 simuSettingsFrame.pack()
 
@@ -978,15 +984,19 @@ ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuElementLength).grid(row
 ttk.Label(simuSettingsFrame, text="max time step").grid(row=1, column=2, padx=5)
 ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxTimeStep).grid(row=2, column=2)
 
-ttk.Label(simuSettingsFrame, text="min frequency").grid(row=1, column=3, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=2, column=3)
+ttk.Label(simuSettingsFrame, text="step response").grid(row=1, column=3, padx=5)
+ttk.Checkbutton(simuSettingsFrame, variable=svSimuStepResponse).grid(row=2, column=3, padx=5)
 
-ttk.Label(simuSettingsFrame, text="max frequency").grid(row=1, column=4, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=2, column=4)
+ttk.Label(simuSettingsFrame, text="min frequency").grid(row=3, column=1, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMinFreq).grid(row=4, column=1)
 
-ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=1, column=5, padx=5)
-ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=2, column=5)
+ttk.Label(simuSettingsFrame, text="max frequency").grid(row=3, column=2, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuMaxFreq).grid(row=4, column=2)
 
+ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=3, column=3, padx=5)
+ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=4, column=3)
+
+ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
 
 simuImageCanvas = tk.Label(simuFrame)
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)

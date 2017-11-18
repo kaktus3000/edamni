@@ -85,12 +85,13 @@ void runThread(float fFreq,
 
 	for(uint uiTimeStep = 0; uiTimeStep < nTimesteps; uiTimeStep++)
 	{
-		float fTotalTime = (float) uiTimeStep * pSettings->m_fDeltaT;
+		double fTotalTime = (float) uiTimeStep * pSettings->m_fDeltaT;
 		
-		float fVoltage = pSettings->m_fVoltageAmplitude * 
-			sinf(fTotalTime * 2.0f * M_PI * fFreq);
+		const double fOmegaT = fTotalTime * 2.0 * M_PI * fFreq;
+		double fVoltage = pSettings->m_fVoltageAmplitude *
+			sin(fOmegaT);
 		if(std::string(pSettings->m_szSignalType) == std::string("step") )
-			fVoltage = (fTotalTime < .01*fFreq) ? 
+			fVoltage = (fOmegaT < .01) ?
 				0 : pSettings->m_fVoltageAmplitude / 1.414213562;
 
 		for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
@@ -444,44 +445,50 @@ main(int argc, char** argv)
 
 	hXML << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<simu_output>\n";
 
-	for (uint uiMic = 0; uiMic < nMics; uiMic++)
+	//write microphone time series file names, if any were written
+
+	if (strSignalType == std::string("sine"))
 	{
-		uint uiMicElem = pMics[uiMic];
-		std::string strMic(pElems[uiMicElem].m_strMic);
-		std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
+		// write SPL outputs if the simulation used sine wave excitation
+		for (uint uiMic = 0; uiMic < nMics; uiMic++)
+		{
+			uint uiMicElem = pMics[uiMic];
+			std::string strMic(pElems[uiMicElem].m_strMic);
+			std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
 
-		std::cout << "writing " << strMicFile << "\n";
-		writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[uiMic]), 1, nFreqs);
+			std::cout << "writing " << strMicFile << "\n";
+			writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[uiMic]), 1, nFreqs);
 
-		hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
-	}
+			hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
+		}
 
-	//write sum mic
-	{
-		std::string strMic("spl_sum");
-		std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
+		//write sum mic
+		{
+			std::string strMic("spl_sum");
+			std::string strMicFile(std::string("spl_") + strMic + std::string(".dat"));
 
-		std::cout << "writing " << strMicFile << "\n";
-		writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[nMics]), 1, nFreqs);
+			std::cout << "writing " << strMicFile << "\n";
+			writeTable((strBaseDir + strMicFile).c_str(), pfFreqs, &(ppfThreadResults[nMics]), 1, nFreqs);
 
-		hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
-	}
+			hXML << "\t<mic_spl file=\"" << strMicFile << "\" id=\"" << strMic << "\"/>\n";
+		}
 
-	for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
-	{
-		// get speaker name
-		uint uiSpeakerElem = pSpeakerElems[iSpeaker];
-		std::string strSpeaker(pElems[uiSpeakerElem].m_strSpeaker);
-		std::string strSpeakerFile(std::string("imp_") + strSpeaker + std::string(".dat"));
+		for(uint iSpeaker = 0; iSpeaker < nSpeakers; iSpeaker++)
+		{
+			// get speaker name
+			uint uiSpeakerElem = pSpeakerElems[iSpeaker];
+			std::string strSpeaker(pElems[uiSpeakerElem].m_strSpeaker);
+			std::string strSpeakerFile(std::string("imp_") + strSpeaker + std::string(".dat"));
 
-		std::cout << "writing " << strSpeakerFile << "\n";
-		writeTable((strBaseDir + strSpeakerFile).c_str(), pfFreqs, &pfImpedances, 1, nFreqs);
+			std::cout << "writing " << strSpeakerFile << "\n";
+			writeTable((strBaseDir + strSpeakerFile).c_str(), pfFreqs, &pfImpedances, 1, nFreqs);
 
-		std::string strSpeakerExcursionFile(std::string("exc_") + strSpeaker + std::string(".dat"));
-		writeTable((strBaseDir + strSpeakerExcursionFile).c_str(), pfFreqs, &pfExcursions, 1, nFreqs);
+			std::string strSpeakerExcursionFile(std::string("exc_") + strSpeaker + std::string(".dat"));
+			writeTable((strBaseDir + strSpeakerExcursionFile).c_str(), pfFreqs, &pfExcursions, 1, nFreqs);
 
-		hXML << "\t<speaker_impedance file=\"" << strSpeakerFile << "\" id=\"" << strSpeaker << "\"/>\n";
-		hXML << "\t<speaker_excursion file=\"" << strSpeakerExcursionFile << "\" id=\"" << strSpeaker << "\"/>\n";
+			hXML << "\t<speaker_impedance file=\"" << strSpeakerFile << "\" id=\"" << strSpeaker << "\"/>\n";
+			hXML << "\t<speaker_excursion file=\"" << strSpeakerExcursionFile << "\" id=\"" << strSpeaker << "\"/>\n";
+		}
 	}
 	hXML << "</simu_output>\n";
 
