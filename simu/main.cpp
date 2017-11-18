@@ -164,7 +164,7 @@ void runThread(float fFreq,
 			std::string strFile(strMicOutput + std::to_string(uiMic) + std::string(".txt"));
 			std::cout << "writing microphone outputs to " << strFile << "\n";
 			std::ofstream hOutput( strFile);
-			for (uint uiSample = 0; uiSample < nTimesteps - nLeadSteps; ++uiSample)
+			for (uint uiSample = 1; uiSample < nTimesteps - nLeadSteps; ++uiSample)
 				hOutput << uiSample * pSettings->m_fDeltaT << "\t" << ppfMicMeasurements[uiMic][uiSample] << "\n";
 		}
 		pfSPLs[uiMic] = spl(rms(ppfMicMeasurements[uiMic], nTimesteps - nLeadSteps), pSettings);
@@ -368,10 +368,11 @@ main(int argc, char** argv)
 	}
 	
 	std::string strMicBase("");
+	std::string strMicOut("");
 	
 	if(inputScanner.keyExists("general", "mic_output"))
 	{
-		std::string strMicOut(inputScanner.getKey("general", "mic_output") );
+		strMicOut = std::string(inputScanner.getKey("general", "mic_output") );
 
 		std::cout << "microphone output is requested to " << strMicOut << "\n";
 		strMicBase = strBaseDir + strMicOut;
@@ -390,6 +391,14 @@ main(int argc, char** argv)
 	float* pfImpedances = (float*)calloc(vfFreqs.size(), sizeof(float));
 	float* pfExcursions = (float*)calloc(vfFreqs.size(), sizeof(float));
 
+	std::string strOutFile(inputScanner.getKey("general", "output_file"));
+	std::cout << "+\n" << "writing output to " << strOutFile << "\n";
+
+	// write XML output
+	std::ofstream hXML(strBaseDir + strOutFile);
+
+	hXML << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<simu_output>\n";
+
 	// spawn calculation threads
 	std::vector<std::thread> vThreads;
 	std::vector<float*> vpfResults;
@@ -404,8 +413,22 @@ main(int argc, char** argv)
 		std::string strMicOutput("");
 		if (strMicBase.size())
 		{
-			strMicOutput = strMicBase + std::to_string(fFreq) + std::string("Hz_");
+			std::string strMicSuffix("");
+			if(std::string(simuSettings.m_szSignalType) == std::string("step"))
+				strMicSuffix = std::string("_step");
+			else
+				strMicSuffix = std::string("_") + std::to_string(fFreq) + std::string("Hz_");
+
+			strMicOutput = strMicBase + strMicSuffix;
 			std::cout << "microphone output will be written to " << strMicOutput << "\n";
+
+			hXML << "\t<signal freq=\"" << fFreq << "\" type=\"" << std::string(simuSettings.m_szSignalType) << "\">\n";
+			for(uint uiMic = 0; uiMic < nMics; uiMic++)
+			{
+				uint uiMicElem = pMics[uiMic];
+				hXML << "\t\t<mic_output file=\"" << strMicOut + strMicSuffix << uiMic << ".txt" << "\" id=\"" << pElems[uiMicElem].m_strMic << "\"/>\n";
+			}
+			hXML << "\t</signal>\n";
 		}
 
 #ifdef DEBUGBUILD
@@ -440,14 +463,6 @@ main(int argc, char** argv)
 
 		free(pfResults);
 	}
-
-	std::string strOutFile(inputScanner.getKey("general", "output_file"));
-	std::cout << "+\n" << "writing output to " << strOutFile << "\n";
-
-	// write XML output
-	std::ofstream hXML(strBaseDir + strOutFile);
-
-	hXML << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<simu_output>\n";
 
 	//write microphone time series file names, if any were written
 

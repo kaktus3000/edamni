@@ -16,6 +16,20 @@ from subprocess import call
 import material_costs
 import length_distrib
 
+def spl(npaStepResponse, fTimeStep):
+	# calculate impulse response for averaged time signals
+	npaImpulseResponse = numpy.ediff1d(npaStepResponse) / fTimeStep
+
+	w,h = scipy.signal.freqz(npaImpulseResponse, worN=4096)
+
+	w = w[10:int(len(w)*.9)]
+	h = h[10:int(len(h)*.9)]
+
+	npaFreqs = 1.1 * w/(fTimeStep * 2.0 * numpy.pi)
+	npaSPLs  = (20 * numpy.log10(abs(h)) ) + 7.0
+	
+	return npaFreqs, npaSPLs
+
 
 def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	print("run simulation: os dir", os.getcwd() )
@@ -97,35 +111,39 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	#process signals
 	for signal in root.findall("signal"):
 		strSignalType = signal.attrib["type"]
-		fSsignalFreq = float(signal.attrib["freq"])
+		fSignalFreq = float(signal.attrib["freq"])
 		#print("Signal - type =", strSignalType, ", freq =", fSsignalFreq)
 		#process outputs
+		if strSignalType == "step":
 		
-		for mic_output in signal.findall("mic_output"):
-			strMicID = mic_output.attrib["id"]
-			strMicFile = mic_output.attrib["file"]
+			npaStepSum = numpy.nan
 			
-			#create spl information from time series
-			npaData = numpy.loadtxt(g_strDir + strMicFile)
-
-			npaStepResponse = numpy.transpose(npaData)[1]
-			fTimeStep = npaData[0][0]
+			for mic_output in signal.findall("mic_output"):
+				strMicID = mic_output.attrib["id"]
+				strMicFile = mic_output.attrib["file"]
 			
-			# accumulate step responses for all variations
+				#create spl information from time series
+				npaData = numpy.loadtxt(g_strDir + strMicFile)
+				fTimeStep = npaData[0][0]
 
-
-			# calculate impulse response for averaged time signals
-			npaImpulseResponse = numpy.ediff1d(npaStepResponse) / fTimeStep
-
-			w,h = scipy.signal.freqz(npaImpulseResponse, worN=4096)
+				npaStepResponse = numpy.transpose(npaData)[1]
+				if numpy.isnan(npaStepSum).any():
+					npaStepSum = npaStepResponse
+				else:
+					npaStepSum += npaStepResponse
+				
+				# calculate sum signal
 			
-			w = w[10:int(len(w)*.9)]
-			h = h[10:int(len(h)*.9)]
+				# accumulate step responses for all variations
 
-			npaFreqs = 1.1 * w/(fTimeStep * 2 * numpy.pi)
-			npaSPLs  = (20 * numpy.log10(abs(h)) ) + 7
-		
-			daMicSPLs[strMicID] = numpy.transpose([npaFreqs, npaSPLs])
+
+				npaFreqs, npaSPLs = spl(npaStepResponse, fTimeStep)
+				daMicSPLs[strMicID] = numpy.transpose([npaFreqs, npaSPLs])
+			
+				nMics += 1
+			# calculate sum output
+			npaFreqs, npaSPLs = spl(npaStepSum, fTimeStep)
+			daMicSPLs["spl_sum"] = numpy.transpose([npaFreqs, npaSPLs])
 			
 			nMics += 1
 	
