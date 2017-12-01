@@ -16,14 +16,15 @@ from subprocess import call
 import material_costs
 import length_distrib
 
-def spl(npaStepResponse, fTimeStep):
+def spl(npaStepResponse, fTimeStep, fMinFreq, fMaxFreq):
 	# calculate impulse response for averaged time signals
 	npaImpulseResponse = numpy.ediff1d(npaStepResponse) / fTimeStep
+	
+	fAngularFreqFactor = fTimeStep * 2.0 * numpy.pi
+	
+	npaUnitFreqs = numpy.logspace(numpy.log10(fMinFreq*fAngularFreqFactor), numpy.log10(fMaxFreq*fAngularFreqFactor), num=256)
 
-	w,h = scipy.signal.freqz(npaImpulseResponse, worN=4096)
-
-	w = w[10:int(len(w)*.9)]
-	h = h[10:int(len(h)*.9)]
+	w,h = scipy.signal.freqz(npaImpulseResponse, worN=npaUnitFreqs)
 
 	npaFreqs = 1.1 * w/(fTimeStep * 2.0 * numpy.pi)
 	npaSPLs  = (20 * numpy.log10(abs(h)) ) + 7.0
@@ -96,12 +97,16 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 	print(lstrSimuCommand, strSimuInputFile, g_strDir)
 	call(lstrSimuCommand + [strSimuInputFile], cwd=g_strDir)
 
+	print("\n run simulation: calculation finished!")
+	
 	#collect results
 	#parse simu output file
 	tree = ET.parse(g_strSimuOutputFile)
 	root = tree.getroot()
 	
 	nMics = len(root.findall("mic_spl") )
+	
+	print("run simulation: processing microphone outputs...")
 	
 	daMicSPLs = dict()
 	daSpeakerImpedances = dict()
@@ -121,6 +126,8 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 			for mic_output in signal.findall("mic_output"):
 				strMicID = mic_output.attrib["id"]
 				strMicFile = mic_output.attrib["file"]
+				
+				print("run simulation: processing mic", strMicID, "from", strMicFile)
 			
 				#create spl information from time series
 				npaData = numpy.loadtxt(g_strDir + strMicFile)
@@ -135,14 +142,14 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 				# calculate sum signal
 			
 				# accumulate step responses for all variations
-
-
-				npaFreqs, npaSPLs = spl(npaStepResponse, fTimeStep)
-				daMicSPLs[strMicID] = numpy.transpose([npaFreqs, npaSPLs])
-			
-				nMics += 1
+				if strPlotFile != "":
+					npaFreqs, npaSPLs = spl(npaStepResponse, fTimeStep, t_edge_low, t_edge_high)
+					daMicSPLs[strMicID] = numpy.transpose([npaFreqs, npaSPLs])
+				
+					nMics += 1
+				
 			# calculate sum output
-			npaFreqs, npaSPLs = spl(npaStepSum, fTimeStep)
+			npaFreqs, npaSPLs = spl(npaStepSum, fTimeStep, t_edge_low, t_edge_high)
 			daMicSPLs["spl_sum"] = numpy.transpose([npaFreqs, npaSPLs])
 			
 			nMics += 1
@@ -232,9 +239,9 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		if t_mic == None:
 			t_mic = mic
 		if "spl_sum" in mic:
-			print("run simulation: identified SPL microphone")
 			t_mic = mic
 			break
+	print("run simulation: target SPL microphone is", t_mic)
 
 	#calculate optimal fit of linear response
 	fBest = float("inf")

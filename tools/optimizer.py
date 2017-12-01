@@ -24,6 +24,9 @@ if strOSDir=="":
 g_strDir = strOSDir + "/"
 
 optimizerInputConfig = configparser.ConfigParser()
+
+print("optimizer: reading optimizer input from", strOptimizeInput)
+
 optimizerInputConfig.read(strOptimizeInput)
 
 g_strOptimizerIni = optimizerInputConfig.get("optimize_input", "optimizer_ini")
@@ -33,6 +36,9 @@ g_strSimulationInput = optimizerInputConfig.get("optimize_input", "simulation_in
 g_strHornFile = optimizerInputConfig.get("optimize_input", "horn_file")
 
 simulationConfig = configparser.ConfigParser()
+
+print("optimizer: reading simulation input from", g_strSimulationInput)
+
 simulationConfig.read(g_strSimulationInput)
 
 g_strElemFile = simulationConfig.get("general", "element_file")
@@ -66,6 +72,7 @@ g_fMaxTime = optimizerConfig.get("runtime_control", "max_time")
 g_nCPUs = optimizerConfig.get("runtime_control", "cpus")
 
 #read horn geometry
+print("optimizer: opening horn input from", g_strHornFile)
 tree = ET.parse(g_strHornFile)
 g_Horn = tree.getroot()
 
