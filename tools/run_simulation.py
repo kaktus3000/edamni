@@ -121,7 +121,7 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 		#process outputs
 		if strSignalType == "step":
 		
-			npaStepSum = numpy.nan
+			npaStepSum = [numpy.nan]
 			
 			for mic_output in signal.findall("mic_output"):
 				strMicID = mic_output.attrib["id"]
@@ -130,11 +130,21 @@ def runSimulation(strSimuInputFile, lstrSimuCommand, strPlotFile):
 				print("run simulation: processing mic", strMicID, "from", strMicFile)
 			
 				#create spl information from time series
-				npaData = numpy.loadtxt(g_strDir + strMicFile)
+				
+				# load time series file
+				infile = open(g_strDir + strMicFile, 'r')
+				strInFile = infile.read().strip()
+				lstrLines = strInFile.split('\n')
+				llfValues= [[float(s) for s in ss.split()] for ss in lstrLines]
+				#llfValues= [float(s) for s in llstrValues]
+				npaData = numpy.asarray(llfValues)
+
+				#npaData = numpy.loadtxt(g_strDir + strMicFile, dtype='float', ndmin=2)
+
 				fTimeStep = npaData[0][0]
 
 				npaStepResponse = numpy.transpose(npaData)[1]
-				if numpy.isnan(npaStepSum).any():
+				if numpy.isnan(npaStepSum[0]):
 					npaStepSum = npaStepResponse
 				else:
 					npaStepSum += npaStepResponse
