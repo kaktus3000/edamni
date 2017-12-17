@@ -398,8 +398,17 @@ class MovableHandler:
 
 		strElementType = self.imageWidget['text']
 
+		head_font = ("Helvetica", 11, "bold")
+		# columns headers
+		ttk.Label(editElementDialog, text="prop", font=head_font) .grid(column=0, row=0)
+		ttk.Label(editElementDialog, text="value", font=head_font).grid(column=1, row=0)
+		ttk.Label(editElementDialog, text="unit", font=head_font) .grid(column=2, row=0)
+		ttk.Label(editElementDialog, text="ID", font=head_font)   .grid(column=3, row=0)
+		ttk.Label(editElementDialog, text="min", font=head_font)  .grid(column=4, row=0)
+		ttk.Label(editElementDialog, text="max", font=head_font)  .grid(column=5, row=0)
+		
 		#add all the properties
-		gridRow = 0
+		gridRow = 1
 
 		lTextVars = []
 
@@ -439,6 +448,11 @@ class MovableHandler:
 				ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
 
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
+			
+			# add controls for optimization
+			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=3, row=gridRow)
+			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=4, row=gridRow)
+			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=5, row=gridRow)
 
 			gridRow += 1
 		#add button to delete element
