@@ -318,12 +318,17 @@ g_dElements = dict(
 g_dAcousticElements = dict()
 
 class Element:
-	def __init__(self, strType, lValues, frame, lButtons, handler):
+	def __init__(self, strType, lValues, lOptID, lOptMin, lOptMax, frame, lButtons, handler):
 		#type
 		self.m_Type = strType
 
 		#stored input values
 		self.m_lValues = lValues
+		
+		#optimization optoins
+		self.m_lOptID = lOptID
+		self.m_lOptMin = lOptMin
+		self.m_lOptMax = lOptMax
 
 		#frame on canvas
 		self.m_Frame = frame
@@ -410,7 +415,10 @@ class MovableHandler:
 		#add all the properties
 		gridRow = 1
 
-		lTextVars = []
+		lValueVars = []
+		lOptIDVars = []
+		lOptMinVars = []
+		lOptMaxVars = []
 
 		for iProp in range(len(g_dElements[strElementType]) - 1):
 			propName, propUnit = g_dElements[strElementType][1 + iProp]
@@ -427,8 +435,15 @@ class MovableHandler:
 					fMembraneArea = dSpeakerProps["Sd"]
 					value = fMembraneArea
 				
-			lTextVars.append(tk.StringVar())
-			lTextVars[-1].set(str(value))
+			lValueVars.append(tk.StringVar())
+			lValueVars[-1].set(str(value))
+			lOptIDVars.append(tk.StringVar())
+			# optimization settings
+			lOptIDVars[-1].set(g_dAcousticElements[self.strID].m_lOptID[iProp])
+			lOptMinVars.append(tk.StringVar())
+			lOptMinVars[-1].set(str(g_dAcousticElements[self.strID].m_lOptMin[iProp]))
+			lOptMaxVars.append(tk.StringVar())
+			lOptMaxVars[-1].set(str(g_dAcousticElements[self.strID].m_lOptMax[iProp]))
 
 			#a specialty
 			if g_dAcousticElements[self.strID].m_Type == "Speaker":
@@ -439,21 +454,21 @@ class MovableHandler:
 						strListBoxEntry = speakerListBox.get(iSpeaker)
 						lstrSpeakers.append(strListBoxEntry )
 					#produce a dropdown box
-					speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lTextVars[-1], values = lstrSpeakers )
+					speakerModelBox = ttk.Combobox(editElementDialog, width=20, textvariable=lValueVars[-1], values = lstrSpeakers )
 					speakerModelBox.state(['readonly'])
 					speakerModelBox.grid(column=1, row=gridRow)
 				else:
 					ttk.Label(editElementDialog, text=str(value)).grid(column=1, row=gridRow)
 			else:
-				ttk.Entry(editElementDialog, width=8, textvariable=lTextVars[-1] ).grid(column=1, row=gridRow)
+				ttk.Entry(editElementDialog, width=8, textvariable=lValueVars[-1] ).grid(column=1, row=gridRow)
+				
+				# add controls for optimization
+				ttk.Entry(editElementDialog, width=12, textvariable=lOptIDVars[-1] ).grid(column=3, row=gridRow)
+				ttk.Entry(editElementDialog, width=7, textvariable=lOptMinVars[-1] ).grid(column=4, row=gridRow)
+				ttk.Entry(editElementDialog, width=7, textvariable=lOptMaxVars[-1] ).grid(column=5, row=gridRow)
 
 			ttk.Label(editElementDialog, text=propUnit).grid(column=2, row=gridRow)
 			
-			# add controls for optimization
-			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=3, row=gridRow)
-			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=4, row=gridRow)
-			ttk.Entry(editElementDialog, width=8, textvariable=None ).grid(column=5, row=gridRow)
-
 			gridRow += 1
 		#add button to delete element
 		def deleteMe():
@@ -469,21 +484,32 @@ class MovableHandler:
 			#save input data to dict
 			bFailed = False
 
-			for iProp in range(len(lTextVars)):
+			for iProp in range(len(lValueVars)):
 				propName, propUnit = g_dElements[strElementType][1 + iProp]
 				
 				#catch string properties
 				if propUnit == "":
-					g_dAcousticElements[self.strID].m_lValues[iProp] = lTextVars[iProp].get()
+					g_dAcousticElements[self.strID].m_lValues[iProp] = lValueVars[iProp].get()
 				else:
 					#rest must be floats and this will be enforced
 					try:
-						fValue = float(lTextVars[iProp].get().replace(",","."))
+						fValue = float(lValueVars[iProp].get().replace(",","."))
 						g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
 					except ValueError:
 						#input was invalid, reset field
-						lTextVars[iProp].set("0")
+						lValueVars[iProp].set("0")
 						bFailed = True
+					
+					strOptID = lOptIDVars[iProp].get()
+					
+					try:
+						fMin = float(lOptMinVars[iProp].get().replace(",","."))
+						fMax = float(lOptMaxVars[iProp].get().replace(",","."))
+						g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
+					except ValueError:
+						#input was invalid, reset field
+						lOptMinVars[iProp].set("")
+						lOptMaxVars[iProp].set("")
 
 			if not bFailed:
 				#check if parsing failed, in that case allow new input
@@ -631,10 +657,10 @@ def addElementToCanvas(*args):
 
 	#add element to global dictionary
 	#(strType, lValues, frame, lButtons):
-	lValues = [0] * (len(g_dElements[strElemType]) - 1)
+	nValues = len(g_dElements[strElemType]) - 1
 	
 	print("adding element", strElemID)
-	g_dAcousticElements[strElemID] = Element(strElemType, lValues, canvasID, buttons, myHandler)
+	g_dAcousticElements[strElemID] = Element(strElemType, [0.0] *nValues, [""]*nValues, [""] *nValues, [""] *nValues, canvasID, buttons, myHandler)
 	
 	return strElemID
 
@@ -750,6 +776,12 @@ def loadDefinition(strFile):
 							fProperty = float(prop.text)
 							#write to property dictionary of element
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = fProperty
+							
+							# check for optimizer settings
+							if "id" in prop.attrib:
+								g_dAcousticElements[strElementID].m_lOptID[ iProp ] = prop.attrib["id"]
+								g_dAcousticElements[strElementID].m_lOptMin[ iProp ] = prop.attrib["min"]
+								g_dAcousticElements[strElementID].m_lOptMax[ iProp ] = prop.attrib["max"]
 						else:
 							#write to properties
 							g_dAcousticElements[strElementID].m_lValues[ iProp ] = prop.text
@@ -827,7 +859,11 @@ def saveDefinition(strFile):
 		for iProp in range(len(g_dElements[strType]) - 1):
 			propName, propUnit = g_dElements[strType][1 + iProp]
 			strValue = str(g_dAcousticElements[eleID].m_lValues[iProp])
-			ET.SubElement(element, propName.lower().replace(" ", "_")).text = strValue
+			
+			if g_dAcousticElements[eleID].m_lOptID[iProp] != "":
+				ET.SubElement(element, propName.lower().replace(" ", "_"), id=g_dAcousticElements[eleID].m_lOptID[iProp], min=g_dAcousticElements[eleID].m_lOptMin[iProp], max=g_dAcousticElements[eleID].m_lOptMax[iProp]).text = strValue
+			else:
+				ET.SubElement(element, propName.lower().replace(" ", "_")).text = strValue
 
 		#write screen coordinates of element
 		frame = g_dAcousticElements[eleID].m_Frame
