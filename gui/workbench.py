@@ -960,6 +960,20 @@ svSimuMaxFreq.set("1000")
 svSimuNumFreq = tk.StringVar()
 svSimuNumFreq.set("256")
 
+def resizeToCanvas(strImage, strResizedImage, canvas):
+
+	print("loading image", strImage)
+	
+	imageSimu = Image.open(strImage)
+	
+	canvasWidth = canvas.winfo_width()
+	canvasHeight = canvas.winfo_height()
+		
+	print("labelWidth", canvasWidth, "labelHeight", canvasHeight)
+	
+	resizedSimu = imageSimu.resize(size = (canvasWidth, canvasHeight), resample=Image.BICUBIC)
+	resizedSimu.save(strResizedImage)
+
 def onSimulationButtonClick():
 	print("run simulation: generating element list")
 	showSimuImage()
@@ -1024,6 +1038,21 @@ def onSimulationButtonClick():
 		
 	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
 	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../simu/Release/simu"])
+	
+	# change view to result
+	mode.set('Results')
+	
+	strResized = "spl_resized.png"
+	
+	# fetch spl plot
+	resizeToCanvas(g_strPlotFile, strResized, resultImageCanvas)
+	
+	tkpi = tk.PhotoImage( file = strResized)
+	resultImageCanvas.image = tkpi
+	resultImageCanvas.configure(image=tkpi)
+	
+
+	
 
 simuSettingsFrame = ttk.Frame(simuFrame)
 simuSettingsFrame.pack()
@@ -1048,34 +1077,20 @@ ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=4, co
 
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
 
-simuImageCanvas = tk.Label(simuFrame)
+simuImageCanvas = tk.Label(simuFrame, text = "Simulation Image")
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
 
 simuImageCanvas.pack(expand=1, fill=tk.BOTH)
 
 def showSimuImage():
 	generateElementList()
-	
-	print("loading image", g_strImageFile)
-	
-	imageSimu = Image.open(g_strImageFile)
-	
-	fImageAspectRatio = 1
-	
-	canvasWidth = simuImageCanvas.winfo_width()
-	canvasHeight = simuImageCanvas.winfo_height()
-	
-	fCanvasAspectRatio = 1
-	
-	#scale according to aspect ratio
-		
-	print("labelWidth", canvasWidth, "labelHeight", canvasHeight)
-	
-	resizedSimu = imageSimu.resize(size = (canvasWidth, canvasHeight) )
-	resizedSimu.save(g_strResizedFile)
+
+	strResized = "image_resized.png"
+
+	resizeToCanvas(g_strResizedFile, strResized, simuImageCanvas)
 	
 	#tkpi = tk.PhotoImage( image = resizedSimu)
-	tkpi = tk.PhotoImage( file = g_strResizedFile)
+	tkpi = tk.PhotoImage( file = strResized)
 	
 	simuImageCanvas.image = tkpi
 	simuImageCanvas.configure(image=tkpi)
@@ -1083,8 +1098,11 @@ def showSimuImage():
 
 #create frame for mode results
 resultsFrame = ttk.Frame(mainFrame)
-choiceLabel = ttk.Label(resultsFrame, text='xxx dB')
-choiceLabel.grid()
+#choiceLabel = ttk.Label(resultsFrame, text='xxx dB')
+#choiceLabel.grid()
+
+resultImageCanvas = tk.Label(resultsFrame, text="SPL plot")
+resultImageCanvas.pack(expand=1, fill=tk.BOTH)
 
 dModeFrames = {'Speakers': speakerFrame, 'Acoustic Circuit': acuCircuitFrame, 'Simulation': simuFrame, 'Results': resultsFrame}
 
@@ -1105,7 +1123,9 @@ def onChangeMode(*args):
 
 #initialize to speaker mode
 mode.trace("w", onChangeMode)
-mode.set(lModes[0])
+
+acuCanvas.after(100, lambda:mode.set('Results'))
+acuCanvas.after(200, lambda:mode.set(lModes[0]))
 
 #start the whole thing
 root.mainloop()
