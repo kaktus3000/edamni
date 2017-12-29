@@ -501,8 +501,8 @@ class MovableHandler:
 						bFailed = True
 					
 					# handle optimization related inputs
+					strOptID = lOptIDVars[iProp].get()
 					try:
-						strOptID = lOptIDVars[iProp].get()
 						fMin = float(lOptMinVars[iProp].get().replace(",","."))
 						fMax = float(lOptMaxVars[iProp].get().replace(",","."))
 						g_dAcousticElements[self.strID].m_lOptID[iProp] = strOptID
@@ -512,6 +512,11 @@ class MovableHandler:
 						#input was invalid, reset field
 						lOptMinVars[iProp].set("")
 						lOptMaxVars[iProp].set("")
+						
+					if strOptID == "":
+						g_dAcousticElements[self.strID].m_lOptID[iProp] = ""
+						g_dAcousticElements[self.strID].m_lOptMin[iProp] = ""
+						g_dAcousticElements[self.strID].m_lOptMax[iProp] = ""
 
 			if not bFailed:
 				#check if parsing failed, in that case allow new input
