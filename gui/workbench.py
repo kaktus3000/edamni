@@ -500,12 +500,14 @@ class MovableHandler:
 						lValueVars[iProp].set("0")
 						bFailed = True
 					
-					strOptID = lOptIDVars[iProp].get()
-					
+					# handle optimization related inputs
 					try:
+						strOptID = lOptIDVars[iProp].get()
 						fMin = float(lOptMinVars[iProp].get().replace(",","."))
 						fMax = float(lOptMaxVars[iProp].get().replace(",","."))
-						g_dAcousticElements[self.strID].m_lValues[iProp] = fValue
+						g_dAcousticElements[self.strID].m_lOptID[iProp] = strOptID
+						g_dAcousticElements[self.strID].m_lOptMin[iProp] = fMin
+						g_dAcousticElements[self.strID].m_lOptMax[iProp] = fMax
 					except ValueError:
 						#input was invalid, reset field
 						lOptMinVars[iProp].set("")
@@ -571,9 +573,16 @@ def drawCanvasLines():
 			#check datas on elements
 			if g_dAcousticElements[id2].m_lValues[button2] != 0.0 and g_dAcousticElements[id1].m_lValues[button1] == 0.0:
 				g_dAcousticElements[id1].m_lValues[button1] = g_dAcousticElements[id2].m_lValues[button2]
+				g_dAcousticElements[id1].m_lOptID[button1] = g_dAcousticElements[id2].m_lOptID[button2]
+				g_dAcousticElements[id1].m_lOptMin[button1] = g_dAcousticElements[id2].m_lOptMin[button2]
+				g_dAcousticElements[id1].m_lOptMax[button1] = g_dAcousticElements[id2].m_lOptMax[button2]
+				
 
 			if g_dAcousticElements[id1].m_lValues[button1] != 0.0 and g_dAcousticElements[id2].m_lValues[button2] == 0.0:
 				g_dAcousticElements[id2].m_lValues[button2] = g_dAcousticElements[id1].m_lValues[button1]
+				g_dAcousticElements[id2].m_lOptID[button2] = g_dAcousticElements[id1].m_lOptID[button1]
+				g_dAcousticElements[id2].m_lOptMin[button2] = g_dAcousticElements[id1].m_lOptMin[button1]
+				g_dAcousticElements[id2].m_lOptMax[button2] = g_dAcousticElements[id1].m_lOptMax[button1]
 
 	#mark currently selected connector button
 	#first delete marking on last selected
@@ -861,7 +870,7 @@ def saveDefinition(strFile):
 			strValue = str(g_dAcousticElements[eleID].m_lValues[iProp])
 			
 			if g_dAcousticElements[eleID].m_lOptID[iProp] != "":
-				ET.SubElement(element, propName.lower().replace(" ", "_"), id=g_dAcousticElements[eleID].m_lOptID[iProp], min=g_dAcousticElements[eleID].m_lOptMin[iProp], max=g_dAcousticElements[eleID].m_lOptMax[iProp]).text = strValue
+				ET.SubElement(element, propName.lower().replace(" ", "_"), id=g_dAcousticElements[eleID].m_lOptID[iProp], min=str(g_dAcousticElements[eleID].m_lOptMin[iProp]), max=str(g_dAcousticElements[eleID].m_lOptMax[iProp]) ).text = strValue
 			else:
 				ET.SubElement(element, propName.lower().replace(" ", "_")).text = strValue
 
@@ -974,7 +983,7 @@ def resizeToCanvas(strImage, strResizedImage, canvas):
 	resizedSimu = imageSimu.resize(size = (canvasWidth, canvasHeight), resample=Image.BICUBIC)
 	resizedSimu.save(strResizedImage)
 
-def onSimulationButtonClick():
+def writeInputFiles():
 	print("run simulation: generating element list")
 	showSimuImage()
 	
@@ -1032,12 +1041,13 @@ def onSimulationButtonClick():
 	#open simulation input file for writing
 
 	print("run simulation: writing simulation input file")
-	strSimuInput = g_strSimuInputFile
-	with open(strSimuInput, 'w') as configfile:
+	with open(g_strSimuInputFile, 'w') as configfile:
 		config.write(configfile)
 		
+def onSimulationButtonClick():
+	writeInputFiles()
 	#call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "python3", "../tools/lightsim.py", "1"])
-	call(["python3", "../tools/run_simulation.py", strSimuInput, g_strPlotFile, "../simu/Release/simu"])
+	call(["python3", "../tools/run_simulation.py", g_strSimuInputFile, g_strPlotFile, "../simu/Release/simu"])
 	
 	# change view to result
 	mode.set('Results')
@@ -1051,7 +1061,8 @@ def onSimulationButtonClick():
 	resultImageCanvas.image = tkpi
 	resultImageCanvas.configure(image=tkpi)
 	
-
+def onOptimizationButtonClick():
+	writeInputFiles()
 	
 
 simuSettingsFrame = ttk.Frame(simuFrame)
@@ -1076,6 +1087,7 @@ ttk.Label(simuSettingsFrame, text="number of frequencies").grid(row=3, column=3,
 ttk.Entry(simuSettingsFrame, width=8, textvariable=svSimuNumFreq).grid(row=4, column=3)
 
 ttk.Button(simuFrame, text="Run Simulation", command=onSimulationButtonClick).pack()
+ttk.Button(simuFrame, text="Run Optimization", command=onOptimizationButtonClick).pack()
 
 simuImageCanvas = tk.Label(simuFrame, text = "Simulation Image")
 #simuImageCanvas.grid(sticky = tk.N+tk.S+tk.W+tk.E)
@@ -1087,7 +1099,7 @@ def showSimuImage():
 
 	strResized = "image_resized.png"
 
-	resizeToCanvas(g_strResizedFile, strResized, simuImageCanvas)
+	resizeToCanvas(g_strImageFile, strResized, simuImageCanvas)
 	
 	#tkpi = tk.PhotoImage( image = resizedSimu)
 	tkpi = tk.PhotoImage( file = strResized)
